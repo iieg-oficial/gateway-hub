@@ -1,0 +1,123 @@
+upstream portal {
+    server ${PORTAL_HOST};
+    keepalive 32;
+    keepalive_timeout 60s;
+}
+
+upstream mapalab {
+    server ${MAPALAB_HOST};
+    keepalive 32;
+    keepalive_timeout 60s;
+}
+
+upstream acervo {
+    server ${ACERVO_HOST};
+    keepalive 32;
+    keepalive_timeout 60s;
+}
+
+upstream mariachi {
+    server ${MARIACHI_HOST};
+    keepalive 32;
+    keepalive_timeout 60s;
+}
+
+server {
+    listen 80;
+    server_name ${APP_DOMAIN};
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name ${APP_DOMAIN};
+
+    ssl_certificate     ${SSL_CERTIFICATE};
+    ssl_certificate_key ${SSL_CERTIFICATE_KEY};
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+
+    ssl_stapling on;
+    ssl_stapling_verify on;
+    resolver 8.8.8.8 8.8.4.4 valid=300s;
+    resolver_timeout 5s;
+
+    server_tokens off;
+    client_max_body_size 100M;
+
+    proxy_connect_timeout 60s;
+    proxy_send_timeout    60s;
+    proxy_read_timeout    60s;
+
+    include /etc/nginx/includes/security-headers.inc;
+
+    # --- Portal (default) ---
+    location / {
+        limit_req zone=general burst=20 nodelay;
+        proxy_pass http://portal;
+        include /etc/nginx/includes/proxy-params.inc;
+    }
+
+    # --- Portal API ---
+    location /api/ {
+        limit_req zone=api burst=20 nodelay;
+        proxy_pass http://portal;
+        include /etc/nginx/includes/proxy-params.inc;
+        add_header Cache-Control "no-store" always;
+    }
+
+    # --- Portal Admin ---
+    location /administrador/ {
+        limit_req zone=general burst=20 nodelay;
+        proxy_pass http://portal;
+        include /etc/nginx/includes/proxy-params.inc;
+    }
+
+    # --- MapaLab ---
+    location ^~ /mapalab/ {
+        limit_req zone=general burst=20 nodelay;
+        proxy_pass http://mapalab/;
+        include /etc/nginx/includes/proxy-params.inc;
+    }
+
+    # --- Acervo ---
+    location ^~ /acervo/ {
+        limit_req zone=general burst=20 nodelay;
+        proxy_pass http://acervo/;
+        include /etc/nginx/includes/proxy-params.inc;
+    }
+
+    # --- MARIACHI (VPN only) ---
+    location ^~ /mariachi/ {
+        include /etc/nginx/includes/vpn-access.inc;
+        limit_req zone=general burst=20 nodelay;
+        proxy_pass http://mariachi/;
+        include /etc/nginx/includes/proxy-params.inc;
+    }
+
+    # --- GeoServer ---
+    include /etc/nginx/includes/geoserver-locations.inc;
+
+    # --- SEO ---
+    location = /robots.txt {
+        proxy_pass http://portal;
+        include /etc/nginx/includes/proxy-params.inc;
+        access_log off;
+    }
+
+    location = /sitemap.xml {
+        proxy_pass http://portal;
+        include /etc/nginx/includes/proxy-params.inc;
+        access_log off;
+    }
+
+    location ~ /\. {
+        deny all;
+    }
+}

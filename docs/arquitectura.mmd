@@ -1,0 +1,65 @@
+graph TB
+    subgraph usuarios["Usuarios"]
+        U_PUB["Publico general"]
+        U_ADMIN["Administradores<br>(VPN IIEG)"]
+    end
+
+    subgraph gateway["Gateway Hub<br>Nginx 1.28.2 — SSL Termination"]
+        GW["iieg.jalisco.gob.mx"]
+    end
+
+    subgraph aplicaciones["Aplicaciones"]
+        PORTAL["Portal Web<br>/"]
+        MARIACHI{{"MARIACHI<br>/mariachi/<br>Solo VPN"}}
+        MAPALAB["MapaLab<br>/mapalab/"]
+        SIEEJ["SIEEJ<br>/sieej/ ⏳"]
+    end
+
+    IGIBOT["IGIBot<br>igibot.jalisco.gob.mx<br>(K3s)"]
+
+    subgraph servicios["Servicios Transversales"]
+        ACERVO["Acervo<br>/acervo/"]
+        GEOSERVER{{"GeoServer<br>/geoserver/<br>Admin solo VPN"}}
+    end
+
+    DATAENGINE["DataEngine"]
+    HUICHOL["HUICHOL ⏳"]
+
+    U_PUB --> GW
+    U_ADMIN --> GW
+    U_PUB --> IGIBOT
+
+    GW -->|"/"| PORTAL
+    GW -->|"/mariachi/ 🔒"| MARIACHI
+    GW -->|"/mapalab/"| MAPALAB
+    GW -.->|"/sieej/ ⏳"| SIEEJ
+    GW -->|"/geoserver/"| GEOSERVER
+    GW -->|"/acervo/"| ACERVO
+
+    PORTAL --> MARIACHI
+    MAPALAB --> GEOSERVER
+    MAPALAB --> DATAENGINE
+    SIEEJ -.-> DATAENGINE
+    GEOSERVER --> DATAENGINE
+
+    ACERVO --> DATAENGINE
+    ACERVO --> MAPALAB
+    ACERVO --> PORTAL
+    ACERVO --> MARIACHI
+
+    IGIBOT --> GEOSERVER
+
+    HUICHOL -.->|monitorea| GW
+    HUICHOL -.->|monitorea| MAPALAB
+    HUICHOL -.->|monitorea| PORTAL
+    HUICHOL -.->|monitorea| DATAENGINE
+
+    style IGIBOT fill:#0891b2,color:#fff,stroke:#0e7490
+    style DATAENGINE fill:#dc2626,color:#fff,stroke:#b91c1c
+    style HUICHOL fill:#059669,color:#fff,stroke:#047857
+    style gateway fill:#1e3a5f,color:#fff,stroke:#2563eb
+    style GW fill:#2563eb,color:#fff,stroke:#1d4ed8
+    style aplicaciones fill:#7c3aed,color:#fff,stroke:#6d28d9
+    style servicios fill:#d97706,color:#fff,stroke:#b45309
+    style MARIACHI fill:#7c3aed,color:#fff,stroke:#6d28d9
+    style SIEEJ fill:#7c3aed,color:#fff,stroke:#6d28d9,stroke-dasharray: 5 5

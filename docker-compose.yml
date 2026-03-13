@@ -1,0 +1,23 @@
+name: gateway-hub
+
+services:
+  nginx:
+    build:
+      context: .
+    env_file:
+      - .env
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ${SSL_VOLUME_PATH}
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN}
+      SSL_CERTIFICATE: ${SSL_CERTIFICATE:-/etc/nginx/certs/fullchain.pem}
+      SSL_CERTIFICATE_KEY: ${SSL_CERTIFICATE_KEY:-/etc/nginx/certs/privkey.pem}
+      PORTAL_HOST: ${PORTAL_HOST}
+      MAPALAB_HOST: ${MAPALAB_HOST}
+      ACERVO_HOST: ${ACERVO_HOST}
+      MARIACHI_HOST: ${MARIACHI_HOST}
+      GEOSERVER_HOST: ${GEOSERVER_HOST}
+    restart: unless-stopped
