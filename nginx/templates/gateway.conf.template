@@ -57,14 +57,16 @@ server {
 
     include /etc/nginx/includes/security-headers.inc;
 
-    # --- Portal (default) ---
+    location = / {
+        return 302 /mapalab/;
+    }
+
     location / {
         limit_req zone=general burst=20 nodelay;
         proxy_pass http://portal;
         include /etc/nginx/includes/proxy-params.inc;
     }
 
-    # --- Portal API ---
     location /api/ {
         limit_req zone=api burst=20 nodelay;
         proxy_pass http://portal;
@@ -72,28 +74,24 @@ server {
         add_header Cache-Control "no-store" always;
     }
 
-    # --- Portal Admin ---
     location /administrador/ {
         limit_req zone=general burst=20 nodelay;
         proxy_pass http://portal;
         include /etc/nginx/includes/proxy-params.inc;
     }
 
-    # --- MapaLab ---
     location ^~ /mapalab/ {
         limit_req zone=general burst=20 nodelay;
         proxy_pass http://mapalab/;
         include /etc/nginx/includes/proxy-params.inc;
     }
 
-    # --- Acervo ---
     location ^~ /acervo/ {
         limit_req zone=general burst=20 nodelay;
         proxy_pass http://acervo/;
         include /etc/nginx/includes/proxy-params.inc;
     }
 
-    # --- MARIACHI (VPN only) ---
     location ^~ /mariachi/ {
         include /etc/nginx/includes/vpn-access.inc;
         limit_req zone=general burst=20 nodelay;
@@ -101,10 +99,8 @@ server {
         include /etc/nginx/includes/proxy-params.inc;
     }
 
-    # --- GeoServer ---
     include /etc/nginx/includes/geoserver-locations.inc;
 
-    # --- SEO ---
     location = /robots.txt {
         proxy_pass http://portal;
         include /etc/nginx/includes/proxy-params.inc;
