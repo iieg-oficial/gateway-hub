@@ -115,7 +115,6 @@ server {
 
     location ^~ /acervo/console/ {
         include /etc/nginx/includes/vpn-access.inc;
-        limit_req off;
         proxy_pass http://acervo_console/;
         include /etc/nginx/includes/proxy-params.inc;
         proxy_set_header Upgrade $http_upgrade;
