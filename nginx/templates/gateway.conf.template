@@ -63,6 +63,17 @@ server {
 
     include /etc/nginx/includes/security-headers.inc;
 
+    error_page 400 /error-pages/400.html;
+    error_page 401 /error-pages/401.html;
+    error_page 403 /error-pages/403.html;
+    error_page 404 /error-pages/404.html;
+    error_page 500 502 503 504 /error-pages/500.html;
+
+    location /error-pages/ {
+        alias /etc/nginx/error-pages/;
+        internal;
+    }
+
     location = / {
         return 302 /mapalab/;
     }
@@ -71,6 +82,7 @@ server {
         limit_req zone=general burst=20 nodelay;
         proxy_pass http://portal;
         include /etc/nginx/includes/proxy-params.inc;
+        proxy_intercept_errors on;
     }
 
     location /api/ {
@@ -84,12 +96,14 @@ server {
         limit_req zone=general burst=20 nodelay;
         proxy_pass http://portal;
         include /etc/nginx/includes/proxy-params.inc;
+        proxy_intercept_errors on;
     }
 
     location ^~ /mapalab/ {
         limit_req zone=general burst=20 nodelay;
         proxy_pass http://mapalab/;
         include /etc/nginx/includes/proxy-params.inc;
+        proxy_intercept_errors on;
     }
 
     location ^~ /acervo/console/static/ {
@@ -126,6 +140,7 @@ server {
         limit_req zone=general burst=20 nodelay;
         proxy_pass http://mariachi/;
         include /etc/nginx/includes/proxy-params.inc;
+        proxy_intercept_errors on;
     }
 
     include /etc/nginx/includes/geoserver-locations.inc;

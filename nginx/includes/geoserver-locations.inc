@@ -29,12 +29,8 @@ location ^~ /geoserver/ {
             return 403;
         }
 
-        if ($is_blocked_agent) {
+        if ($http_user_agent ~* (curl|wget|python|scrapy|httpclient|bot|spider|java|perl|ruby|php|go-http|node-fetch|axios|postman|insomnia|httpie|headless|phantom|selenium|puppeteer|playwright|ChatGPT|Google-Extended|anthropic|^$)) {
             return 403;
-        }
-
-        if ($request_method !~ ^(GET|HEAD|OPTIONS)$) {
-            return 405;
         }
 
         proxy_pass http://geoserver;
@@ -60,11 +56,6 @@ location ^~ /geoserver/ {
         }
 
         proxy_intercept_errors on;
-        error_page 400 /geoserver-error/400.html;
-        error_page 401 /geoserver-error/401.html;
-        error_page 403 /geoserver-error/403.html;
-        error_page 404 /geoserver-error/404.html;
-        error_page 500 502 503 504 /geoserver-error/500.html;
     }
 
     location ~ ^/geoserver/(wfs|wcs) {
@@ -73,14 +64,11 @@ location ^~ /geoserver/ {
             return 403;
         }
 
-        if ($is_blocked_agent) {
+        if ($http_user_agent ~* (curl|wget|python|scrapy|httpclient|bot|spider|java|perl|ruby|php|go-http|node-fetch|axios|postman|insomnia|httpie|headless|phantom|selenium|puppeteer|playwright|ChatGPT|Google-Extended|anthropic|^$)) {
             return 403;
         }
 
-        if ($request_method !~ ^(GET|HEAD|OPTIONS)$) {
-            return 405;
-        }
-
+        limit_req zone=geoserver_download burst=10 nodelay;
         proxy_pass http://geoserver;
         include /etc/nginx/includes/proxy-params.inc;
         include /etc/nginx/includes/geoserver-hide-headers.inc;
@@ -104,11 +92,6 @@ location ^~ /geoserver/ {
         }
 
         proxy_intercept_errors on;
-        error_page 400 /geoserver-error/400.html;
-        error_page 401 /geoserver-error/401.html;
-        error_page 403 /geoserver-error/403.html;
-        error_page 404 /geoserver-error/404.html;
-        error_page 500 502 503 504 /geoserver-error/500.html;
     }
 
     proxy_pass http://geoserver/geoserver/;
@@ -116,9 +99,4 @@ location ^~ /geoserver/ {
     include /etc/nginx/includes/geoserver-hide-headers.inc;
     proxy_set_header Accept-Encoding identity;
     proxy_read_timeout 120s;
-}
-
-location /geoserver-error/ {
-    alias /etc/nginx/error-pages/;
-    internal;
 }
