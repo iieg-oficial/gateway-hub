@@ -28,6 +28,11 @@ upstream mariachi {
     keepalive_timeout 60s;
 }
 
+map $request_uri $acervo_content_disposition {
+    default         "";
+    ~*\.(txt|xlsx)$ "attachment";
+}
+
 server {
     listen 80;
     server_name ${APP_DOMAIN};
@@ -128,6 +133,7 @@ server {
         proxy_request_buffering off;
         proxy_pass http://acervo/;
         include /etc/nginx/includes/proxy-params.inc;
+        add_header Content-Disposition $acervo_content_disposition always;
         proxy_connect_timeout 300;
         proxy_send_timeout 300;
         proxy_read_timeout 300;
