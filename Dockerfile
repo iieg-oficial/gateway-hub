@@ -13,7 +13,8 @@ RUN mkdir -p /etc/nginx/certs /var/cache/nginx/geoserver
 EXPOSE 80 443
 
 CMD ["/bin/sh", "-c", \
-    "for f in /etc/nginx/templates/conf.d/*; do \
+    "{ echo 'allow 127.0.0.1;'; echo \"$VPN_ALLOWED_IPS\" | tr ',' '\\n' | while read cidr; do [ -n \"$cidr\" ] && echo \"allow $cidr;\"; done; echo 'deny all;'; } > /etc/nginx/includes/vpn-access.inc && \
+    for f in /etc/nginx/templates/conf.d/*; do \
         envsubst '${GEOSERVER_HOST}' < \"$f\" > /etc/nginx/conf.d/$(basename \"${f%.template}\"); \
     done && \
     envsubst '${PORTAL_HOST} ${MAPALAB_HOST} ${ACERVO_HOST} ${ACERVO_CONSOLE_HOST} ${MARIACHI_HOST} ${GEOSERVER_HOST} ${APP_DOMAIN} ${SSL_CERTIFICATE} ${SSL_CERTIFICATE_KEY}' \
