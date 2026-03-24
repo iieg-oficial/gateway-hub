@@ -21,4 +21,5 @@ services:
       ACERVO_CONSOLE_HOST: ${ACERVO_CONSOLE_HOST}
       MARIACHI_HOST: ${MARIACHI_HOST}
       GEOSERVER_HOST: ${GEOSERVER_HOST}
+      GTM_ID: ${GTM_ID}
     restart: unless-stopped

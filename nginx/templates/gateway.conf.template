@@ -68,6 +68,7 @@ server {
     proxy_read_timeout    60s;
 
     include /etc/nginx/includes/security-headers.inc;
+    include /etc/nginx/includes/gtm.inc;
 
     error_page 400 /error-pages/400.html;
     error_page 401 /error-pages/401.html;
