@@ -28,6 +28,12 @@ upstream mariachi {
     keepalive_timeout 60s;
 }
 
+upstream huachicol {
+    server ${HUACHICOL_HOST};
+    keepalive 32;
+    keepalive_timeout 60s;
+}
+
 map $request_uri $acervo_content_disposition {
     default         "";
     ~*\.(txt|xlsx)$ "attachment";
@@ -150,6 +156,14 @@ server {
         limit_req zone=general burst=20 nodelay;
         proxy_pass http://mariachi/;
         include /etc/nginx/includes/proxy-params.inc;
+        proxy_intercept_errors on;
+    }
+
+    location ^~ /huachicol/ {
+        include /etc/nginx/includes/vpn-access.inc;
+        proxy_pass http://huachicol/;
+        include /etc/nginx/includes/proxy-params.inc;
+        proxy_set_header Accept-Encoding "";
         proxy_intercept_errors on;
     }
 

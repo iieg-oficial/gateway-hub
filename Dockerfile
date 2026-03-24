@@ -18,7 +18,7 @@ CMD ["/bin/sh", "-c", \
     for f in /etc/nginx/templates/conf.d/*; do \
         envsubst '${GEOSERVER_HOST}' < \"$f\" > /etc/nginx/conf.d/$(basename \"${f%.template}\"); \
     done && \
-    envsubst '${PORTAL_HOST} ${MAPALAB_HOST} ${ACERVO_HOST} ${ACERVO_CONSOLE_HOST} ${MARIACHI_HOST} ${GEOSERVER_HOST} ${APP_DOMAIN} ${SSL_CERTIFICATE} ${SSL_CERTIFICATE_KEY} ${GTM_ID}' \
+    envsubst '${PORTAL_HOST} ${MAPALAB_HOST} ${ACERVO_HOST} ${ACERVO_CONSOLE_HOST} ${MARIACHI_HOST} ${GEOSERVER_HOST} ${HUACHICOL_HOST} ${APP_DOMAIN} ${SSL_CERTIFICATE} ${SSL_CERTIFICATE_KEY} ${GTM_ID}' \
         < /etc/nginx/templates/gateway.conf.template > /etc/nginx/conf.d/gateway.conf && \
     envsubst '${GTM_ID}' < /etc/nginx/includes/gtm.inc.template > /etc/nginx/includes/gtm.inc && \
     nginx -g 'daemon off;'"]

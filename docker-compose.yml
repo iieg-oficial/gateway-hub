@@ -22,6 +22,7 @@ services:
       ACERVO_CONSOLE_HOST: ${ACERVO_CONSOLE_HOST}
       MARIACHI_HOST: ${MARIACHI_HOST}
       GEOSERVER_HOST: ${GEOSERVER_HOST}
+      HUACHICOL_HOST: ${HUACHICOL_HOST}
       GTM_ID: ${GTM_ID}
     networks:
       - iieg-network
