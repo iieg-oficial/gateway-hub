@@ -89,6 +89,7 @@ server {
         limit_req zone=general burst=20 nodelay;
         proxy_pass http://portal;
         include /etc/nginx/includes/proxy-params.inc;
+        proxy_set_header Accept-Encoding "";
         proxy_intercept_errors on;
     }
 
@@ -103,6 +104,7 @@ server {
         limit_req zone=general burst=20 nodelay;
         proxy_pass http://portal;
         include /etc/nginx/includes/proxy-params.inc;
+        proxy_set_header Accept-Encoding "";
         proxy_intercept_errors on;
     }
 
@@ -110,6 +112,7 @@ server {
         limit_req zone=general burst=20 nodelay;
         proxy_pass http://mapalab/;
         include /etc/nginx/includes/proxy-params.inc;
+        proxy_set_header Accept-Encoding "";
         proxy_intercept_errors on;
     }
 

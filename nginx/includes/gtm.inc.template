@@ -2,4 +2,3 @@ sub_filter '</head>' '<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({"gtm
 sub_filter '</body>' '<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=${GTM_ID}" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript></body>';
 sub_filter_once on;
 sub_filter_types text/html;
-proxy_set_header Accept-Encoding "";
