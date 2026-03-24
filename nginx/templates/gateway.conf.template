@@ -156,14 +156,12 @@ server {
     include /etc/nginx/includes/geoserver-locations.inc;
 
     location = /robots.txt {
-        proxy_pass http://portal;
-        include /etc/nginx/includes/proxy-params.inc;
+        root /usr/share/nginx/html;
         access_log off;
     }
 
     location = /sitemap.xml {
-        proxy_pass http://portal;
-        include /etc/nginx/includes/proxy-params.inc;
+        root /usr/share/nginx/html;
         access_log off;
     }
 
