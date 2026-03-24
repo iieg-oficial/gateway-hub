@@ -24,6 +24,8 @@ services:
       GEOSERVER_HOST: ${GEOSERVER_HOST}
       HUACHICOL_HOST: ${HUACHICOL_HOST}
       GTM_ID: ${GTM_ID}
+      BASIC_AUTH_USER: ${BASIC_AUTH_USER}
+      BASIC_AUTH_PASS: ${BASIC_AUTH_PASS}
     networks:
       - iieg-network
     restart: unless-stopped

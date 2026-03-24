@@ -1,6 +1,6 @@
 FROM nginx:1.28.2-alpine
 
-RUN apk add --no-cache gettext
+RUN apk add --no-cache gettext apache2-utils
 
 COPY nginx/nginx.conf /etc/nginx/nginx.conf
 COPY nginx/templates/ /etc/nginx/templates/
@@ -14,7 +14,8 @@ RUN mkdir -p /etc/nginx/certs /var/cache/nginx/geoserver
 EXPOSE 80 443
 
 CMD ["/bin/sh", "-c", \
-    "{ echo 'allow 127.0.0.1;'; echo \"$VPN_ALLOWED_IPS\" | tr ',' '\\n' | while read cidr; do [ -n \"$cidr\" ] && echo \"allow $cidr;\"; done; echo 'deny all;'; } > /etc/nginx/includes/vpn-access.inc && \
+    "htpasswd -cb /etc/nginx/.htpasswd \"$BASIC_AUTH_USER\" \"$BASIC_AUTH_PASS\" && \
+    { echo 'allow 127.0.0.1;'; echo \"$VPN_ALLOWED_IPS\" | tr ',' '\\n' | while read cidr; do [ -n \"$cidr\" ] && echo \"allow $cidr;\"; done; echo 'deny all;'; } > /etc/nginx/includes/vpn-access.inc && \
     for f in /etc/nginx/templates/conf.d/*; do \
         envsubst '${GEOSERVER_HOST}' < \"$f\" > /etc/nginx/conf.d/$(basename \"${f%.template}\"); \
     done && \
