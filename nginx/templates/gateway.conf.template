@@ -124,14 +124,12 @@ server {
 
     location ^~ /acervo/console/static/ {
         include /etc/nginx/includes/vpn-access.inc;
-        include /etc/nginx/includes/basic-auth.inc;
         proxy_pass http://acervo_console/static/;
         include /etc/nginx/includes/proxy-params.inc;
     }
 
     location ^~ /acervo/console/ {
         include /etc/nginx/includes/vpn-access.inc;
-        include /etc/nginx/includes/basic-auth.inc;
         proxy_pass http://acervo_console/;
         include /etc/nginx/includes/proxy-params.inc;
         proxy_set_header Upgrade $http_upgrade;
@@ -155,7 +153,6 @@ server {
 
     location ^~ /mariachi/ {
         include /etc/nginx/includes/vpn-access.inc;
-        include /etc/nginx/includes/basic-auth.inc;
         limit_req zone=general burst=20 nodelay;
         proxy_pass http://mariachi/;
         include /etc/nginx/includes/proxy-params.inc;
@@ -164,7 +161,6 @@ server {
 
     location ^~ /huachicol/ {
         include /etc/nginx/includes/vpn-access.inc;
-        include /etc/nginx/includes/basic-auth.inc;
         proxy_pass http://huachicol;
         include /etc/nginx/includes/proxy-params.inc;
         proxy_set_header Accept-Encoding "";
