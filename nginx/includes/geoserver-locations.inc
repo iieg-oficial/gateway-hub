@@ -1,4 +1,5 @@
 location ^~ /geoserver/web {
+    include /etc/nginx/includes/vpn-access.inc;
     proxy_pass http://geoserver/geoserver/web;
     include /etc/nginx/includes/proxy-params.inc;
     include /etc/nginx/includes/geoserver-hide-headers.inc;
@@ -7,7 +8,6 @@ location ^~ /geoserver/web {
 
 location ^~ /geoserver/rest {
     include /etc/nginx/includes/vpn-access.inc;
-    include /etc/nginx/includes/basic-auth.inc;
     proxy_pass http://geoserver/geoserver/rest;
     include /etc/nginx/includes/proxy-params.inc;
     include /etc/nginx/includes/geoserver-hide-headers.inc;
@@ -15,6 +15,7 @@ location ^~ /geoserver/rest {
 }
 
 location ^~ /geoserver/j_spring_security {
+    include /etc/nginx/includes/vpn-access.inc;
     proxy_pass http://geoserver/geoserver/j_spring_security;
     include /etc/nginx/includes/proxy-params.inc;
     include /etc/nginx/includes/geoserver-hide-headers.inc;
