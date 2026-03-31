@@ -25,6 +25,8 @@ services:
       HUACHICOL_HOST: ${HUACHICOL_HOST}
       GTM_ID: ${GTM_ID}
 
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
     networks:
       - iieg-network
     restart: unless-stopped
