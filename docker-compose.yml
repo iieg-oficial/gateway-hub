@@ -24,6 +24,7 @@ services:
       GEOSERVER_HOST: ${GEOSERVER_HOST}
       HUACHICOL_HOST: ${HUACHICOL_HOST}
       GTM_ID: ${GTM_ID}
+      VPN_ALLOWED_IPS: ${VPN_ALLOWED_IPS}
 
     extra_hosts:
       - 'host.docker.internal:host-gateway'
