@@ -114,6 +114,15 @@ server {
         proxy_intercept_errors on;
     }
 
+    location ^~ /mapalab/api/download/ {
+        limit_req zone=api burst=5 nodelay;
+        proxy_pass http://mapalab/api/download/;
+        include /etc/nginx/includes/proxy-params.inc;
+        proxy_read_timeout 600s;
+        proxy_send_timeout 600s;
+        proxy_buffering off;
+    }
+
     location ^~ /mapalab/ {
         limit_req zone=general burst=20 nodelay;
         proxy_pass http://mapalab/;

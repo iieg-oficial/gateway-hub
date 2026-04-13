@@ -107,6 +107,7 @@ gateway-hub/
 | `/api/` | portal | Publico | api (10r/s) | API del Portal, cache no-store |
 | `/administrador/` | portal | Publico | general | Panel de administracion |
 | `/mapalab/` | mapalab | Publico | general | Interfaz de mapas (timeout 120s) |
+| `/mapalab/api/download/` | mapalab | Publico | api (5 burst) | Descargas CSV backend (timeout 600s, sin buffering) |
 | `/acervo/` | acervo | Publico | api (100r/s burst) | API de archivos (max 1GB, timeout 300s) |
 | `/acervo/console/` | acervo_console | **VPN** | - | Consola MinIO (WebSocket) |
 | `/acervo/console/static/` | acervo_console | **VPN** | - | Assets estaticos de la consola |
@@ -116,8 +117,10 @@ gateway-hub/
 | `/geoserver/rest/` | geoserver | **VPN** | - | REST API de GeoServer |
 | `/geoserver/j_spring_security` | geoserver | **VPN** | - | Auth de GeoServer |
 | `/geoserver/ows` | geoserver | Publico* | geoserver (10r/s) | WMS/WFS/WCS (cache 6h, validacion referer+UA) |
-| `/geoserver/wfs` | geoserver | Publico* | geoserver (10r/s) | WFS con cache y validacion |
-| `/geoserver/wcs` | geoserver | Publico* | geoserver (10r/s) | WCS con cache y validacion |
+| `/geoserver/wfs` | geoserver | Publico* | geoserver (10r/s) | WFS directo (timeout 600s, cache 6h, validacion) |
+| `/geoserver/wcs` | geoserver | Publico* | geoserver (10r/s) | WCS directo (timeout 600s, cache 6h, validacion) |
+| `/geoserver/{workspace}/wfs` | geoserver | Publico* | geoserver (10r/s) | WFS por workspace (timeout 600s, sin cache, validacion) |
+| `/geoserver/{workspace}/wcs` | geoserver | Publico* | geoserver (10r/s) | WCS por workspace (timeout 600s, sin cache, validacion) |
 | `/robots.txt` | static | Publico | - | Servido directamente por Nginx |
 | `/sitemap.xml` | static | Publico | - | Servido directamente por Nginx |
 

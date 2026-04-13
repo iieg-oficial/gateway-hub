@@ -1,65 +1,158 @@
 graph TB
-    subgraph usuarios["Usuarios"]
-        U_PUB["Publico general"]
-        U_ADMIN["Administradores<br>(VPN IIEG)"]
+    %% Entidades Superiores
+    GITHUB{{GitHub: <br>CI/CD & Versionado}}
+    
+    %% --- BLOQUE DE SEGURIDAD Y FILTRADO DESENREDADO ---
+    U_PUB([Público General])
+    VPN_ESTATAL(["CIDR Estatal <br>(VPN)"])
+    
+    U_PUB --> FG{"FortiGate<br>administración"}
+    VPN_ESTATAL --> FG
+    
+    FG -.->|HTTP 403| BLK["BLOQUEADO<br>HTTP 403 · Log → FortiAnalyzer"]
+    FG -->|Ruta Pública| GW
+    FG -->|Autorizado| U_ADMIN([Administradores])
+
+    %% --- SERVICIOS Y PORTALES ---
+    DISCORD{{Discord Webhook}}
+    
+    subgraph S_GCP["GCP (Exterior)"]
+        GCP_NODE["mapalab-iieg.app<br/>(Testing)"]
+    end
+    
+    %% SERVIDOR 1: PRINCIPAL (CENTRO)
+    subgraph S_CORE["S1: Principal"]
+        direction TB
+        GW["Gateway Hub<br>iieg.jalisco.gob.mx"]
+        
+        subgraph ACERVO["Acervo"]
+            direction LR
+            B_DE[("Bucket: DataEngine")]
+            B_ML[("Bucket: MapaLab")]
+            B_PT[("Bucket: Portal")]
+            B_GS[("Bucket: GeoServer")]
+            AC_CONSOLE["Consola (VPN)"]
+        end
+
+        subgraph HUACHICOL["Huachicol (Monitoreo)"]
+            direction TB
+            HU_PROM["Prometheus"]
+            HU_LOKI["Loki & Alert Manager"]
+            HU_EXP["Node Exporter & cAdvisor"]
+            HU_GRAFANA["Grafana (VPN)"]
+        end
     end
 
-    subgraph gateway["Gateway Hub<br>Nginx 1.28.2 — SSL Termination"]
-        GW["iieg.jalisco.gob.mx"]
+    subgraph S_PORTAL["S2: Portal Web"]
+        PORTAL["Wordpress o self-code"]
+        PORTAL_2["Backend"]
+    end
+    
+    subgraph S_SIEEJ["S4: SIEEJ"]
+        SIEEJ["frontend"]
+        SIEEJ_2["backend"]
     end
 
-    subgraph aplicaciones["Aplicaciones"]
-        PORTAL["Portal Web<br>/"]
-        MARIACHI{{"MARIACHI<br>/mariachi/<br>Solo VPN"}}
-        MAPALAB["MapaLab<br>/mapalab/"]
-        SIEEJ["SIEEJ<br>/sieej/ ⏳"]
+    %% SERVICIOS Y DATOS (DERECHA / ABAJO)
+    subgraph S_IGIBOT["S5: IGIBot"]
+        IGIBOT["Chat (Público)"]
     end
 
-    IGIBOT["IGIBot<br>igibot.jalisco.gob.mx<br>(K3s)"]
-
-    subgraph servicios["Servicios Transversales"]
-        ACERVO["Acervo<br>/acervo/"]
-        GEOSERVER{{"GeoServer<br>/geoserver/<br>Admin solo VPN"}}
+    subgraph S_GEO["S6: GeoServer"]
+        direction TB
+        GS_PUBLIC["OGC"]
+        GS_ADMIN["Consola (VPN)"]
     end
 
-    DATAENGINE["DataEngine"]
-    HUICHOL["HUICHOL ⏳"]
+    subgraph S_PROYECTOS["S7: MapaLab & Mariachi"]
+        direction TB
+        subgraph proj_mapalab["MapaLab"]
+            ML_FE["Frontend"]
+            ML_BE["Backend"]
+        end
+        MARI["MARIACHI (VPN)"]
+    end
 
-    U_PUB --> GW
-    U_ADMIN --> GW
+    subgraph S_DATA["S8: DataEngine"]
+        DATAENGINE_GEO["PostGIS"]
+        DATAENGINE["Postgres"]
+    end
+
+    %% --- CONEXIONES TÉCNICAS (CONSERVADAS) ---
+    %% 1. Versionado y CI/CD
+    GITHUB ==>|CI/CD| GCP_NODE
+    GITHUB -.->|CI| ML_BE
+    
+    %% 2. Alertas
+    HU_LOKI -.->|Alertas| DISCORD
+
+    %% 3. Acceso Público y Redirecciones
+    GCP_NODE -->|Redirección| GW
     U_PUB --> IGIBOT
+    
+    %% 4. Acceso VPN (Admin)
+    U_ADMIN -.->|VPN| HU_GRAFANA
+    U_ADMIN -.->|VPN| AC_CONSOLE
+    U_ADMIN -.->|VPN| GS_ADMIN
+    U_ADMIN -.->|VPN| MARI
 
-    GW -->|"/"| PORTAL
-    GW -->|"/mariachi/ 🔒"| MARIACHI
-    GW -->|"/mapalab/"| MAPALAB
-    GW -.->|"/sieej/ ⏳"| SIEEJ
-    GW -->|"/geoserver/"| GEOSERVER
-    GW -->|"/acervo/"| ACERVO
+    %% 5. Ruteo del Gateway (Nginx) - Reordenado para empujar S2 a la derecha
+    GW --> S_SIEEJ
+    GW --> ML_FE
+    GW --> MARI
+    GW --> S_GEO
+    GW --> S_PORTAL
 
-    PORTAL --> MARIACHI
-    MAPALAB --> GEOSERVER
-    MAPALAB --> DATAENGINE
-    SIEEJ -.-> DATAENGINE
-    GEOSERVER --> DATAENGINE
+    %% 6. Flujos de Datos (Almacenamiento y DB)
+    S_PORTAL ==>|Archivos| B_PT
+    ML_BE ==>|Metadatos| B_ML
+    DATAENGINE -.->|Respaldos| B_DE
+    GS_ADMIN -.->|Respaldos| B_GS
 
-    ACERVO --> DATAENGINE
-    ACERVO --> MAPALAB
-    ACERVO --> PORTAL
-    ACERVO --> MARIACHI
+    %% 7. Integración de Servicios
+    ML_BE --> DATAENGINE
+    ML_BE --> GS_PUBLIC
+    GS_PUBLIC -->|Data Store| DATAENGINE_GEO
+    IGIBOT --> GS_PUBLIC
+    
+    %% 8. Métricas
+    HU_EXP -.->|Métricas| S_CORE
 
-    IGIBOT --> GEOSERVER
+    %% --- ESTILOS ---
+    style GITHUB fill:#24292e,color:#fff,stroke:#fafafa
+    style DISCORD fill:#5865F2,color:#fff,stroke:#404EED
+    style S_GCP fill:#f8fafc,stroke:#4285f4,stroke-width:2px,stroke-dasharray: 5 5
+    style GCP_NODE fill:#4285f4,color:#fff
+    style U_PUB fill:#334155,color:#fff
+    style U_ADMIN fill:#064e3b,color:#fff,stroke:#10b981
+    style S_CORE fill:#ffffff,stroke:#475569
+    style HUACHICOL fill:#fef2f2,stroke:#dc2626
+    style ACERVO fill:#f1f5f9,stroke:#0ea5e9,stroke-dasharray: 5 5
+    style S_PORTAL fill:#f5f3ff,stroke:#7c3aed
+    style S_SIEEJ fill:#f5f3ff,stroke:#7c3aed
+    style S_IGIBOT fill:#ecfeff,stroke:#0891b2
+    style S_GEO fill:#fff7ed,stroke:#ea580c
+    style S_PROYECTOS fill:#f0fdf4,stroke:#16a34a
+    style S_DATA fill:#fef2f2,stroke:#dc2626
 
-    HUICHOL -.->|monitorea| GW
-    HUICHOL -.->|monitorea| MAPALAB
-    HUICHOL -.->|monitorea| PORTAL
-    HUICHOL -.->|monitorea| DATAENGINE
+    %% Nodos Oscuros para consistencia
+    style GW fill:#1e293b,color:#fff
+    style HU_GRAFANA fill:#7f1d1d,color:#fff
+    style AC_CONSOLE fill:#7f1d1d,color:#fff,stroke:#ef4444
+    style DATAENGINE fill:#991b1b,color:#fff
+    style DATAENGINE_GEO fill:#991b1b,color:#fff
+    style ML_BE fill:#14532d,color:#fff
+    style MARI fill:#7f1d1d,color:#fff
+    style GS_ADMIN fill:#7c2d12,color:#fff,stroke:#ef4444
+    style B_DE fill:#0f172a,color:#fff
+    style B_ML fill:#0f172a,color:#fff
+    style B_PT fill:#0f172a,color:#fff
+    style B_GS fill:#0f172a,color:#fff
 
-    style IGIBOT fill:#0891b2,color:#fff,stroke:#0e7490
-    style DATAENGINE fill:#dc2626,color:#fff,stroke:#b91c1c
-    style HUICHOL fill:#059669,color:#fff,stroke:#047857
-    style gateway fill:#1e3a5f,color:#fff,stroke:#2563eb
-    style GW fill:#2563eb,color:#fff,stroke:#1d4ed8
-    style aplicaciones fill:#7c3aed,color:#fff,stroke:#6d28d9
-    style servicios fill:#d97706,color:#fff,stroke:#b45309
-    style MARIACHI fill:#7c3aed,color:#fff,stroke:#6d28d9
-    style SIEEJ fill:#7c3aed,color:#fff,stroke:#6d28d9,stroke-dasharray: 5 5
+    %% Estilos Fortinet integrados
+    style VPN_ESTATAL fill:#ecfdf5,stroke:#10b981,color:#064e3b
+    style FG fill:#fef9c3,stroke:#eab308,color:#713f12
+    style BLK fill:#fee2e2,stroke:#ef4444,color:#7f1d1d
+
+    %% Estilos de Conexiones (VPN) - Corregido sin atributo de color de texto
+    linkStyle 1,4,10,11,12,13 stroke:#10b981,stroke-width:2px;
