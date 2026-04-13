@@ -140,8 +140,13 @@ server {
 
     location ^~ /acervo/console/ {
         limit_req zone=general burst=1000 nodelay;
+        proxy_hide_header Content-Security-Policy;
+        sub_filter "script-src 'self'" "script-src 'self' 'unsafe-inline' 'unsafe-eval'";
+        sub_filter_once on;
+        sub_filter_types text/html;
         proxy_pass http://acervo_console/;
         include /etc/nginx/includes/proxy-params.inc;
+        proxy_set_header Accept-Encoding "";
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
     }
