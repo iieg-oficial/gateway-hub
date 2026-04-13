@@ -3,7 +3,7 @@
 > Documento de referencia para Claude Code. Leer este archivo proporciona contexto completo
 > del proyecto sin necesidad de explorar el codebase.
 >
-> Ultima actualizacion: 2026-04-04
+> Ultima actualizacion: 2026-04-13
 
 ---
 
@@ -50,9 +50,7 @@ gateway-hub/
 │   │   ├── security-headers.inc    # Headers de seguridad (HSTS, CSP, etc.)
 │   │   ├── geoserver-locations.inc # Location blocks de GeoServer
 │   │   ├── geoserver-hide-headers.inc # Headers a ocultar de GeoServer
-│   │   ├── vpn-access.inc          # ACL de IPs VPN (generado en runtime)
-│   │   ├── gtm.inc.template        # Google Tag Manager (condicional)
-│   │   └── basic-auth.inc          # Auth basica (DEPRECADO, ya no se usa)
+│   │   └── gtm.inc.template        # Google Tag Manager (condicional)
 │   ├── error-pages/                # Paginas de error personalizadas (400-500)
 │   └── static/                     # Archivos estaticos (robots.txt, sitemap.xml)
 ├── promtail/
@@ -94,7 +92,6 @@ gateway-hub/
 | `MARIACHI_HOST` | `host.docker.internal:8080` | Host de MARIACHI |
 | `GEOSERVER_HOST` | `host.docker.internal:8080` | Host de GeoServer |
 | `HUACHICOL_HOST` | `host.docker.internal:3000` | Host de Grafana (Huachicol) |
-| `VPN_ALLOWED_IPS` | `127.0.0.0/8,172.16.0.0/12,...` | CIDRs permitidos para acceso VPN |
 | `LOKI_URL` | `http://loki:3100` | Endpoint de Loki |
 
 ---
@@ -109,13 +106,13 @@ gateway-hub/
 | `/mapalab/` | mapalab | Publico | general | Interfaz de mapas (timeout 120s) |
 | `/mapalab/api/download/` | mapalab | Publico | api (5 burst) | Descargas CSV backend (timeout 600s, sin buffering) |
 | `/acervo/` | acervo | Publico | api (100r/s burst) | API de archivos (max 1GB, timeout 300s) |
-| `/acervo/console/` | acervo_console | **VPN** | - | Consola MinIO (WebSocket) |
-| `/acervo/console/static/` | acervo_console | **VPN** | - | Assets estaticos de la consola |
-| `/mariachi/` | mariachi | **VPN** | general | Analitica/monitoreo |
-| `/huachicol/` | huachicol | **VPN** | - | Dashboards Grafana |
-| `/geoserver/web/` | geoserver | **VPN** | - | Admin UI de GeoServer |
-| `/geoserver/rest/` | geoserver | **VPN** | - | REST API de GeoServer |
-| `/geoserver/j_spring_security` | geoserver | **VPN** | - | Auth de GeoServer |
+| `/acervo/console/` | acervo_console | Auth propia | general | Consola MinIO (WebSocket) |
+| `/acervo/console/static/` | acervo_console | Auth propia | general | Assets estaticos de la consola |
+| `/mariachi/` | mariachi | Auth propia | general | Analitica/monitoreo |
+| `/huachicol/` | huachicol | Auth propia | general | Dashboards Grafana |
+| `/geoserver/web/` | geoserver | Auth propia | general | Admin UI de GeoServer |
+| `/geoserver/rest/` | geoserver | Auth propia | general | REST API de GeoServer |
+| `/geoserver/j_spring_security` | geoserver | Auth propia | general | Auth de GeoServer |
 | `/geoserver/ows` | geoserver | Publico* | geoserver (10r/s) | WMS/WFS/WCS (cache 6h, validacion referer+UA) |
 | `/geoserver/wfs` | geoserver | Publico* | geoserver (10r/s) | WFS directo (timeout 600s, cache 6h, validacion) |
 | `/geoserver/wcs` | geoserver | Publico* | geoserver (10r/s) | WCS directo (timeout 600s, cache 6h, validacion) |
@@ -145,12 +142,11 @@ gateway-hub/
 - `Cross-Origin-Opener-Policy: same-origin`
 
 ### Control de Acceso
-- **VPN/IP ACL:** Generado dinamicamente desde `VPN_ALLOWED_IPS`. Protege endpoints administrativos.
+- **Autenticacion delegada:** Los endpoints administrativos (Grafana, GeoServer, MinIO Console) dependen de la autenticacion propia de cada servicio. No hay restriccion por IP.
 - **Validacion de Referer:** En endpoints OGC de GeoServer.
 - **Filtrado de User-Agent:** Bloquea bots, scrapers, herramientas CLI, crawlers de IA.
 - **Bloqueo de WFS-T:** Previene transacciones de escritura en GeoServer.
-- **Rate Limiting:** Zonas: `general` (10r/s), `api` (10r/s), `geoserver` (10r/s).
-- **Auth basica:** DEPRECADA y removida de todas las rutas.
+- **Rate Limiting:** Zonas: `general` (10r/s), `api` (10r/s), `geoserver` (10r/s). Todas las rutas tienen rate limiting.
 
 ### Paths Denegados
 - `/.` (archivos ocultos) -> 403
@@ -192,11 +188,10 @@ gateway-hub/
 
 El Dockerfile define un entrypoint que ejecuta en orden:
 
-1. **Genera VPN ACL** (`vpn-access.inc`) a partir de `VPN_ALLOWED_IPS`
-2. **Procesa templates de GeoServer** con `envsubst`
-3. **Genera gateway.conf** desde template con todas las variables de entorno
-4. **Genera GTM include** (condicional: solo si `GTM_ID` tiene valor)
-5. **Inicia Nginx** en foreground
+1. **Procesa templates de GeoServer** con `envsubst`
+2. **Genera gateway.conf** desde template con todas las variables de entorno
+3. **Genera GTM include** (condicional: solo si `GTM_ID` tiene valor)
+4. **Inicia Nginx** en foreground
 
 ---
 
@@ -314,8 +309,7 @@ El sistema de configuracion es **template-based**:
 1. Los archivos `.template` en `nginx/templates/` y `nginx/conf.d/` usan variables `${VAR}`
 2. El entrypoint del Dockerfile ejecuta `envsubst` para sustituir variables del `.env`
 3. Los archivos procesados se escriben en `/etc/nginx/conf.d/`
-4. `vpn-access.inc` se genera parseando `VPN_ALLOWED_IPS` (CSV -> allow/deny directives)
-5. `gtm.inc` se genera solo si `GTM_ID` tiene valor; si no, se crea vacio
+4. `gtm.inc` se genera solo si `GTM_ID` tiene valor; si no, se crea vacio
 
 **Importante:** Los archivos en `includes/` que NO son templates (`.inc`) se montan directamente.
 Los que son templates (`.inc.template`) se procesan en runtime.
@@ -325,7 +319,6 @@ Los que son templates (`.inc.template`) se procesan en runtime.
 ## 14. Notas para Desarrollo
 
 - **Agregar un nuevo servicio:** Crear upstream en `gateway.conf.template`, agregar variable de entorno en `.env`/`.env.example`, agregar location block, actualizar entrypoint si necesita envsubst.
-- **Proteger con VPN:** Incluir `include /etc/nginx/includes/vpn-access.inc;` en el location block.
 - **Cache:** Solo GeoServer tiene cache actualmente. Para agregar cache a otro servicio, definir zona en `nginx.conf` y configurar en el location block.
 - **Logs:** Todos los access logs son JSON. Promtail los envia a Loki automaticamente.
 - **SSL en dev:** Certificados self-signed en `certs/`. En produccion se montan certificados reales via volumen.
