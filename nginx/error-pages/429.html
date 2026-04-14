@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Servicio temporalmente no disponible</title>
+    <title>Demasiadas solicitudes</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
 
@@ -92,6 +92,12 @@
             color: #fff;
         }
 
+        .countdown {
+            font-size: 0.875rem;
+            color: #5a6a8a;
+            margin-top: 1rem;
+        }
+
         @media (min-width: 480px) {
             .actions {
                 flex-direction: row;
@@ -104,32 +110,47 @@
     <div class="container">
         <svg class="illustration" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
             <circle cx="100" cy="100" r="90" fill="#F0E6F6" />
-            <rect x="60" y="55" width="80" height="60" rx="6" fill="#703089" />
-            <rect x="65" y="60" width="70" height="40" rx="3" fill="#E8D5F0" />
-            <circle cx="85" cy="78" r="4" fill="#703089" opacity="0.6">
-                <animate attributeName="opacity" values="0.6;1;0.6" dur="1.5s" repeatCount="indefinite" />
-            </circle>
-            <circle cx="100" cy="78" r="4" fill="#703089" opacity="0.8">
-                <animate attributeName="opacity" values="0.8;1;0.8" dur="1.5s" begin="0.3s" repeatCount="indefinite" />
-            </circle>
-            <circle cx="115" cy="78" r="4" fill="#703089" opacity="0.6">
-                <animate attributeName="opacity" values="0.6;1;0.6" dur="1.5s" begin="0.6s" repeatCount="indefinite" />
-            </circle>
-            <rect x="75" y="105" width="20" height="3" rx="1.5" fill="#703089" opacity="0.3" />
-            <rect x="75" y="111" width="50" height="3" rx="1.5" fill="#703089" opacity="0.3" />
+            <rect x="55" y="60" width="90" height="70" rx="8" fill="#E8D5F0" stroke="#703089" stroke-width="3" />
+            <rect x="65" y="72" width="12" height="35" rx="2" fill="#703089" opacity="0.9">
+                <animate attributeName="height" values="35;20;35" dur="1.2s" repeatCount="indefinite" />
+                <animate attributeName="y" values="72;87;72" dur="1.2s" repeatCount="indefinite" />
+            </rect>
+            <rect x="82" y="72" width="12" height="35" rx="2" fill="#703089" opacity="0.7">
+                <animate attributeName="height" values="25;35;25" dur="1.2s" begin="0.2s" repeatCount="indefinite" />
+                <animate attributeName="y" values="82;72;82" dur="1.2s" begin="0.2s" repeatCount="indefinite" />
+            </rect>
+            <rect x="99" y="72" width="12" height="35" rx="2" fill="#703089" opacity="0.8">
+                <animate attributeName="height" values="35;15;35" dur="1.2s" begin="0.4s" repeatCount="indefinite" />
+                <animate attributeName="y" values="72;92;72" dur="1.2s" begin="0.4s" repeatCount="indefinite" />
+            </rect>
+            <rect x="116" y="72" width="12" height="35" rx="2" fill="#703089" opacity="0.6">
+                <animate attributeName="height" values="20;35;20" dur="1.2s" begin="0.6s" repeatCount="indefinite" />
+                <animate attributeName="y" values="87;72;87" dur="1.2s" begin="0.6s" repeatCount="indefinite" />
+            </rect>
             <circle cx="155" cy="50" r="8" fill="#E8D5F0" />
             <circle cx="45" cy="140" r="6" fill="#E8D5F0" />
             <circle cx="160" cy="150" r="10" fill="#F0E6F6" />
-            <path d="M88 140 L100 160 L112 140" stroke="#703089" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.3">
-                <animate attributeName="opacity" values="0.3;0.6;0.3" dur="2s" repeatCount="indefinite" />
-            </path>
         </svg>
-        <h1>Estamos trabajando<br>en ello</h1>
-        <p>Nuestros servidores están experimentando alta demanda en este momento. Estamos atendiendo la situación. Por favor, intenta de nuevo en unos momentos.</p>
+        <h1>Espera un momento</h1>
+        <p>Estás realizando demasiadas solicitudes. Espera unos segundos antes de continuar navegando.</p>
         <div class="actions">
-            <button class="btn btn-primary" onclick="window.location.reload()">Reintentar</button>
+            <button class="btn btn-primary" id="retryBtn" disabled onclick="window.location.reload()">Reintentar (<span id="timer">10</span>s)</button>
             <a href="/" class="btn btn-secondary">Ir al inicio</a>
         </div>
     </div>
+    <script>
+        var seconds = 10;
+        var timer = document.getElementById('timer');
+        var btn = document.getElementById('retryBtn');
+        var interval = setInterval(function() {
+            seconds--;
+            timer.textContent = seconds;
+            if (seconds <= 0) {
+                clearInterval(interval);
+                btn.disabled = false;
+                btn.textContent = 'Reintentar';
+            }
+        }, 1000);
+    </script>
 </body>
 </html>

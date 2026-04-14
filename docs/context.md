@@ -3,7 +3,7 @@
 > Documento de referencia para Claude Code. Leer este archivo proporciona contexto completo
 > del proyecto sin necesidad de explorar el codebase.
 >
-> Ultima actualizacion: 2026-04-13
+> Ultima actualizacion: 2026-04-14
 
 ---
 
@@ -38,6 +38,9 @@ gateway-hub/
 ├── docs/
 │   ├── arquitectura.mmd            # Diagrama de arquitectura (Mermaid)
 │   ├── ssh-deploy-keys.md          # Guia de configuracion de llaves SSH
+│   ├── error-pages.md              # Documentacion de paginas de error
+│   ├── rendimiento.md              # Rate limiting, cache, capacidades y limites
+│   ├── recursos-servidores.md      # Hardware y recursos por entorno (GCP y produccion)
 │   └── context.md                  # Este archivo
 ├── nginx/
 │   ├── nginx.conf                  # Configuracion principal de Nginx
@@ -51,7 +54,7 @@ gateway-hub/
 │   │   ├── geoserver-locations.inc # Location blocks de GeoServer
 │   │   ├── geoserver-hide-headers.inc # Headers a ocultar de GeoServer
 │   │   └── gtm.inc.template        # Google Tag Manager (condicional)
-│   ├── error-pages/                # Paginas de error personalizadas (400-500)
+│   ├── error-pages/                # Paginas de error personalizadas (400, 401, 403, 404, 429, 500)
 │   └── static/                     # Archivos estaticos (robots.txt, sitemap.xml)
 ├── promtail/
 │   └── promtail-config.yml         # Configuracion de Promtail (logs -> Loki)
@@ -103,7 +106,8 @@ gateway-hub/
 | `/` | portal | Publico | general (10r/s) | Redirige a /mapalab/ |
 | `/api/` | portal | Publico | api (10r/s) | API del Portal, cache no-store |
 | `/administrador/` | portal | Publico | general | Panel de administracion |
-| `/mapalab/` | mapalab | Publico | general | Interfaz de mapas (timeout 120s) |
+| `/mapalab/assets/` | mapalab | Publico | static (50r/s, burst 200) | Cache gateway 7d, immutable, stale serving |
+| `/mapalab/` | mapalab | Publico | general (burst 150) | Interfaz de mapas (timeout 120s) |
 | `/mapalab/api/download/` | mapalab | Publico | api (5 burst) | Descargas CSV backend (timeout 600s, sin buffering) |
 | `/acervo/` | acervo | Publico | api (100r/s burst) | API de archivos (max 1GB, timeout 300s) |
 | `/acervo/console/` | acervo_console | Auth propia | general | Consola MinIO (WebSocket) |
@@ -146,7 +150,7 @@ gateway-hub/
 - **Validacion de Referer:** En endpoints OGC de GeoServer.
 - **Filtrado de User-Agent:** Bloquea bots, scrapers, herramientas CLI, crawlers de IA.
 - **Bloqueo de WFS-T:** Previene transacciones de escritura en GeoServer.
-- **Rate Limiting:** Zonas: `general` (10r/s), `api` (10r/s), `geoserver` (10r/s). Todas las rutas tienen rate limiting.
+- **Rate Limiting:** Zonas: `general` (10r/s), `api` (10r/s), `static` (50r/s), `geoserver` (10r/s). Todas las rutas tienen rate limiting. Exceso responde HTTP 429 con pagina amigable (countdown 10s).
 
 ### Paths Denegados
 - `/.` (archivos ocultos) -> 403
@@ -154,6 +158,15 @@ gateway-hub/
 ---
 
 ## 7. Cache
+
+### MapaLab Assets Cache
+- **Ubicacion:** `/var/cache/nginx/mapalab_assets`
+- **Tamano maximo:** 500MB
+- **TTL:** 7 dias
+- **Stale serving:** En error, timeout, 500-504 (resiliencia ante caidas del upstream)
+- **Cache-Control al cliente:** `public, max-age=31536000, immutable`
+- **Header:** `X-Cache-Status` indica HIT/MISS/STALE
+- Los assets de Vite usan hash en el nombre, por lo que deploys nuevos generan cache keys nuevas automaticamente
 
 ### GeoServer Cache
 - **Ubicacion:** `/var/cache/nginx/geoserver`
