@@ -51,6 +51,7 @@ gateway-hub/
 │   ├── includes/
 │   │   ├── proxy-params.inc        # Headers estandar de proxy
 │   │   ├── security-headers.inc    # Headers de seguridad (HSTS, CSP, etc.)
+│   │   ├── bot-protection.inc      # Bloqueo de bots, scrapers y crawlers IA
 │   │   ├── geoserver-locations.inc # Location blocks de GeoServer
 │   │   ├── geoserver-hide-headers.inc # Headers a ocultar de GeoServer
 │   │   └── gtm.inc.template        # Google Tag Manager (condicional)
@@ -152,6 +153,7 @@ gateway-hub/
 - **Filtrado de User-Agent:** Bloquea bots, scrapers, herramientas CLI, crawlers de IA.
 - **Bloqueo de WFS-T:** Previene transacciones de escritura en GeoServer.
 - **Rate Limiting:** Zonas: `general` (10r/s), `api` (10r/s), `static` (50r/s), `geoserver` (10r/s). Todas las rutas tienen rate limiting. Exceso responde HTTP 429 con pagina amigable (countdown 10s).
+- **Proteccion contra bots:** `bot-protection.inc` aplicado en rutas publicas. Bloquea scrapers, crawlers de IA, herramientas CLI y requests sin User-Agent. Permite navegadores reales y bots SEO (Googlebot, Bingbot).
 
 ### Paths Denegados
 - `/.` (archivos ocultos) -> 403

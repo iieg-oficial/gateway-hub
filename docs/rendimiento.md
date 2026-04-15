@@ -38,7 +38,7 @@ Usuario (navegador)
                 ▼
 ┌─────────────────────────────────────────────────────────┐
 │  PostgreSQL / PostGIS                                    │
-│  └─ max_connections: verificar >= 150                     │
+│  └─ max_connections: 200 (shared_buffers: 2GB)            │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -71,6 +71,47 @@ El rate limiting se aplica por IP del cliente (`$binary_remote_addr`) con tres z
 Todas las zonas responden con **HTTP 429** (Too Many Requests) en lugar de 503. Esto muestra una pagina
 amigable que indica al usuario que espere, con un countdown de 10 segundos antes de habilitar el boton
 de reintento.
+
+## Proteccion contra bots
+
+Archivo: `nginx/includes/bot-protection.inc`, aplicado en todas las rutas publicas (Portal, MapaLab,
+API, descargas). GeoServer tiene su propia proteccion en `geoserver-locations.inc`.
+
+### Bloqueados (HTTP 403)
+
+| Categoria | Ejemplos |
+|-----------|----------|
+| Scrapers y herramientas | scrapy, httpclient, mechanize, httrack, archiver |
+| Herramientas CLI | curl, wget |
+| Librerias HTTP | python-requests, python-urllib, aiohttp, node-fetch, axios, go-http |
+| Crawlers de IA | GPTBot, ClaudeBot, ChatGPT, CCBot, Bytespider, Google-Extended |
+| Bots SEO agresivos | SemrushBot, AhrefsBot, MJ12bot, DotBot, DataForSeoBot, PetalBot |
+| Herramientas de testing | postman, insomnia, httpie |
+| Automatizacion headless | phantom, selenium, puppeteer, playwright |
+| Herramientas de seguridad | nikto, scan, attack, inject, exploit |
+| Sin User-Agent | Requests con UA vacio |
+
+### Permitidos (HTTP 200)
+
+| Categoria | Ejemplos |
+|-----------|----------|
+| Navegadores reales | Chrome, Firefox, Safari, Edge, Opera |
+| Bots SEO legitimos | Googlebot, Bingbot |
+
+### Donde se aplica
+
+| Ruta | Bot protection |
+|------|---------------|
+| `/` (Portal) | Si |
+| `/api/` | Si |
+| `/administrador/` | Si |
+| `/mapalab/` | Si |
+| `/mapalab/api/download/` | Si |
+| `/mapalab/assets/` | No (assets estaticos cacheados, no importa quien los pida) |
+| `/acervo/console/` | No (auth propia) |
+| `/geoserver/ows` | Proteccion propia (mas estricta, incluye validacion de Referer) |
+| `/huachicol/` | No (auth propia) |
+| `/mariachi/` | No (auth propia) |
 
 ## Cache (Gateway Hub)
 
@@ -168,9 +209,9 @@ no alarmar al usuario.
 |-----------|-----------|-----------|
 | Gateway Nginx | ~4096 conexiones simultaneas por worker | `worker_connections` |
 | MapaLab Nginx | ~2048 conexiones simultaneas por worker | `worker_connections` |
-| MapaLab Backend | 8 requests async en paralelo | Workers Gunicorn |
-| DB Pool | 128 conexiones totales | `pool_size` × workers |
-| PostgreSQL | Depende de `max_connections` | Verificar >= 150 |
+| MapaLab Backend | 8 requests async en paralelo (configurable via GUNICORN_WORKERS) | Workers Gunicorn |
+| DB Pool | 128 conexiones totales (configurable via DB_POOL_SIZE) | `pool_size` × workers |
+| PostgreSQL | 200 max_connections, shared_buffers 2GB | `max_connections` |
 
 ### Escenario: carga de pagina de un usuario
 
@@ -184,9 +225,9 @@ Total: ~30 requests. Con los burst actuales, un usuario individual nunca alcanza
 
 ### Escenario: 50 usuarios simultaneos desde misma IP
 
-- Assets: 50 × 25 = 1250 requests → zona `static` a 50r/s + burst 100. Los assets se sirven
+- Assets: 50 × 25 = 1250 requests → zona `static` a 50r/s + burst 200. Los assets se sirven
   desde cache del gateway (HIT), no llegan al upstream. Sin problema.
-- HTML + API: 50 × 6 = 300 requests → zona `general` a 10r/s + burst 50. Algunos podrian
+- HTML + API: 50 × 6 = 300 requests → zona `general` a 10r/s + burst 150. Algunos podrian
   recibir 429, pero la pagina ya cargo correctamente porque los assets llegaron.
 
 ### Estimacion de usuarios concurrentes
@@ -205,7 +246,7 @@ tipico de MapaLab (~30 requests: 1 HTML + ~25 assets + 2-5 API).
 | PostgreSQL (200 max_conn, 2 GB shared_buffers) | ~200 queries simultaneas | Holgado |
 | Cache gateway (assets) | Ilimitado (servido desde cache) | No es limitante |
 
-**Estimacion: ~80-100 usuarios simultaneos navegando activamente**
+**Estimacion validada: ~105 usuarios simultaneos navegando activamente (verificado en stress test)**
 
 - Los assets (90% de requests) se sirven desde cache del gateway → no tocan backend
 - Cada usuario genera ~3-5 requests API al navegar
@@ -218,12 +259,12 @@ tipico de MapaLab (~30 requests: 1 HTML + ~25 assets + 2-5 API).
 | Componente | Capacidad | Cuello de botella |
 |-----------|-----------|-------------------|
 | Gateway + MapaLab (comparten 2 cores) | CPU compartida | Limitante principal |
-| Backend (4 workers async) | ~30-50 requests API/s | Segundo limitante |
+| Backend (4 workers async, configurable) | ~30-50 requests API/s | Segundo limitante |
 | DB Pool (32 conexiones) | ~32 queries simultaneas | Tercer limitante |
 | GeoServer (2.6 GB RAM, mismos 2 cores) | WMS/WFS compiten por CPU | Agrava el cuello |
 | PostgreSQL local (200 max_conn) | Holgado | No es limitante |
 
-**Estimacion: ~20-30 usuarios simultaneos navegando activamente**
+**Estimacion validada: ~100 usuarios simultaneos navegando activamente (verificado en stress test)**
 
 - GeoServer consumiendo 33% de RAM y compitiendo por CPU es el factor principal
 - Con 2 cores, el context switching entre 20+ contenedores degrada todo
@@ -237,7 +278,7 @@ tipico de MapaLab (~30 requests: 1 HTML + ~25 assets + 2-5 API).
 | Requests API/s sostenidos | ~30-50 | ~80-120 |
 | Descargas CSV simultaneas | ~3-5 | ~10-15 |
 | Tiles WMS simultaneas | ~10-20 | ~50-80 |
-| Punto de saturacion estimado | ~40 usuarios | ~150 usuarios |
+| Punto de saturacion (validado) | ~100 usuarios | ~126 usuarios (rate limit) |
 
 ### Resultados de stress test (2026-04-14)
 
@@ -272,19 +313,47 @@ Criterios de quiebre: error rate > 30% o p95 > 4000ms.
 | Max RPS servidor | 134.47 rps @ 100 usuarios |
 | p95 estable | 519 ms @ 100 usuarios |
 
-#### Comparativa
+#### Despues de optimizaciones — Produccion (4 servidores dedicados)
 
-| Metrica | Antes (staging/prod) | Local (optimizado) | GCP (optimizado) |
-|---------|---------------------|-------------------|------------------|
-| Usuarios estables | 20 | 100 | 100 |
-| Punto de quiebre | 40 | 120 (rate limit) | >100 |
-| Max RPS | 47 rps | 348 rps | 134 rps |
-| p95 latencia | 245-479 ms | 127 ms | 519 ms |
-| Mejora | — | 5x usuarios, 7.4x RPS | 5x usuarios, 4.3x RPS |
+| Metrica | Prod (optimizado) |
+|---------|-------------------|
+| Ultima fase estable | 105 usuarios (0% errores) |
+| Punto de quiebre | 126 usuarios (38.1% errores, rate limit) |
+| Max RPS servidor | 309.88 rps @ 126 usuarios |
+| p95 estable | 366 ms |
+| p99 estable | 1,076 ms |
 
-El quiebre a 120 usuarios en local es por rate limiting (HTTP 429), no por saturacion del backend.
-La latencia mas alta en GCP (519ms vs 127ms) es por la red, no por el servidor.
-En ambos entornos el backend mantiene 0% errores a 100 usuarios simultaneos.
+#### Sitio anterior (iieg.gob.mx/ns/) — WordPress + Apache + PHP 5.4
+
+| Metrica | Sitio viejo |
+|---------|-------------|
+| Ultima fase estable | 0 (quiebra en paso 1) |
+| Punto de quiebre | 20 usuarios (p95 6,864 ms) |
+| Max RPS servidor | 2.38 rps |
+| p95 estable | 6,864 ms |
+| SSL | Certificado invalido |
+
+#### Comparativa completa (2026-04-14 / 2026-04-15)
+
+| Metrica | Sitio viejo | jalisco.gob.mx | Prod antes | GCP antes | Local opt. | GCP opt. | Prod opt. |
+|---------|-------------|---------------|-----------|-----------|------------|----------|-----------|
+| Usuarios estables | 0 | 0 | 20 | 20 | 100 | 100 | 105 |
+| Punto de quiebre | 20 | 21 | 40 | 40 | 120 | >100 | 126 |
+| Max RPS | 2.4 | 4.4 | 47 | 31 | 348 | 134 | 310 |
+| p95 latencia | 6,864 ms | 4,133 ms | 245 ms | 479 ms | 127 ms | 519 ms | 366 ms |
+| Tipo de quiebre | Latencia | Latencia | Errores backend | Errores backend | Rate limit | — | Rate limit |
+
+#### Mejoras clave
+
+| Comparacion | Usuarios | RPS | p95 |
+|------------|----------|-----|-----|
+| Prod optimizado vs prod antes | 5.25x (20→105) | 6.6x (47→310) | -33% (245→366 ms bajo 5x mas carga) |
+| Prod optimizado vs sitio viejo | 105 vs 0 | 129x | 19x menor |
+| GCP optimizado vs GCP antes | 5x (20→100) | 4.3x (31→134) | Estable bajo 5x mas carga |
+
+Todos los quiebres post-optimizacion son por rate limiting (HTTP 429), no por saturacion.
+El backend mantiene p95 < 400ms y 0% errores hasta el limite de rate limit.
+Antes de las optimizaciones, el quiebre era por errores reales del backend (502/503).
 
 **Nota:** estas estimaciones asumen usuarios navegando activamente (cargando capas,
 haciendo zoom, consultando datos). Usuarios ociosos (pagina abierta sin interaccion)

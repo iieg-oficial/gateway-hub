@@ -102,6 +102,7 @@ gateway-hub/
 - **Proxy:** Nginx 1.28 (Alpine)
 - **Monitoreo:** Prometheus (nginx-exporter) + Promtail → Loki
 - **SSL:** TLSv1.2/1.3, HSTS, OCSP Stapling
+- **Seguridad:** CSP, X-XSS-Protection, bot protection (scrapers, IA crawlers, herramientas CLI)
 - **Red:** `iieg-network` (compartida con todos los servicios IIEG)
 
 ## Documentacion

@@ -144,6 +144,17 @@ trafico hacia el dominio antiguo conforme los usuarios migran al nuevo.
 
 Estos puntos no se pueden resolver desde gateway-hub:
 
+## Proteccion contra bots
+
+Implementada en `nginx/includes/bot-protection.inc` y aplicada en todas las rutas publicas.
+Bloquea scrapers, crawlers de IA, herramientas CLI y requests sin User-Agent.
+Permite navegadores reales y bots SEO legitimos (Googlebot, Bingbot).
+Ver `docs/rendimiento.md` para la lista completa de User-Agents bloqueados/permitidos.
+
+---
+
+## Hallazgos que requieren accion externa
+
 | Hallazgo | Responsable | Accion |
 |----------|-------------|--------|
 | Cookie sin Secure/SameSite | Equipo FortiGate | Configurar flags en la cookie de sesion |

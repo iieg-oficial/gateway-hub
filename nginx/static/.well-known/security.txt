@@ -1,0 +1,5 @@
+Contact: mailto:edgar.villarreal@iieg.gob.mx
+Expires: 2027-04-15T00:00:00.000Z
+Preferred-Languages: es, en
+Canonical: https://iieg.jalisco.gob.mx/.well-known/security.txt
+Policy: https://iieg.jalisco.gob.mx/politica-de-seguridad

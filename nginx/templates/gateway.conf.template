@@ -104,6 +104,7 @@ server {
 
     location / {
         limit_req zone=general burst=20 nodelay;
+        include /etc/nginx/includes/bot-protection.inc;
         proxy_pass http://portal;
         include /etc/nginx/includes/proxy-params.inc;
         proxy_set_header Accept-Encoding "";
@@ -112,6 +113,7 @@ server {
 
     location /api/ {
         limit_req zone=api burst=20 nodelay;
+        include /etc/nginx/includes/bot-protection.inc;
         proxy_pass http://portal;
         include /etc/nginx/includes/proxy-params.inc;
         add_header Cache-Control "no-store" always;
@@ -119,6 +121,7 @@ server {
 
     location /administrador/ {
         limit_req zone=general burst=20 nodelay;
+        include /etc/nginx/includes/bot-protection.inc;
         proxy_pass http://portal;
         include /etc/nginx/includes/proxy-params.inc;
         proxy_set_header Accept-Encoding "";
@@ -138,6 +141,7 @@ server {
 
     location ^~ /mapalab/api/download/ {
         limit_req zone=api burst=5 nodelay;
+        include /etc/nginx/includes/bot-protection.inc;
         proxy_pass http://mapalab/api/download/;
         include /etc/nginx/includes/proxy-params.inc;
         proxy_read_timeout 600s;
@@ -147,6 +151,7 @@ server {
 
     location ^~ /mapalab/ {
         limit_req zone=general burst=150 nodelay;
+        include /etc/nginx/includes/bot-protection.inc;
         proxy_pass http://mapalab/;
         include /etc/nginx/includes/proxy-params.inc;
         proxy_intercept_errors on;
@@ -217,6 +222,11 @@ server {
         if ($seo_block) {
             return 404;
         }
+        root /usr/share/nginx/html;
+        access_log off;
+    }
+
+    location ^~ /.well-known/ {
         root /usr/share/nginx/html;
         access_log off;
     }
