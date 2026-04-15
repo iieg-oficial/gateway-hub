@@ -1,4 +1,10 @@
 User-agent: *
 Allow: /
+Disallow: /administrador/
+Disallow: /acervo/console/
+Disallow: /geoserver/web/
+Disallow: /geoserver/rest/
+Disallow: /mariachi/
+Disallow: /huachicol/
 
 Sitemap: https://iieg.jalisco.gob.mx/sitemap.xml

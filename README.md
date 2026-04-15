@@ -111,6 +111,7 @@ gateway-hub/
 | [Paginas de error](docs/error-pages.md) | Paginas de error personalizadas del gateway |
 | [Rendimiento](docs/rendimiento.md) | Rate limiting, cache, capacidades y limites |
 | [Recursos de servidores](docs/recursos-servidores.md) | Hardware, memoria y configuracion por entorno |
+| [Auditoria de seguridad](docs/auditoria-seguridad.md) | Comparativa de seguridad web: sitio anterior vs actual |
 | [Pendiente: Upgrade MapaLab](docs/pendientes/upgrade-mapalab-8cores.md) | Pasos a seguir cuando S2 suba a 8 cores / 16 GB |
 | [SSH Deploy Keys](docs/ssh-deploy-keys.md) | Configuracion de llaves SSH para despliegue |
 | [Arquitectura](docs/arquitectura.mmd) | Diagrama de arquitectura (Mermaid) |

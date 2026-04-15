@@ -263,17 +263,28 @@ Criterios de quiebre: error rate > 30% o p95 > 4000ms.
 | Max RPS servidor | 348.11 rps @ 100 usuarios |
 | p95 estable | 127 ms |
 
+#### Despues de optimizaciones — GCP staging (2 cores, 7.8 GB RAM)
+
+| Metrica | GCP (optimizado) |
+|---------|------------------|
+| Ultima fase estable | 100 usuarios (0% errores) |
+| Punto de quiebre | >100 (no se alcanzo) |
+| Max RPS servidor | 134.47 rps @ 100 usuarios |
+| p95 estable | 519 ms @ 100 usuarios |
+
 #### Comparativa
 
-| Metrica | Antes (staging/prod) | Despues (optimizado) | Mejora |
-|---------|---------------------|---------------------|--------|
-| Usuarios estables | 20 | 100 | 5x |
-| Punto de quiebre | 40 | 120 | 3x |
-| Max RPS | 47 rps | 348 rps | 7.4x |
-| p95 latencia | 245-479 ms | 127 ms | 2-4x menor |
+| Metrica | Antes (staging/prod) | Local (optimizado) | GCP (optimizado) |
+|---------|---------------------|-------------------|------------------|
+| Usuarios estables | 20 | 100 | 100 |
+| Punto de quiebre | 40 | 120 (rate limit) | >100 |
+| Max RPS | 47 rps | 348 rps | 134 rps |
+| p95 latencia | 245-479 ms | 127 ms | 519 ms |
+| Mejora | — | 5x usuarios, 7.4x RPS | 5x usuarios, 4.3x RPS |
 
-El quiebre a 120 usuarios es por rate limiting (HTTP 429), no por saturacion del backend.
-El backend mantiene p95 < 130ms incluso a 100 usuarios desde una sola IP.
+El quiebre a 120 usuarios en local es por rate limiting (HTTP 429), no por saturacion del backend.
+La latencia mas alta en GCP (519ms vs 127ms) es por la red, no por el servidor.
+En ambos entornos el backend mantiene 0% errores a 100 usuarios simultaneos.
 
 **Nota:** estas estimaciones asumen usuarios navegando activamente (cargando capas,
 haciendo zoom, consultando datos). Usuarios ociosos (pagina abierta sin interaccion)
