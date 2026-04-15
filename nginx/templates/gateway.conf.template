@@ -1,3 +1,13 @@
+map "${SEO_ENABLED}" $seo_robots {
+    "true"  "";
+    default "noindex, nofollow";
+}
+
+map "${SEO_ENABLED}" $seo_block {
+    "true"  0;
+    default 1;
+}
+
 upstream portal {
     server ${PORTAL_HOST};
     keepalive 32;
@@ -142,6 +152,7 @@ server {
         proxy_intercept_errors on;
         proxy_read_timeout 120s;
         proxy_send_timeout 120s;
+        add_header X-Robots-Tag $seo_robots;
     }
 
     location ^~ /acervo/console/static/ {
@@ -195,11 +206,17 @@ server {
     include /etc/nginx/includes/geoserver-locations.inc;
 
     location = /robots.txt {
+        if ($seo_block) {
+            return 200 "User-agent: *\nDisallow: /\n";
+        }
         root /usr/share/nginx/html;
         access_log off;
     }
 
     location = /sitemap.xml {
+        if ($seo_block) {
+            return 404;
+        }
         root /usr/share/nginx/html;
         access_log off;
     }

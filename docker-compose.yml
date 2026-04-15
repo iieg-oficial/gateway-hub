@@ -24,6 +24,7 @@ services:
       GEOSERVER_HOST: ${GEOSERVER_HOST}
       HUACHICOL_HOST: ${HUACHICOL_HOST}
       GTM_ID: ${GTM_ID}
+      SEO_ENABLED: ${SEO_ENABLED:-false}
 
     healthcheck:
       test: ["CMD-SHELL", "curl -fsk https://localhost/ || exit 1"]
