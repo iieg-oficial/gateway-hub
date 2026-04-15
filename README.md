@@ -51,6 +51,7 @@ Ver `.env.example` para la referencia completa. Las variables principales:
 | `GEOSERVER_HOST` | Host de GeoServer |
 | `HUACHICOL_HOST` | Host de Grafana |
 | `LOKI_URL` | Endpoint de Loki |
+| `SEO_ENABLED` | `true` en produccion (robots.txt, sitemap, sin noindex). `false` en staging/dev (bloquea indexacion) |
 
 ## Servicios (contenedores)
 

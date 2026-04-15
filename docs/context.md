@@ -96,6 +96,7 @@ gateway-hub/
 | `GEOSERVER_HOST` | `host.docker.internal:8080` | Host de GeoServer |
 | `HUACHICOL_HOST` | `host.docker.internal:3000` | Host de Grafana (Huachicol) |
 | `LOKI_URL` | `http://loki:3100` | Endpoint de Loki |
+| `SEO_ENABLED` | `false` | `true`: robots.txt permite crawlers, sitemap activo. `false`: bloquea indexacion |
 
 ---
 
@@ -122,8 +123,8 @@ gateway-hub/
 | `/geoserver/wcs` | geoserver | Publico* | geoserver (10r/s) | WCS directo (timeout 600s, cache 6h, validacion) |
 | `/geoserver/{workspace}/wfs` | geoserver | Publico* | geoserver (10r/s) | WFS por workspace (timeout 600s, sin cache, validacion) |
 | `/geoserver/{workspace}/wcs` | geoserver | Publico* | geoserver (10r/s) | WCS por workspace (timeout 600s, sin cache, validacion) |
-| `/robots.txt` | static | Publico | - | Servido directamente por Nginx |
-| `/sitemap.xml` | static | Publico | - | Servido directamente por Nginx |
+| `/robots.txt` | static | Publico | - | SEO_ENABLED=true: permite crawlers. false: Disallow / |
+| `/sitemap.xml` | static | Publico | - | SEO_ENABLED=true: sirve sitemap. false: 404 |
 
 *Publico con restricciones: validacion de Referer, bloqueo de User-Agents (bots, scrapers, curl, wget, etc.), bloqueo de WFS-T.
 
