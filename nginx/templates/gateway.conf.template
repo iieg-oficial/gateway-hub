@@ -154,6 +154,7 @@ server {
         include /etc/nginx/includes/bot-protection.inc;
         proxy_pass http://mapalab/;
         include /etc/nginx/includes/proxy-params.inc;
+        proxy_set_header Accept-Encoding "";
         proxy_intercept_errors on;
         proxy_read_timeout 120s;
         proxy_send_timeout 120s;
