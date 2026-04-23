@@ -41,6 +41,7 @@ gateway-hub/
 │   ├── error-pages.md              # Documentacion de paginas de error
 │   ├── rendimiento.md              # Rate limiting, cache, capacidades y limites
 │   ├── recursos-servidores.md      # Hardware y recursos por entorno (GCP y produccion)
+│   ├── ecosystem.md                # Vista transversal IIEG: flujos cruzados, acoplamientos, deuda coordinada
 │   └── context.md                  # Este archivo
 ├── nginx/
 │   ├── nginx.conf                  # Configuracion principal de Nginx
@@ -57,6 +58,11 @@ gateway-hub/
 │   │   └── gtm.inc.template        # Google Tag Manager (condicional)
 │   ├── error-pages/                # Paginas de error personalizadas (400, 401, 403, 404, 429, 500)
 │   └── static/                     # Archivos estaticos (robots.txt, sitemap.xml)
+├── scripts/
+│   ├── check-model-drift.py        # AST diff entre modelos SQLAlchemy mapalab/mariachi
+│   ├── setup-swap.sh
+│   ├── stress_test.py
+│   └── stress_test_multi_ip.py
 ├── promtail/
 │   └── promtail-config.yml         # Configuracion de Promtail (logs -> Loki)
 ├── docker-compose.yml              # Orquestacion de contenedores
