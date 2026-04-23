@@ -128,6 +128,16 @@ server {
         proxy_intercept_errors on;
     }
 
+    # Admin-only: mariachi los invoca via iieg-network directo al backend,
+    # no deben ser alcanzables desde internet.
+    location = /mapalab/api/layers/refresh-cache {
+        return 403;
+    }
+
+    location = /mapalab/api/layers/invalidate-cache {
+        return 403;
+    }
+
     location ^~ /mapalab/assets/ {
         limit_req zone=static burst=200 nodelay;
         proxy_cache mapalab_assets;
