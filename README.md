@@ -1,5 +1,7 @@
 # Gateway Hub
 
+**Versionado:** rolling (sin tags/CHANGELOG formales). Estado actual y ultimos cambios relevantes en [`docs/context.md`](docs/context.md) y [`docs/ecosystem.md`](docs/ecosystem.md).
+
 Proxy inverso central y terminador SSL/TLS de la infraestructura del IIEG Jalisco.
 Punto unico de entrada para todos los servicios publicos e internos.
 
