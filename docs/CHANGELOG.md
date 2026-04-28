@@ -10,8 +10,219 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ## [No publicado]
 
-## [0.1.0] - 2026-04-28
+---
+
+## [1.23.0] - 2026-04-28
+
+`gateway-hub` ahora orquesta el ecosistema completo en local con `make local-up` y `make local-down`. Endpoint `/ontoy` propio. Cuatro bug fixes de routing detras del gateway.
 
 ### Agregado
-- Inicio del versionado del repositorio. El consumidor principal de esta version es el
-  dashboard `/inicio` de Mariachi, que la lee desde `platforms_config.py` de mariachi-api.
+- **`Makefile`** con reglas para levantar/tumbar el stack en local: `make local-up`/`local-down`/`local-restart`/`local-status`. `local-up` levanta en orden topologico `acervo` → `huachicol` → `mapalab-dataengine` → `geoserver` → builds dist (`sieej`, `mapalab`) → `mariachi` → `mapalab` (profile `staging`) → `gateway-hub`. Conecta `acervo-minio` a `iieg-network` (necesario para que `mariachi-api` use el SDK de MinIO directo, no via nginx).
+- **`/ontoy`** propio (`alias /etc/nginx/version.json`) en `:80` y `:443` para que servicios internos lo probeen via `iieg-network` sin TLS.
+- **`/geoserver/ontoy`** estatico: GeoServer no tiene endpoint nativo, gateway responde con `{"slug":"geoserver","version":"1.14.1"}`.
+- `nginx/version.json` (trackeable en git).
+
+### Corregido
+- **HTTP→HTTPS redirect rompia el host original**: cambio de `https://$server_name` a `https://$host` para preservar el host del request (LAN IP, `localhost`, custom domain).
+- **`server_name ${APP_DOMAIN};` no respondia a otros hosts**: agregado `_` como catch-all + `listen ... default_server`.
+- **`Welcome to nginx!` en cualquier ruta**: la imagen `nginx:1.28.2-alpine` ships con `default.conf` (server_name `localhost`) que ganaba como default. Fix: `RUN ... && rm -f /etc/nginx/conf.d/default.conf` en `Dockerfile`.
+- **`/mariachi/` redirigia a HTTP**: `proxy_pass http://mariachi/` (con slash) strip-eaba el prefix; mariachi-nginx recibia `GET /` y respondia 302 a `/mariachi/` en HTTP. Fix: `proxy_pass http://mariachi` (sin slash) preserva el path.
+- **`/acervo/console/` 502 + AccessDenied**: `proxy_pass http://acervo_console/` strip-eaba `/acervo/console/`; acervo recibia `/login` que caia en MinIO API. Fix: `proxy_pass http://acervo_console/console/`.
+
+---
+
+## [1.22.0] - 2026-04-23
+
+### Agregado
+- **`docs/ecosystem.md`** — overview cross-project del ecosistema IIEG. Sirve como autoridad sobre el versionado visible en cada plataforma y el contexto transversal (interacciones entre repos, deploy targets, owners). Pointer en el README a la version actual.
+
+---
+
+## [1.21.0] - 2026-04-23
+
+### Agregado
+- **`scripts/check_model_drift.py`** — checker de drift entre los modelos SQLAlchemy de `mariachi.api.app.models.mapalab` y `mapalab-dataengine`. Detecta divergencias en columnas/tipos/constraints antes del deploy.
+
+---
+
+## [1.20.0] - 2026-04-23
+
+### Cambiado
+- **Bloqueo de endpoints admin-only de MapaLab desde acceso externo**: rutas que solo deben llegar via la red interna (ej. `/mapalab/api/layers/refresh-cache`) ahora retornan 403 si el request viene desde fuera del rango trusted.
+
+---
+
+## [1.19.0] - 2026-04-16
+
+### Agregado
+- **`scripts/stress-test/`** — set de scripts para simular comportamiento de usuarios reales (browser flows) y benchmarks de carga. Util para validar limits de `rate_req` y degradacion del stack bajo carga.
+
+### Corregido
+- **`/mapalab/` rompia content processing por compresion**: el upstream ya gzipea, y el gateway lo reapretaba duplicando algunos headers. Fix: `proxy_set_header Accept-Encoding ""` en el location (deshabilita compresion en respuesta del proxy para que el cliente la reciba intacta).
+
+---
+
+## [1.18.0] - 2026-04-15
+
+### Agregado
+- **Bot protection middleware** centralizado en `nginx/includes/bot-protection.inc` — bloquea por User-Agent (scrapers, AI bots, libs HTTP comunes como `^curl`/`^wget`/`python-requests`).
+- **`/.well-known/security.txt`** servido directamente por nginx para divulgacion responsable de vulnerabilidades.
+
+---
+
+## [1.17.0] - 2026-04-15
+
+### Agregado
+- **`SEO_ENABLED`** env var: cuando `true` sirve `robots.txt` permisivo + `sitemap.xml`; cuando `false` retorna `User-agent: * / Disallow: /` y bloquea acceso al sitemap. Util para staging/preview que no deben indexarse.
+
+---
+
+## [1.16.0] - 2026-04-14
+
+### Agregado
+- **Documentacion comprehensiva** en `docs/` — `arquitectura.mmd`, `auditoria-seguridad.md`, `context.md`, `error-pages.md`, `pendientes`, `recursos-servidores.md`, `rendimiento.md`, `ssh-deploy-keys.md`.
+- **Custom error pages** (`nginx/error-pages/400|401|403|404|429|500.html`) servidas via `error_page` directive con `internal`.
+- **Server optimization scripts** en `scripts/` para tuning de kernel/nginx en el host.
+
+---
+
+## [1.15.0] - 2026-04-13
+
+### Cambiado
+- **Acervo console**: aumentado `limit_req zone=general burst=1000 nodelay`, removido `Content-Security-Policy` custom (deja que MinIO emita el suyo) y agregado `sub_filter "script-src 'self'" "script-src 'self' 'unsafe-inline' 'unsafe-eval'"` para que la UI de MinIO funcione sin CSP violations.
+
+---
+
+## [1.14.0] - 2026-04-13
+
+### Cambiado
+- **Removido control de acceso por VPN** en endpoints administrativos; reemplazado con rate limiting agresivo (`zone=admin burst=...`). `VPN_ALLOWED_IPS` queda como env opcional para escenarios mixtos.
+
+---
+
+## [1.13.0] - 2026-04-13
+
+### Agregado
+- **Filtros de seguridad WFS/WCS** en el location de `/geoserver/`: bloquea operations que listen workspaces internos o ejecuten queries no autorizadas.
+- **`/mapalab/api/download/`** proxy con `proxy_buffering off` + timeouts extendidos (600s) para soportar streaming de CSVs grandes.
+- Actualizada `docs/arquitectura.mmd` reflejando el nuevo flujo de download.
+
+---
+
+## [1.12.0] - 2026-04-02
+
+### Cambiado
+- **Mapalab proxy**: aumentado `proxy_send_timeout`/`proxy_read_timeout` a `120s` (default `60s` no alcanzaba para algunas capas pesadas) y removido el header stripping redundante (`proxy_set_header Connection ""` ya viene de `proxy-params.inc`).
+
+---
+
+## [1.11.0] - 2026-03-30
+
+### Agregado
+- **`extra_hosts: host.docker.internal:host-gateway`** en `docker-compose.yml` para que el container de gateway pueda hablar con servicios del host en dev/local.
+- **Conditional GTM** — `gtm.inc` solo se inyecta si `GTM_ID` esta seteado; vacio en otros environments.
+
+---
+
+## [1.10.0] - 2026-03-25
+
+### Cambiado
+- **Removida basic auth** del gateway: el approach final es VPN allowlist + rate limiting + bot-protection. `apache2-utils` ya no es dependency del Dockerfile.
+- Las locations afectadas fueron `acervo/console`, `mariachi`, `huachicol` y `geoserver` (web/security, j_spring_security, REST). Para REST de geoserver se preservo VPN allowlist.
+
+### Notas de incidente
+La basic auth se introdujo el 2026-03-24 como capa rapida de proteccion (commit `d7e834b`), pero generaba friccion para herramientas internas que no soportaban basic. Se decidio remover en bloque el 2026-03-25 una vez que VPN+rate limit cubrieron la misma superficie.
+
+---
+
+## [1.9.0] - 2026-03-24
+
+### Agregado
+- **Huachicol/Grafana proxy** (`location /huachicol/`): integracion del stack de monitoreo via subpath. Variables `HUACHICOL_HOST` y env del compose para apuntar al upstream correcto.
+- Hotfix posterior: removido el trailing slash de `proxy_pass http://huachicol/` y deshabilitado `proxy_intercept_errors` (Grafana mostraba pagina de error del gateway en vez de su propia 401).
+
+---
+
+## [1.8.0] - 2026-03-24
+
+### Agregado
+- **Logging a Loki via Promtail** (`promtail/promtail-config.yml`) — todos los logs de nginx (access + error, formato JSON) se envian a Loki para consulta unificada en Grafana.
+- **`nginx-exporter`** (Prometheus) en el compose — exposicion de metricas de nginx (`stub_status`) en `:8080/stub_status` para que Prometheus las scrappee.
+
+---
+
+## [1.7.0] - 2026-03-24
+
+### Agregado
+- **`sitemap.xml`** y **`robots.txt`** servidos directamente por nginx desde `nginx/static/`. Configuracion para que se sirvan con `Cache-Control` apropiado y sin pasar por upstream.
+
+---
+
+## [1.6.0] - 2026-03-24
+
+### Agregado
+- **Google Tag Manager** integrado via `sub_filter` en `nginx/includes/gtm.inc.template`. Configurable via `GTM_ID` env var; si esta vacio el include queda vacio y no se inyecta nada en el HTML.
+
+### Cambiado
+- Movido `proxy_set_header Accept-Encoding ""` desde `gtm.inc.template` hacia los `location` blocks especificos que necesitan el `sub_filter` (evita deshabilitar compresion globalmente).
+
+---
+
+## [1.5.0] - 2026-03-23
+
+### Agregado
+- **Content-Disposition forzado** para `.txt` y `.xlsx` desde `/acervo/` (browsers tienden a renderizarlos inline en vez de descargar; el header `Content-Disposition: attachment` los forza).
+- **`proxy_intercept_errors on`** para el upstream de acervo (deja que nginx decida que pagina de error mostrar en vez de la del MinIO).
+
+### Cambiado
+- **Removido `limit_req` de `/acervo/console/`** — la consola hace muchos requests cortos (assets, polling) y caia rapidamente en rate limit. Sigue protegido por VPN allowlist.
+
+---
+
+## [1.4.0] - 2026-03-23
+
+### Agregado
+- **`VPN_ALLOWED_IPS`** env var para configurar el allowlist de redes internas (formato CIDR separado por comas). Aplica a locations administrativas (`/administrador/`, `/acervo/console/`, partes de `/geoserver/`).
+
+---
+
+## [1.3.0] - 2026-03-23
+
+### Agregado
+- **Rate limiting para descargas de GeoServer** (`limit_req zone=geoserver_download`) — protege contra abuse de WFS/WCS que pueden generar payloads grandes.
+- **Bot blocking refinado**: lista actualizada de User-Agents bloqueados.
+- **Manejo centralizado de error pages** via `error_page` directive con paginas custom.
+- **`docs/ssh-deploy-keys.md`** — documentacion del flujo de generacion y rotacion de SSH deploy keys para CI/CD.
+
+### Corregido
+- **`ignore_invalid_headers off`** movido al server block (antes estaba en http block, no aplicaba a server-level overrides).
+
+---
+
+## [1.2.0] - 2026-03-20
+
+### Agregado
+- **Servicio Acervo Console** (`location /acervo/console/`) — proxy hacia el console de MinIO con su propio rate limiting y headers ajustados.
+- Refinado el proxy de Acervo API (`location /acervo/`).
+
+---
+
+## [1.1.0] - 2026-03-19
+
+### Agregado
+- **Redirect del root** `/` → `/mapalab/` (302) para que el dominio raiz lleve al visor por defecto.
+- `.gitignore` ajustado para manejar archivos `.env` correctamente.
+
+---
+
+## [1.0.0] - 2026-03-13
+
+Primera version del gateway-hub.
+
+### Agregado
+- **Nginx gateway hub** con Docker support: nginx 1.28.2-alpine, configuracion modular (`nginx.conf` + `conf.d/` + `templates/` + `includes/`).
+- **GeoServer configuration** — proxy completo hacia GeoServer con caching para tiles WMS.
+- **Custom error pages** iniciales.
+- **Diagrama arquitectural** (`docs/arquitectura.mmd`).
+- **SSL configurable** via `SSL_CERTIFICATE`/`SSL_CERTIFICATE_KEY` env vars.
+- Compose con `extra_hosts: host.docker.internal:host-gateway`, network `iieg-network` external.

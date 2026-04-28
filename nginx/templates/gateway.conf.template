@@ -50,15 +50,30 @@ map $request_uri $acervo_content_disposition {
 }
 
 server {
-    listen 80;
-    server_name ${APP_DOMAIN};
-    return 301 https://$server_name$request_uri;
+    listen 80 default_server;
+    server_name ${APP_DOMAIN} _;
+
+    location = /ontoy {
+        default_type application/json;
+        add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+        alias /etc/nginx/version.json;
+    }
+
+    location = /geoserver/ontoy {
+        default_type application/json;
+        add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+        return 200 '{"slug":"geoserver","label":"GeoServer","version":"1.14.1"}';
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
 }
 
 server {
-    listen 443 ssl;
+    listen 443 ssl default_server;
     http2 on;
-    server_name ${APP_DOMAIN};
+    server_name ${APP_DOMAIN} _;
 
     ssl_certificate     ${SSL_CERTIFICATE};
     ssl_certificate_key ${SSL_CERTIFICATE_KEY};
@@ -96,6 +111,18 @@ server {
     location /error-pages/ {
         alias /etc/nginx/error-pages/;
         internal;
+    }
+
+    location = /ontoy {
+        default_type application/json;
+        add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+        alias /etc/nginx/version.json;
+    }
+
+    location = /geoserver/ontoy {
+        default_type application/json;
+        add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+        return 200 '{"slug":"geoserver","label":"GeoServer","version":"1.14.1"}';
     }
 
     location = / {
@@ -173,7 +200,7 @@ server {
 
     location ^~ /acervo/console/static/ {
         limit_req zone=general burst=20 nodelay;
-        proxy_pass http://acervo_console/static/;
+        proxy_pass http://acervo_console/console/static/;
         include /etc/nginx/includes/proxy-params.inc;
     }
 
@@ -183,7 +210,7 @@ server {
         sub_filter "script-src 'self'" "script-src 'self' 'unsafe-inline' 'unsafe-eval'";
         sub_filter_once on;
         sub_filter_types text/html;
-        proxy_pass http://acervo_console/;
+        proxy_pass http://acervo_console/console/;
         include /etc/nginx/includes/proxy-params.inc;
         proxy_set_header Accept-Encoding "";
         proxy_set_header Upgrade $http_upgrade;
@@ -207,7 +234,7 @@ server {
 
     location ^~ /mariachi/ {
         limit_req zone=general burst=20 nodelay;
-        proxy_pass http://mariachi/;
+        proxy_pass http://mariachi;
         include /etc/nginx/includes/proxy-params.inc;
         proxy_intercept_errors on;
     }

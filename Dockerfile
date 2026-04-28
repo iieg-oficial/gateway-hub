@@ -1,6 +1,7 @@
 FROM nginx:1.28.2-alpine
 
-RUN apk add --no-cache gettext
+RUN apk add --no-cache gettext \
+    && rm -f /etc/nginx/conf.d/default.conf
 
 COPY nginx/nginx.conf /etc/nginx/nginx.conf
 COPY nginx/templates/ /etc/nginx/templates/
@@ -8,6 +9,7 @@ COPY nginx/conf.d/ /etc/nginx/templates/conf.d/
 COPY nginx/includes/ /etc/nginx/includes/
 COPY nginx/error-pages/ /etc/nginx/error-pages/
 COPY nginx/static/ /usr/share/nginx/html/
+COPY nginx/version.json /etc/nginx/version.json
 
 RUN mkdir -p /etc/nginx/certs /var/cache/nginx/geoserver
 
