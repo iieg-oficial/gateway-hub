@@ -12,6 +12,23 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.24.4] - 2026-04-29
+
+### Corregido
+
+- **Acervo console: assets siguen retornando HTML tras 1.24.3**: el fix anterior (`proxy_pass http://acervo_console;` sin path) preservaba el URI completo y mandaba `/acervo/console/static/...` al upstream. Diagnostico via `wget` directo a `acervo-minio:9001` desde gateway-hub mostro que MinIO sirve los assets bajo **`/static/js/main.<hash>.js`** (Content-Type `text/javascript`, 2.3 MB), no bajo `/console/static/...` ni `/acervo/console/static/...` (ambos devolvian HTML del SPA fallback con 1.3 KB). Fix: `proxy_pass http://acervo_console/static/;` y `proxy_pass http://acervo_console/;` para mapear el prefijo del gateway a la raiz del console.
+
+### Notas — patron correcto de proxy para MinIO console
+
+Cuando MinIO console se configura con `MINIO_BROWSER_REDIRECT_URL=https://<dominio>/<prefijo>/console`, MinIO **emite** URLs absolutas con ese prefijo en el HTML del console (ej. `<base href="/<prefijo>/console/">`). Pero **internamente** sigue sirviendo los archivos bajo la raiz del puerto (no bajo el prefijo). El proxy debe entonces:
+
+1. Atender el prefijo publico (`location ^~ /<prefijo>/console/`).
+2. Reescribir el path al strip-ear el prefijo antes de hablar con MinIO (`proxy_pass http://upstream/`).
+
+Lo que controla `MINIO_BROWSER_REDIRECT_URL` es la URL que aparece en las paginas servidas; lo que controla el comportamiento de los assets es el path real bajo el cual MinIO los expone (siempre `/static/`, `/styles/`, etc.).
+
+---
+
 ## [1.24.3] - 2026-04-29
 
 ### Corregido
