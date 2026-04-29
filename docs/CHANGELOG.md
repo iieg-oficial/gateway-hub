@@ -12,6 +12,14 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.24.5] - 2026-04-29
+
+### Agregado
+
+- **`location = /acervo/ontoy`** en bloques `:80` y `:443` con `return 200 '{"slug":"acervo","label":"Acervo","version":"1.18.1"}'`. Mismo patron que ya existe para `/geoserver/ontoy`. En modo `INFRA=gateway` no hay `acervo-nginx` (que es quien servia el `/ontoy` propio en el modo standalone), asi que el dashboard `/sistema/plataformas` de mariachi no podia probar el estado de Acervo. Solucion: gateway-hub responde el ontoy inline. Cuando el `static_version` cambie en `acervo` hay que actualizar este `return 200` y bumpear gateway-hub (igual que con geoserver). El bloque `:80` permite que el probe interno de `mariachi-api` lo alcance sin redirect a HTTPS.
+
+---
+
 ## [1.24.4] - 2026-04-29
 
 ### Corregido

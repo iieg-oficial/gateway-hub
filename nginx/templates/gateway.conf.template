@@ -65,6 +65,12 @@ server {
         return 200 '{"slug":"geoserver","label":"GeoServer","version":"1.14.1"}';
     }
 
+    location = /acervo/ontoy {
+        default_type application/json;
+        add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+        return 200 '{"slug":"acervo","label":"Acervo","version":"1.18.1"}';
+    }
+
     location = /sieej/ontoy {
         default_type application/json;
         add_header Cache-Control "no-cache, no-store, must-revalidate" always;
@@ -129,6 +135,12 @@ server {
         default_type application/json;
         add_header Cache-Control "no-cache, no-store, must-revalidate" always;
         return 200 '{"slug":"geoserver","label":"GeoServer","version":"1.14.1"}';
+    }
+
+    location = /acervo/ontoy {
+        default_type application/json;
+        add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+        return 200 '{"slug":"acervo","label":"Acervo","version":"1.18.1"}';
     }
 
     location = / {
