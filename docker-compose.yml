@@ -12,6 +12,7 @@ services:
     volumes:
       - ${SSL_VOLUME_PATH}
       - nginx_logs:/var/log/nginx
+      - ${SIEEJ_DIST_PATH:-../sieej/frontend/dist}:/usr/share/nginx/html/sieej:ro
     environment:
       APP_DOMAIN: ${APP_DOMAIN}
       SSL_CERTIFICATE: ${SSL_CERTIFICATE:-/etc/nginx/certs/fullchain.pem}

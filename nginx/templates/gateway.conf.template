@@ -65,6 +65,12 @@ server {
         return 200 '{"slug":"geoserver","label":"GeoServer","version":"1.14.1"}';
     }
 
+    location = /sieej/ontoy {
+        default_type application/json;
+        add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+        alias /usr/share/nginx/html/sieej/ontoy.json;
+    }
+
     location / {
         return 301 https://$host$request_uri;
     }
@@ -237,6 +243,23 @@ server {
         proxy_pass http://mariachi;
         include /etc/nginx/includes/proxy-params.inc;
         proxy_intercept_errors on;
+    }
+
+    location = /sieej {
+        return 301 /sieej/;
+    }
+
+    location = /sieej/ontoy {
+        default_type application/json;
+        add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+        alias /usr/share/nginx/html/sieej/ontoy.json;
+    }
+
+    location ^~ /sieej/ {
+        limit_req zone=static burst=200 nodelay;
+        alias /usr/share/nginx/html/sieej/;
+        try_files $uri $uri/ /sieej/index.html;
+        add_header Cache-Control "no-cache" always;
     }
 
     location ^~ /huachicol/ {
