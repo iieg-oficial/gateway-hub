@@ -12,6 +12,26 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.24.3] - 2026-04-29
+
+### Corregido
+
+- **Acervo console: assets retornan HTML (`MIME type 'text/html' is not executable/supported stylesheet`)**: el `proxy_pass http://acervo_console/console/...` reescribia el path strip-eando el prefijo `/acervo/console/` y dejando solo `/console/...`. Cuando MinIO se configura con `MINIO_BROWSER_REDIRECT_URL=https://<dominio>/acervo/console` y `MINIO_SERVER_URL=https://<dominio>/acervo` (lo correcto cuando esta detras de un reverse proxy con prefijo), MinIO emite URLs absolutas con el prefijo `/acervo/console/...` y SOLO reconoce ese prefijo internamente. Con el `proxy_pass` reescribiendo a `/console/...`, MinIO devolvia su SPA `index.html` (200) para todas las rutas no reconocidas y el browser veia `Content-Type: text/html` en lugar del JS/CSS/manifest correctos. Fix: cambiar `proxy_pass http://acervo_console/console/...` a `proxy_pass http://acervo_console;` (sin path) en `location ^~ /acervo/console/static/` y `location ^~ /acervo/console/`. Sin path en el `proxy_pass`, nginx preserva el URI completo del request al upstream, y MinIO recibe el prefijo que ya espera.
+
+### Notas
+
+- Requiere que el operador configure `MINIO_BROWSER_REDIRECT_URL=https://<dominio>/acervo/console` y `MINIO_SERVER_URL=https://<dominio>/acervo` en el `.env.gateway` de acervo (>= acervo v1.18.1) y haga `docker compose up -d --force-recreate minio` para que los assets carguen sin error de MIME type.
+
+---
+
+## [1.24.2] - 2026-04-29
+
+### Corregido
+
+- **Warning de nginx `duplicate MIME type "text/html"`**: removidas las dos directivas redundantes `sub_filter_types text/html;` (`gtm.inc.template:4` y `gateway.conf.template:218` en el `location ^~ /acervo/console/`). nginx ya considera `text/html` como tipo MIME implicito por default para `sub_filter_types`; declararlo explicitamente cuando ambos contextos se aplican al mismo server resulta en duplicacion. El comportamiento del filter (sustitucion del CSP en la consola de Acervo y la inyeccion del snippet GTM en HTML) no cambia.
+
+---
+
 ## [1.24.1] - 2026-04-29
 
 ### Corregido
