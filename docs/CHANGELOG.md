@@ -12,6 +12,22 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.24.8] - 2026-04-29
+
+### Changed
+
+- **`location = /acervo/ontoy`** actualizado al `static_version` de acervo 1.20.1 (mariachi privado, avatars al bucket compartido `iieg`).
+
+---
+
+## [1.24.7] - 2026-04-29
+
+### Changed
+
+- **`location = /acervo/ontoy`** actualizado al `static_version` de acervo 1.20.0 (bucket compartido `iieg` para assets institucionales + rename `sieej-diccionarios` -> `sieej`). Sin cambios en la logica del gateway.
+
+---
+
 ## [1.24.6] - 2026-04-29
 
 ### Changed
