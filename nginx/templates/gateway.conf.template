@@ -68,7 +68,7 @@ server {
     location = /acervo/ontoy {
         default_type application/json;
         add_header Cache-Control "no-cache, no-store, must-revalidate" always;
-        return 200 '{"slug":"acervo","label":"Acervo","version":"1.18.1"}';
+        return 200 '{"slug":"acervo","label":"Acervo","version":"1.18.2"}';
     }
 
     location = /sieej/ontoy {
@@ -140,7 +140,7 @@ server {
     location = /acervo/ontoy {
         default_type application/json;
         add_header Cache-Control "no-cache, no-store, must-revalidate" always;
-        return 200 '{"slug":"acervo","label":"Acervo","version":"1.18.1"}';
+        return 200 '{"slug":"acervo","label":"Acervo","version":"1.18.2"}';
     }
 
     location = / {
