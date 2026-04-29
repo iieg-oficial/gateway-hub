@@ -12,6 +12,32 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.24.1] - 2026-04-29
+
+### Corregido
+
+- **Promtail spam de errores `failed to start tailer`**: el volumen nombrado `nginx_logs` se inicializo con los symlinks que la imagen `nginx:alpine` trae por default (`access.log -> /dev/stdout`, `error.log -> /dev/stderr`). Esos symlinks apuntan a `/proc/<PID>/fd/...` del proceso nginx **dentro del container de nginx**, inalcanzables desde el container de promtail. Resultado: cada 10s `lstat /proc/1/fd/pipe:[...]: no such file or directory` para `access.log` y `error.log`. Fix: el `CMD` del Dockerfile ahora hace `rm -f /var/log/nginx/access.log /var/log/nginx/error.log` antes de arrancar nginx, asi el daemon crea archivos reales en su lugar y promtail puede tail-earlos. Sigue habiendo `access_log /dev/stdout main` para que Docker capture stdout.
+
+---
+
+## [1.24.0] - 2026-04-29
+
+`gateway-hub` ahora sirve el frontend estatico de SIEEJ directamente. Antes se hospedaba via `mariachi-nginx` con un `location ^~ /sieej` que montaba un bind del dist; eso rompia la separacion de capas (mariachi es una plataforma del ecosistema, no un proxy de plataformas). Ahora el dist se monta en gateway-hub y se sirve con `alias`, mismo patron que un ingress nginx con un dist puro.
+
+### Agregado
+- **`location ^~ /sieej/`** en `nginx/templates/gateway.conf.template` (bloque :443) con `alias /usr/share/nginx/html/sieej/` y `try_files $uri $uri/ /sieej/index.html` para SPA fallback. `Cache-Control: no-cache` en respuestas.
+- **`location = /sieej`** redirect 301 a `/sieej/`.
+- **`location = /sieej/ontoy`** en bloques `:80` y `:443` que sirve `ontoy.json` directo desde el dist (`application/json`). El bloque `:80` es necesario para que el probe HTTP interno desde `mariachi-api` (`SIEEJ_ONTOY_URL=http://gateway-hub-nginx-1/sieej/ontoy`) no sea redirigido a HTTPS.
+- **`SIEEJ_DIST_PATH`** en `.env` (`../sieej/frontend/dist`); permite override en CI o cuando el dist viene de otro path.
+- **Bind mount** en `docker-compose.yml`: `${SIEEJ_DIST_PATH:-../sieej/frontend/dist}:/usr/share/nginx/html/sieej:ro`.
+
+### Notas
+
+- mariachi en su bump correspondiente quito el bind mount de SIEEJ, el `location /sieej` de su `nginx/conf.d/mariachi.conf` y la variable `SIEEJ_DIST_PATH` de su `.env.production`. Su `SIEEJ_ONTOY_URL` ahora apunta a `gateway-hub-nginx-1`.
+- sieej (repo) actualizo su documentacion (`README.md`, `docs/gateway.md`, `docs/context.md`, `docs/frontend.md`, `docs/analytics.md`, `Makefile`) para reflejar el nuevo origen del dist.
+
+---
+
 ## [1.23.0] - 2026-04-28
 
 `gateway-hub` ahora orquesta el ecosistema completo en local con `make local-up` y `make local-down`. Endpoint `/ontoy` propio. Cuatro bug fixes de routing detras del gateway.
