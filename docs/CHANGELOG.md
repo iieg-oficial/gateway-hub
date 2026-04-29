@@ -12,6 +12,14 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.24.6] - 2026-04-29
+
+### Changed
+
+- **`location = /acervo/ontoy`** actualizado al `static_version` de acervo 1.19.0 (bucket `mariachi` + flag `--rotate` en `init-buckets.sh`). Sin cambios en la logica.
+
+---
+
 ## [1.24.5] - 2026-04-29
 
 ### Agregado
