@@ -3,7 +3,7 @@
 Inventario de hardware y uso de recursos por entorno. Referencia para dimensionar
 configuraciones de workers, pools, cache y limites.
 
-> Ultima actualizacion: 2026-04-14
+> Ultima actualizacion: 2026-05-06
 
 ## GCP — Staging (1 servidor)
 
@@ -92,10 +92,10 @@ de monitoreo consumen muy poco.
 | Recurso | Valor |
 |---------|-------|
 | Hostname | S2 (MapaLab) |
-| CPU | 4 cores |
-| RAM | 7.7 GB |
-| Disco | 96 GB (22% usado) |
-| Swap | 3.7 GB (307 MB usados) |
+| CPU | 8 cores |
+| RAM | 15 GB |
+| Disco | 96 GB (24% usado) |
+| Swap | 3.7 GB (106 MB usados) |
 | OS | Ubuntu 24.04.4 LTS |
 | Kernel | 6.8.0-100-generic |
 
@@ -103,12 +103,12 @@ de monitoreo consumen muy poco.
 
 | Contenedor | RAM | % del total |
 |------------|-----|-------------|
-| mapalab-backend-1 | 254 MB | 3.2% |
-| mapalab-nginx-1 | 6 MB | 0.08% |
-| **Total estimado** | **~260 MB** | **~3.3%** |
+| mapalab-backend-1 | 573 MB | 3.6% |
+| mapalab-nginx-1 | 14 MB | 0.09% |
+| **Total estimado** | **~587 MB** | **~3.7%** |
 
-**Nota:** Server con amplio margen. Con 8 workers de Gunicorn (~50 MB cada uno = ~400 MB total),
-el uso estimado sube a ~450 MB — aun muy holgado.
+**Nota:** Server con amplio margen. Con 8 workers de Gunicorn (~70 MB cada uno = ~560 MB total),
+el uso estimado se mantiene en ~600 MB — aun muy holgado con 15 GB disponibles.
 
 ### S3: GeoServer
 
@@ -166,7 +166,7 @@ potenciales de MapaLab, tiene margen de 72 conexiones para otros servicios (GeoS
 
 ## Configuracion final por entorno
 
-### Produccion (4 cores en MapaLab)
+### Produccion (8 cores en MapaLab)
 
 | Componente | Valor |
 |-----------|-------|
@@ -203,9 +203,9 @@ Workers y pool son configurables via variables de entorno (`GUNICORN_WORKERS`, `
 │                                                                     │
 │  S1: Gateway+Huachicol+Acervo    S2: MapaLab                       │
 │  ┌───────────────────────────┐   ┌───────────────────────────┐     │
-│  │ 8 cores  ·  15 GB RAM    │   │ 4 cores  ·  7.7 GB RAM   │     │
+│  │ 8 cores  ·  15 GB RAM    │   │ 8 cores  ·  15 GB RAM    │     │
 │  │ 637 GB disco             │   │ 96 GB disco              │     │
-│  │ Uso: ~525 MB (3.4%)      │   │ Uso: ~260 MB (3.3%)      │     │
+│  │ Uso: ~525 MB (3.4%)      │   │ Uso: ~587 MB (3.7%)      │     │
 │  └───────────────────────────┘   └───────────────────────────┘     │
 │                                                                     │
 │  S3: GeoServer                   S4: DataEngine                     │
@@ -215,7 +215,7 @@ Workers y pool son configurables via variables de entorno (`GUNICORN_WORKERS`, `
 │  │ Uso: ~1.4 GB (8.8%)      │   │ Uso: ~676 MB (8.6%)      │     │
 │  └───────────────────────────┘   └───────────────────────────┘     │
 │                                                                     │
-│              Total: 24 cores  ·  46 GB RAM  ·  1.7 TB disco        │
+│              Total: 28 cores  ·  53 GB RAM  ·  1.7 TB disco        │
 └─────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────┐
