@@ -12,6 +12,14 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.24.9] - 2026-05-12
+
+### Fixed
+
+- **`nginx/includes/geoserver-locations.inc`**: la directiva `valid_referers server_names *.$host $host localhost;` en los 3 bloques (`/geoserver/ows`, `/geoserver/(wfs|wcs)`, `/geoserver/[^/]+/(wfs|wcs)`) no expandia `$host` (limitacion documentada de nginx: las variables no se evaluan en `valid_referers`, solo `server_names` y literales). Reemplazada por validacion dinamica via `if + capture`: extrae el host del Referer con regex, lo compara contra `$host` (que si se expande en contexto `if =`), y permite tambien `localhost` y Referer vacio. Mantiene proteccion CSRF (cross-origin sigue dando 403), sin hardcodear hosts/IPs por entorno. Habilita WFS `DescribeFeatureType` desde el frontend cuando se accede por dominios no listados en `server_name` (ej. acceso por IP en staging).
+
+---
+
 ## [1.24.8] - 2026-04-29
 
 ### Changed

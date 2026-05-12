@@ -24,8 +24,13 @@ location ^~ /geoserver/j_spring_security {
 
 location ^~ /geoserver/ {
     location ~ ^/geoserver/ows {
-        valid_referers server_names *.$host $host localhost;
-        if ($invalid_referer) {
+        set $referer_host "";
+        if ($http_referer ~* "^https?://([^/:]+)") { set $referer_host $1; }
+        set $valid_referer 0;
+        if ($http_referer = "")           { set $valid_referer 1; }
+        if ($referer_host = $host)        { set $valid_referer 1; }
+        if ($referer_host = "localhost")  { set $valid_referer 1; }
+        if ($valid_referer = 0) {
             return 403;
         }
 
@@ -59,8 +64,13 @@ location ^~ /geoserver/ {
     }
 
     location ~ ^/geoserver/(wfs|wcs) {
-        valid_referers server_names *.$host $host localhost;
-        if ($invalid_referer) {
+        set $referer_host "";
+        if ($http_referer ~* "^https?://([^/:]+)") { set $referer_host $1; }
+        set $valid_referer 0;
+        if ($http_referer = "")           { set $valid_referer 1; }
+        if ($referer_host = $host)        { set $valid_referer 1; }
+        if ($referer_host = "localhost")  { set $valid_referer 1; }
+        if ($valid_referer = 0) {
             return 403;
         }
 
@@ -98,8 +108,13 @@ location ^~ /geoserver/ {
     }
 
     location ~ ^/geoserver/[^/]+/(wfs|wcs) {
-        valid_referers server_names *.$host $host localhost;
-        if ($invalid_referer) {
+        set $referer_host "";
+        if ($http_referer ~* "^https?://([^/:]+)") { set $referer_host $1; }
+        set $valid_referer 0;
+        if ($http_referer = "")           { set $valid_referer 1; }
+        if ($referer_host = $host)        { set $valid_referer 1; }
+        if ($referer_host = "localhost")  { set $valid_referer 1; }
+        if ($valid_referer = 0) {
             return 403;
         }
 
