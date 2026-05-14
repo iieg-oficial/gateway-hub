@@ -26,12 +26,6 @@ upstream acervo {
     keepalive_timeout 60s;
 }
 
-upstream acervo_console {
-    server ${ACERVO_CONSOLE_HOST};
-    keepalive 32;
-    keepalive_timeout 60s;
-}
-
 upstream mariachi {
     server ${MARIACHI_HOST};
     keepalive 32;
@@ -214,24 +208,6 @@ server {
         proxy_read_timeout 120s;
         proxy_send_timeout 120s;
         add_header X-Robots-Tag $seo_robots;
-    }
-
-    location ^~ /acervo/console/static/ {
-        limit_req zone=general burst=20 nodelay;
-        proxy_pass http://acervo_console/static/;
-        include /etc/nginx/includes/proxy-params.inc;
-    }
-
-    location ^~ /acervo/console/ {
-        limit_req zone=general burst=1000 nodelay;
-        proxy_hide_header Content-Security-Policy;
-        sub_filter "script-src 'self'" "script-src 'self' 'unsafe-inline' 'unsafe-eval'";
-        sub_filter_once on;
-        proxy_pass http://acervo_console/;
-        include /etc/nginx/includes/proxy-params.inc;
-        proxy_set_header Accept-Encoding "";
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
     }
 
     location ^~ /acervo/ {

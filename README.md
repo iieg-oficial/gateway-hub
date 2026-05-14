@@ -1,6 +1,6 @@
 # Gateway Hub
 
-**Versionado:** rolling (sin tags/CHANGELOG formales). Estado actual y ultimos cambios relevantes en [`docs/context.md`](docs/context.md) y [`docs/ecosystem.md`](docs/ecosystem.md).
+**Version:** ver [`VERSION`](VERSION) y [`docs/CHANGELOG.md`](docs/CHANGELOG.md). El versionado del repo es independiente del de Nginx.
 
 Proxy inverso central y terminador SSL/TLS de la infraestructura del IIEG Jalisco.
 Punto unico de entrada para todos los servicios publicos e internos.
@@ -37,6 +37,10 @@ docker compose up -d --build
 docker compose up -d --build
 ```
 
+El `Makefile` ofrece `make up/down/restart/logs/ps` para el gateway y los targets
+`local-up/local-down/local-restart/local-status` para levantar todo el ecosistema
+IIEG en orden topologico desde un solo comando.
+
 ## Variables de entorno
 
 Ver `.env.example` para la referencia completa. Las variables principales:
@@ -44,81 +48,105 @@ Ver `.env.example` para la referencia completa. Las variables principales:
 | Variable | Descripcion |
 |----------|-------------|
 | `APP_DOMAIN` | Dominio/IP publico del gateway |
-| `GTM_ID` | ID de Google Tag Manager (opcional) |
-| `SSL_CERTIFICATE` | Ruta al certificado SSL |
-| `SSL_CERTIFICATE_KEY` | Ruta a la llave privada |
-| `PORTAL_HOST` | Host del Portal |
+| `GTM_ID` | ID de Google Tag Manager (opcional; si esta vacio no se inyecta) |
+| `SSL_CERTIFICATE` | Ruta al certificado SSL dentro del contenedor |
+| `SSL_CERTIFICATE_KEY` | Ruta a la llave privada dentro del contenedor |
+| `SSL_VOLUME_PATH` | Mapeo de volumen `host:contenedor:ro` para los certificados |
+| `PORTAL_HOST` | Host del Portal (apunta al nginx de MARIACHI) |
 | `MAPALAB_HOST` | Host de MapaLab |
-| `ACERVO_HOST` | Host de Acervo (MinIO API) |
+| `ACERVO_HOST` | Host de Acervo (API S3 de SeaweedFS) |
+| `MARIACHI_HOST` | Host de MARIACHI |
 | `GEOSERVER_HOST` | Host de GeoServer |
 | `HUACHICOL_HOST` | Host de Grafana |
-| `LOKI_URL` | Endpoint de Loki |
+| `SIEEJ_DIST_PATH` | Ruta host al `dist/` de SIEEJ que se monta como estatico (default `../sieej/frontend/dist`) |
+| `LOKI_URL` | Endpoint de Loki para Promtail |
 | `SEO_ENABLED` | `true` en produccion (robots.txt, sitemap, sin noindex). `false` en staging/dev (bloquea indexacion) |
+
+> Acervo migro de MinIO a SeaweedFS, que no expone consola web: el `upstream
+> acervo_console`, las rutas `/acervo/console/` y la variable `ACERVO_CONSOLE_HOST`
+> se retiraron del gateway. La administracion de archivos se hace por `mc`/CLI.
 
 ## Servicios (contenedores)
 
 | Servicio | Funcion |
 |----------|---------|
 | `nginx` | Proxy inverso principal (puertos 80, 443) |
-| `nginx-exporter` | Metricas Prometheus via /stub_status |
+| `nginx-exporter` | Metricas Prometheus via `/stub_status` |
 | `promtail` | Reenvio de logs JSON a Loki |
 
 ## Enrutamiento
 
-| Ruta | Upstream | Acceso |
-|------|----------|--------|
-| `/` | Portal | Publico |
-| `/api/` | Portal | Publico |
+| Ruta | Upstream / Destino | Acceso |
+|------|--------------------|--------|
+| `/` | redirige (302) a `/mapalab/` | Publico |
+| `location /` | Portal (MARIACHI) | Publico |
+| `/api/` | Portal (MARIACHI) | Publico |
+| `/administrador/` | Portal (MARIACHI) | Publico |
 | `/mapalab/` | MapaLab | Publico |
-| `/acervo/` | Acervo (MinIO) | Publico |
-| `/acervo/console/` | MinIO Console | Auth propia |
-| `/geoserver/ows` | GeoServer OGC | Publico (con restricciones) |
-| `/geoserver/web/` | GeoServer Admin | Auth propia |
+| `/mapalab/assets/` | MapaLab | Publico (cache gateway) |
+| `/mapalab/api/download/` | MapaLab | Publico (streaming) |
+| `/mapalab/api/layers/refresh-cache` | — | Bloqueado (403) |
+| `/mapalab/api/layers/invalidate-cache` | — | Bloqueado (403) |
+| `/acervo/` | Acervo (SeaweedFS S3) | Publico |
 | `/mariachi/` | MARIACHI | Auth propia |
+| `/sieej/` | Estatico (`dist/` montado) | Publico |
 | `/huachicol/` | Grafana | Auth propia |
+| `/huachicol/public/` | Grafana | Publico (dashboards publicos) |
+| `/geoserver/ows`, `/wfs`, `/wcs`, `/{ws}/wfs`, `/{ws}/wcs` | GeoServer OGC | Publico (con restricciones) |
+| `/geoserver/web`, `/rest`, `/j_spring_security` | GeoServer Admin | Auth propia |
+| `/ontoy`, `/geoserver/ontoy`, `/acervo/ontoy`, `/sieej/ontoy` | JSON de version | Publico |
+| `/robots.txt`, `/sitemap.xml`, `/.well-known/` | Estatico | Publico |
 
 ## Estructura del proyecto
 
 ```
 gateway-hub/
 ├── docker-compose.yml
-├── Dockerfile
+├── Dockerfile                    # nginx:1.28.2-alpine + entrypoint con envsubst
+├── Makefile                      # gateway + orquestacion del ecosistema
+├── VERSION
 ├── .env.example
-├── certs/                      # Certificados SSL (self-signed en dev)
+├── certs/                        # Certificados SSL (self-signed en dev)
 ├── nginx/
-│   ├── nginx.conf              # Configuracion principal
+│   ├── nginx.conf                # Configuracion principal (zonas, cache, logs)
+│   ├── version.json              # Payload de /ontoy
 │   ├── templates/
-│   │   └── gateway.conf.template
+│   │   └── gateway.conf.template # Server block principal (envsubst)
 │   ├── conf.d/
 │   │   └── geoserver-upstream.conf.template
-│   ├── includes/               # Modulos reutilizables (.inc)
-│   ├── error-pages/            # Paginas de error personalizadas
-│   └── static/                 # robots.txt, sitemap.xml
+│   ├── includes/                 # Modulos reutilizables (.inc / .inc.template)
+│   ├── error-pages/              # Paginas de error personalizadas
+│   └── static/                   # robots.txt, sitemap.xml, .well-known/
 ├── promtail/
 │   └── promtail-config.yml
+├── scripts/                      # check-model-drift, setup-swap, stress tests
 └── docs/
 ```
 
 ## Stack
 
-- **Proxy:** Nginx 1.28 (Alpine)
+- **Proxy:** Nginx 1.28.2 (Alpine)
 - **Monitoreo:** Prometheus (nginx-exporter) + Promtail → Loki
 - **SSL:** TLSv1.2/1.3, HSTS, OCSP Stapling
-- **Seguridad:** CSP, X-XSS-Protection, bot protection (scrapers, IA crawlers, herramientas CLI)
-- **Red:** `iieg-network` (compartida con todos los servicios IIEG)
+- **Seguridad:** CSP, 9 headers de seguridad, bot protection (scrapers, crawlers IA, herramientas CLI)
+- **Red:** `iieg-network` (externa, compartida con todos los servicios IIEG)
 
 ## Documentacion
 
 | Documento | Descripcion |
 |-----------|-------------|
 | [Contexto del proyecto](docs/context.md) | Referencia completa: arquitectura, enrutamiento, seguridad |
+| [Ecosistema IIEG](docs/ecosystem.md) | Vista transversal: flujos cruzados, acoplamientos, deuda coordinada |
+| [CHANGELOG](docs/CHANGELOG.md) | Historial de cambios del repo |
 | [Paginas de error](docs/error-pages.md) | Paginas de error personalizadas del gateway |
 | [Rendimiento](docs/rendimiento.md) | Rate limiting, cache, capacidades y limites |
 | [Recursos de servidores](docs/recursos-servidores.md) | Hardware, memoria y configuracion por entorno |
 | [Auditoria de seguridad](docs/auditoria-seguridad.md) | Comparativa de seguridad web: sitio anterior vs actual |
-| [Pendiente: Upgrade MapaLab](docs/pendientes/upgrade-mapalab-8cores.md) | Pasos a seguir cuando S2 suba a 8 cores / 16 GB |
-| [SSH Deploy Keys](docs/ssh-deploy-keys.md) | Configuracion de llaves SSH para despliegue |
 | [Arquitectura](docs/arquitectura.mmd) | Diagrama de arquitectura (Mermaid) |
+| [SSH Deploy Keys](docs/ssh-deploy-keys.md) | Configuracion de llaves SSH para despliegue |
+| [Proyecto Minerva](docs/minerva.md) | Propuesta de SSO/IAM centralizado (Authentik) para el ecosistema |
+| [Pendiente: Upgrade MapaLab](docs/pendientes/upgrade-mapalab-8cores.md) | Pasos cuando S2 suba a 8 cores / 16 GB |
+| [Pendiente: Checklist produccion GCP](docs/pendientes/checklist-produccion-gcp.md) | Validacion y pendientes del despliegue en GCP |
 
 ## Licencia
 

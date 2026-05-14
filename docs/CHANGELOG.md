@@ -12,6 +12,15 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.24.10] - 2026-05-14
+
+### Removed
+
+- **`nginx/templates/gateway.conf.template`**: eliminados el `upstream acervo_console` y los `location ^~ /acervo/console/static/` y `^~ /acervo/console/`. Acervo migro de MinIO a SeaweedFS, cuya Filer UI no tiene autenticacion propia y no debe exponerse sin una capa de auth; la administracion de archivos se hace por `mc`/CLI con credenciales admin. nginx fallaba al arrancar (`host not found in upstream "acervo-minio:9001"`) porque el contenedor MinIO ya no existe.
+- **`.env.example`, `docker-compose.yml`, `Dockerfile`**: retirada la variable `ACERVO_CONSOLE_HOST`, ya sin uso tras eliminar el upstream.
+
+---
+
 ## [1.24.9] - 2026-05-12
 
 ### Fixed
