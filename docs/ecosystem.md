@@ -1,10 +1,10 @@
 # Ecosistema IIEG - Vista Transversal
 
-> Documento de referencia cruzada entre los cuatro proyectos que componen la infraestructura IIEG: `gateway-hub`, `mapalab`, `mariachi` y `mapalab-dataengine`.
+> Documento de referencia cruzada entre los cuatro proyectos que componen la infraestructura IIEG: `gateway-hub`, `mapalab`, `mariachi` y `dataengine`.
 >
 > Este archivo NO reemplaza los `docs/context.md` de cada repo — los complementa. Cada repo documenta lo suyo; este documento documenta lo que **solo se ve cuando se miran juntos**: flujos cruzados, acoplamientos, decisiones arquitectonicas compartidas y deuda tecnica coordinada.
 >
-> Ultima actualizacion: 2026-04-23
+> Ultima actualizacion: 2026-05-14
 
 ---
 
@@ -17,9 +17,9 @@ Los cuatro repos son:
 | `gateway-hub` | Proxy inverso + SSL + cache + rate limiting + SEO | `gateway-hub/docs/context.md` |
 | `mapalab` | Visor publico de mapas (frontend + backend FastAPI) | `mapalab/docs/context.md` |
 | `mariachi` | CMS del portal + admin de capas + emisor de auth | `mariachi/docs/context.md` |
-| `mapalab-dataengine` | PostgreSQL 18 + PostGIS 3.6 + cron jobs de refresh | `mapalab-dataengine/docs/context.md` |
+| `dataengine` | PostgreSQL 18 + PostGIS 3.6 + cron jobs de refresh | `dataengine/docs/context.md` |
 
-Servicios adicionales que aparecen en el ecosistema pero no son repos hermanos: **GeoServer** (externo, kartoza 2.27.0), **Acervo** (MinIO), **Huachicol** (Grafana + Prometheus + Loki + Tempo), **IGIBot** (K3s, no pasa por gateway).
+Servicios adicionales que aparecen en el ecosistema pero no son repos hermanos: **GeoServer** (externo, kartoza 2.27.0), **Acervo** (SeaweedFS, almacenamiento S3-compatible — migrado desde MinIO), **SIEEJ** (frontend estatico servido por el gateway; backend en `mariachi/api`), **Huachicol** (Grafana + Prometheus + Loki + Alloy), **IGIBot** (K3s, no pasa por gateway).
 
 ---
 
@@ -32,7 +32,7 @@ Servicios adicionales que aparecen en el ecosistema pero no son repos hermanos: 
 | S1 | 8c | 15 GB | 637 GB | gateway-hub + Huachicol + Acervo |
 | S2 | 4c | 7.7 GB | 96 GB | mapalab (nginx + backend) |
 | S3 | 8c | 15 GB | 490 GB | GeoServer |
-| S4 | 4c | 7.7 GB | 490 GB | mapalab-dataengine (Postgres + jobs) |
+| S4 | 4c | 7.7 GB | 490 GB | dataengine (Postgres + jobs) |
 
 Detalles completos en `gateway-hub/docs/recursos-servidores.md`.
 
@@ -51,19 +51,20 @@ gateway-hub (Nginx, S1)
    +-- /administrador/     --> admin mariachi (CMS)
    +-- /mapalab/           --> mapalab-nginx --> mapalab-backend
    +-- /mapalab/api/       --> mapalab-backend (via mapalab-nginx)
-   +-- /acervo/            --> Acervo MinIO API
-   +-- /acervo/console/    --> Acervo MinIO Console
-   +-- /mariachi/          --> Analytics (VPN only)
+   +-- /acervo/            --> Acervo SeaweedFS (API S3)
+   +-- /sieej/             --> Frontend SIEEJ (estatico, dist/ montado en el gateway)
+   +-- /mariachi/          --> MARIACHI CMS/admin (VPN only)
    +-- /huachicol/         --> Grafana (VPN only)
+   +-- /huachicol/public/  --> Grafana dashboards publicos
    +-- /geoserver/ows      --> GeoServer WMS/WFS/WCS (cache 6h)
    +-- /geoserver/{ws}/wfs --> GeoServer WFS por workspace (no cache, timeout 600s)
    +-- /geoserver/{ws}/wcs --> GeoServer WCS por workspace
    +-- /geoserver/web|rest --> Admin GeoServer (auth propia)
 
-mariachi --(SQLAlchemy directo)--> mapalab-dataengine
-mapalab  --(SQLAlchemy directo)--> mapalab-dataengine
+mariachi --(SQLAlchemy directo)--> dataengine
+mapalab  --(SQLAlchemy directo)--> dataengine
 mariachi --(HTTP interno iieg-network)--> mapalab-backend
-GeoServer --(SQL)--> mapalab-dataengine
+GeoServer --(SQL)--> dataengine
 ```
 
 ---
@@ -129,7 +130,7 @@ Container `dataengine-jobs` (en S4) corre cron:
 | 04:00 | `run_refresh_layer_tree.py` | Reconstruye `mapalab.layer_tree_cache` desde `mapalab.layers` |
 | 04:30 | `run_refresh_layer_stats.py` | Ejecuta SQL de `stats_config`, guarda en `layer_stats.values` |
 
-Trigger manual desde `mapalab-dataengine`: `make refresh-all`.
+Trigger manual desde `dataengine`: `make refresh-all`.
 
 ---
 
@@ -233,7 +234,7 @@ Perfiles de riesgo opuestos:
 | Trafico | Publico, alto volumen | Interno, bajo volumen |
 | Auth | Ninguna (todo publico) | JWT + CSRF + cookies |
 | Workload tipico | CSV 600s, tiles WMS, metadatos | CRUDs cortos |
-| Deps | PostGIS, COPY streaming, httpx GeoServer | MinIO, Redis, bcrypt, Alembic multi-env |
+| Deps | PostGIS, COPY streaming, httpx GeoServer | S3/SeaweedFS, Redis, bcrypt, Alembic multi-env |
 | SLA esperado | Caida = sitio publico roto | Caida = editores esperan |
 
 Un merge significaria que un bug del CMS tira el visor, o un `COPY TO STDOUT` grande bloquea un worker que deberia atender admin. Tambien expande el attack surface publico.
@@ -255,7 +256,7 @@ Estos items aparecen en mas de un repo y requieren coordinacion.
 Para el deploy a produccion — donde mariachi aun no existe, el Sheet es la fuente de verdad, y dataengine esta en una version LTS anterior — hay un script que orquesta todo en una llamada:
 
 ```bash
-cd /home/egar/IIEG/mapalab-dataengine
+cd /IIEG/dataengine
 make prod-migration            # ETL Sheet + bootstrap + seed + migrate + stamp
 # Override del JSON de capas:
 make prod-migration PROD_MIGRATION_FLAGS="--layers-json /ruta/custom.json"
@@ -280,8 +281,8 @@ Que hace, en orden:
 
 ### 7.1. Drop `public.mapalab_card` (preparado 2026-04-23, ejecucion pendiente)
 
-- **Estado**: tabla viva en produccion como respaldo. MapaLab v1.7.0 ya no la lee. ETL Google Sheets eliminado. Herramienta de migracion idempotente preservada en `mapalab-dataengine/jobs/bootstrap/run_migrate_mapalab_card.py`.
-- **Script de validacion + drop**: `mapalab-dataengine/scripts/drop_mapalab_card_validation.sql`. Corre 4 checks (conteo comparativo, orfanos, sample de equivalencia, grep externo) antes del DROP, que queda comentado.
+- **Estado**: tabla viva en produccion como respaldo. MapaLab v1.7.0 ya no la lee. ETL Google Sheets eliminado. Herramienta de migracion idempotente preservada en `dataengine/jobs/bootstrap/run_migrate_mapalab_card.py`.
+- **Script de validacion + drop**: `dataengine/scripts/drop_mapalab_card_validation.sql`. Corre 4 checks (conteo comparativo, orfanos, sample de equivalencia, grep externo) antes del DROP, que queda comentado.
 - **Workflow para ejecucion**:
   1. `psql -f scripts/drop_mapalab_card_validation.sql` en produccion.
   2. Verificar que la seccion 2 (layer_keys sin layer_metadata) devuelve 0 filas.
@@ -301,7 +302,7 @@ Que hace, en orden:
 
 **Estado detectado**: DDL duplicado real.
 
-- `mapalab-dataengine/jobs/bootstrap/v14_schema.sql` (129 lineas, idempotente via `IF NOT EXISTS`)
+- `dataengine/jobs/bootstrap/v14_schema.sql` (129 lineas, idempotente via `IF NOT EXISTS`)
 - `mariachi/api/alembic/versions/dataengine/20260422_000[1-3]_*.py` (266 lineas, branch label `dataengine`)
 
 Ambos crean el mismo schema `mapalab.*`. Riesgo de divergencia al agregar columna/tabla.
@@ -322,7 +323,7 @@ Ambos crean el mismo schema `mapalab.*`. Riesgo de divergencia al agregar column
 - **Problema**: ambos repos definen SQLAlchemy models para las mismas tablas del schema `mapalab.*`. Drift silencioso si uno agrega o cambia columna.
 - **Fix aplicado**: `gateway-hub/scripts/check-model-drift.py`. Parsea ambos archivos con AST (sin importar ninguno de los backends — sin deps), extrae columnas de las tablas compartidas (`workspaces`, `layers`, `initial_layer_order`, `layer_metadata`, `layer_stats`) y reporta cualquier diferencia en nombre o firma (tipo, nullable, default). Exit 0 si alineados, 1 si hay drift.
 - **Hoy**: modelos alineados. Verificado con cambios artificiales de columna y de tipo.
-- **Uso local**: `gateway-hub/scripts/check-model-drift.py` (asume paths `/home/egar/IIEG/mapalab/...` y `/home/egar/IIEG/mariachi/...`; override con `--mapalab` / `--mariachi`).
+- **Uso local**: `gateway-hub/scripts/check-model-drift.py` (asume paths `/IIEG/mapalab/...` y `/IIEG/mariachi/...`; override con `--mapalab` / `--mariachi`).
 - **Pendiente**: integrar en CI de ambos repos como un step que hace checkout del otro repo y corre el script. No urgente — puede correrse manualmente pre-PR mientras tanto.
 - **Fix estructural opcional**: publicar un paquete Python `iieg-mapalab-schema` interno con los modelos y consumirlo como dep en ambos repos. Elimina la duplicacion en vez de solo detectarla.
 
@@ -339,7 +340,7 @@ Ambos crean el mismo schema `mapalab.*`. Riesgo de divergencia al agregar column
 - **DataEngine README** (verificado): README actual ya dice "dump semanal (domingos 02:00 UTC)" — alineado con crontab y CHANGELOG.
 - **DataEngine compose** (verificado): el mount `${BACKUP_DATA}/mapalab_card:/app/data/backups` ya no existe — se removio junto con el ETL legacy.
 - **Versionado visible**:
-  - `mapalab-dataengine/README.md`: ya tenia `**Version:** 1.5.0` ✓
+  - `dataengine/README.md`: ya tenia `**Version:** 1.5.0` ✓
   - `mariachi/README.md`: agregado `**Version:** 0.12.0` ✓
   - `gateway-hub/README.md`: versionado rolling (sin tags/CHANGELOG formal), README apunta a `docs/context.md` y `docs/ecosystem.md` para estado actual ✓
   - `mapalab/README.md`: auto-sync desde `package.json` via pre-commit hook (el patron original).
@@ -348,8 +349,8 @@ Ambos crean el mismo schema `mapalab.*`. Riesgo de divergencia al agregar column
 
 Eliminados del working tree (pendiente commit del usuario):
 
-- `mapalab-dataengine/postgres/replica/start-replica.sh`
-- `mapalab-dataengine/postgres/primary/init/02-init-replication.sh`
+- `dataengine/postgres/replica/start-replica.sh`
+- `dataengine/postgres/primary/init/02-init-replication.sh`
 
 ### 7.8. Version de PostgreSQL (verificado 2026-04-23)
 
@@ -372,7 +373,7 @@ Para detalles operativos (como correr, como desplegar, convenciones internas) ve
 | Editor de capas en mariachi (v1.4.0+) | `mariachi/docs/context.md` seccion 8 + 12 |
 | Rate limiting, cache, capacidades del gateway | `gateway-hub/docs/context.md` + `gateway-hub/docs/rendimiento.md` |
 | Recursos hardware por entorno | `gateway-hub/docs/recursos-servidores.md` |
-| Bootstrap v1.4 de MapaLab (seed + migracion) | `mapalab-dataengine/docs/context.md` + `scripts/bootstrap-v14.sh` |
+| Bootstrap v1.4 de MapaLab (seed + migracion) | `dataengine/docs/context.md` + `scripts/bootstrap-v14.sh` |
 | Credenciales DataEngine y multi-env Alembic | `mariachi/docs/DATAENGINE_CREDENTIALS.md` + `mariachi/docs/ALEMBIC_MULTI_ENV.md` |
 | Cookies, CSRF, modelo de seguridad | `mariachi/docs/COOKIES_CSRF.md` |
 | Arquitectura de capas MapaLab (jerarquia, CQL, time) | `mapalab/docs/layers.md` |
@@ -381,6 +382,13 @@ Para detalles operativos (como correr, como desplegar, convenciones internas) ve
 ---
 
 ## 9. Cambios recientes que afectan a mas de un repo
+
+### 2026-05-14
+
+- Acervo migro de **MinIO a SeaweedFS** (`acervo-seaweedfs:8333`, API S3-compatible). SeaweedFS no expone consola web, asi que el gateway retiro el upstream `acervo_console` y las rutas `/acervo/console/`. La administracion de archivos pasa a ser por CLI (`mc`/scripts).
+- Gateway: SIEEJ se sirve como **estatico** desde el gateway — el `dist/` del frontend se monta read-only (`SIEEJ_DIST_PATH`) y se expone en `/sieej/`. El backend de SIEEJ vive en `mariachi/api` (schema `sieej`).
+- Gateway: zona de rate limit dedicada `huachicol` (30 r/s) y ruta publica `/huachicol/public/` para dashboards abiertos de Grafana.
+- Gateway: endpoints `/ontoy` (gateway, geoserver, acervo, sieej) que devuelven JSON de version para el dashboard de plataformas de MARIACHI.
 
 ### 2026-04-23
 

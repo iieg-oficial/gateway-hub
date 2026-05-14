@@ -140,10 +140,6 @@ El sitio anterior tiene ranking global Tranco de ~2.1M-2.4M con tendencia descen
 (de 2,473,371 en marzo a 2,195,967 en abril 2026), lo cual indica una caida gradual de
 trafico hacia el dominio antiguo conforme los usuarios migran al nuevo.
 
-## Hallazgos que requieren accion externa
-
-Estos puntos no se pueden resolver desde gateway-hub:
-
 ## Proteccion contra bots
 
 Implementada en `nginx/includes/bot-protection.inc` y aplicada en todas las rutas publicas.
@@ -154,6 +150,8 @@ Ver `docs/rendimiento.md` para la lista completa de User-Agents bloqueados/permi
 ---
 
 ## Hallazgos que requieren accion externa
+
+Estos puntos no se pueden resolver desde gateway-hub:
 
 | Hallazgo | Responsable | Accion |
 |----------|-------------|--------|

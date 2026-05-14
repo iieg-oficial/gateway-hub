@@ -7,7 +7,7 @@ NETWORK_NAME := iieg-network
 REPOS_DIR := ..
 ACERVO_DIR := $(REPOS_DIR)/acervo
 HUACHICOL_DIR := $(REPOS_DIR)/huachicol
-DATAENGINE_DIR := $(REPOS_DIR)/mapalab-dataengine
+DATAENGINE_DIR := $(REPOS_DIR)/dataengine
 GEOSERVER_DIR := $(REPOS_DIR)/geoserver
 MARIACHI_DIR := $(REPOS_DIR)/mariachi
 MAPALAB_DIR := $(REPOS_DIR)/mapalab
@@ -62,7 +62,7 @@ local-up: network
 	@echo "[2/7] huachicol..."
 	@$(MAKE) -C $(HUACHICOL_DIR) start
 	@echo ""
-	@echo "[3/7] mapalab-dataengine..."
+	@echo "[3/7] dataengine..."
 	@$(MAKE) -C $(DATAENGINE_DIR) up
 	@echo ""
 	@echo "[4/7] geoserver..."
@@ -95,7 +95,7 @@ local-down:
 	-@cd $(MARIACHI_DIR) && docker compose $(MARIACHI_FILES) $(MARIACHI_ENV) down
 	@echo "Tumbando geoserver..."
 	-@cd $(GEOSERVER_DIR) && docker compose down
-	@echo "Tumbando mapalab-dataengine..."
+	@echo "Tumbando dataengine..."
 	-@$(MAKE) -C $(DATAENGINE_DIR) down
 	@echo "Tumbando huachicol..."
 	-@$(MAKE) -C $(HUACHICOL_DIR) stop

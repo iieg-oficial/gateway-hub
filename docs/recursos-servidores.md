@@ -27,7 +27,7 @@ Todos los servicios corren en una sola VM.
 | dataengine-primary | 422 MB | 5.3% | PostgreSQL + PostGIS |
 | mapalab-backend-1 | 234 MB | 2.9% | Gunicorn + Uvicorn |
 | prometheus | 157 MB | 15.4% | Limitado a 1 GB |
-| acervo-minio | 117 MB | 1.5% | MinIO S3 |
+| acervo-seaweedfs | 117 MB | 1.5% | SeaweedFS (S3-compatible) |
 | grafana | 112 MB | 21.8% | Limitado a 512 MB |
 | cadvisor | 127 MB | 49.6% | Limitado a 256 MB |
 | loki | 67 MB | 6.5% | Limitado a 1 GB |
@@ -73,7 +73,7 @@ Todos los servicios corren en una sola VM.
 | prometheus | 156 MB | 15.2% (limit 1 GB) |
 | cadvisor | 88 MB | 34.3% (limit 256 MB) |
 | grafana | 80 MB | 15.6% (limit 512 MB) |
-| acervo-minio | 70 MB | 0.4% |
+| acervo-seaweedfs | 70 MB | 0.4% |
 | loki | 38 MB | 3.7% (limit 1 GB) |
 | promtail | 26 MB | 0.2% |
 | gateway-hub-nginx-1 | 20 MB | 0.1% |

@@ -11,9 +11,10 @@ Usuario (navegador)
     ▼
 ┌─────────────────────────────────────────────────────────┐
 │  Gateway Hub (Nginx)                                     │
-│  ├─ Rate limiting por zona (general, api, static)        │
+│  ├─ Rate limiting por zona (general, api, static,        │
+│  │   huachicol, geoserver_download)                      │
 │  ├─ Cache de assets (mapalab_assets: 500MB, 7 dias)      │
-│  ├─ Cache GeoServer (geoserver_cache: 2GB, 12h)          │
+│  ├─ Cache GeoServer (geoserver_cache: 2GB, 6h TTL)       │
 │  └─ Paginas de error personalizadas (429, 500)           │
 └───────────────┬─────────────────────────────────────────┘
                 │
@@ -44,7 +45,9 @@ Usuario (navegador)
 
 ## Rate Limiting (Gateway Hub)
 
-El rate limiting se aplica por IP del cliente (`$binary_remote_addr`) con tres zonas diferenciadas.
+El rate limiting se aplica por IP del cliente (`$binary_remote_addr`) con cinco zonas
+diferenciadas. Cuatro se definen en `nginx.conf`; `geoserver_download` en
+`conf.d/geoserver-upstream.conf.template`.
 
 ### Zonas
 
@@ -53,18 +56,22 @@ El rate limiting se aplica por IP del cliente (`$binary_remote_addr`) con tres z
 | `general` | 10 r/s | Navegacion, paginas HTML, rutas generales |
 | `api` | 10 r/s | Endpoints de API, descargas |
 | `static` | 50 r/s | Assets estaticos de SPAs (JS, CSS, fuentes) |
+| `huachicol` | 30 r/s | Grafana (`/huachicol/`) |
+| `geoserver_download` | 10 r/s | Servicios OGC de GeoServer (`/ows`, `/wfs`, `/wcs`) |
 
 ### Burst por ruta
 
 | Ruta | Zona | Burst | Justificacion |
 |------|------|-------|---------------|
 | `/mapalab/assets/` | static | 200 | SPA carga ~25 assets en paralelo al abrir |
+| `/sieej/` | static | 200 | SPA estatica servida desde el gateway |
 | `/mapalab/` | general | 150 | Navegacion entre secciones de la SPA |
 | `/mapalab/api/download/` | api | 5 | Descargas pesadas, limitar concurrencia |
 | `/api/` (Portal) | api | 20 | API general |
 | `/acervo/` | api | 100 | Uploads/downloads de archivos grandes |
-| `/geoserver/` (OGC) | geoserver | 10 | Servicios WMS/WFS/WCS |
-| Demas rutas | general | 20 | Default |
+| `/huachicol/` | huachicol | 200 | Grafana (dashboards, websockets) |
+| `/geoserver/ows`, `/wfs`, `/wcs` | geoserver_download | 10 | Servicios WMS/WFS/WCS |
+| `/`, `/administrador/`, `/mariachi/`, GeoServer admin | general | 20 | Default |
 
 ### Respuesta al exceso (HTTP 429)
 
@@ -108,8 +115,9 @@ API, descargas). GeoServer tiene su propia proteccion en `geoserver-locations.in
 | `/mapalab/` | Si |
 | `/mapalab/api/download/` | Si |
 | `/mapalab/assets/` | No (assets estaticos cacheados, no importa quien los pida) |
-| `/acervo/console/` | No (auth propia) |
-| `/geoserver/ows` | Proteccion propia (mas estricta, incluye validacion de Referer) |
+| `/sieej/` | No (estatico servido desde el gateway) |
+| `/acervo/` | No (API S3) |
+| `/geoserver/ows`, `/wfs`, `/wcs` | Proteccion propia (mas estricta, incluye validacion de Referer) |
 | `/huachicol/` | No (auth propia) |
 | `/mariachi/` | No (auth propia) |
 

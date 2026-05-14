@@ -112,7 +112,6 @@ del frontend de SIEEJ se sirve directamente como estatico.
 | `PORTAL_HOST` | `mariachi-nginx:80` | Host del Portal — apunta al nginx de MARIACHI (ver nota) |
 | `MAPALAB_HOST` | `mapalab-nginx-1:80` | Host de MapaLab (nginx interno) |
 | `ACERVO_HOST` | `acervo-seaweedfs:8333` | Host de Acervo (API S3 de SeaweedFS) |
-| `ACERVO_CONSOLE_HOST` | `acervo-minio:9001` | **Sin uso.** Quedo de la era MinIO; SeaweedFS no tiene consola |
 | `MARIACHI_HOST` | `mariachi-nginx:80` | Host de MARIACHI |
 | `GEOSERVER_HOST` | `host.docker.internal:8080` | Host de GeoServer |
 | `HUACHICOL_HOST` | `grafana:3000` | Host de Grafana (Huachicol) |
@@ -123,6 +122,11 @@ del frontend de SIEEJ se sirve directamente como estatico.
 **Nota sobre `PORTAL_HOST`:** el upstream se llama `portal` por motivos historicos, pero
 apunta al nginx de MARIACHI. MARIACHI es el CMS/admin que tambien sirve el portal publico
 del IIEG. El rename portal → mariachi quedo a medias intencionalmente (ver `ecosystem.md`).
+
+> En la version 1.24.10 se elimino la consola web de Acervo (`upstream acervo_console`,
+> rutas `/acervo/console/` y la variable `ACERVO_CONSOLE_HOST`): Acervo migro de MinIO a
+> SeaweedFS y su Filer UI no tiene auth propia, asi que no se expone por el gateway. La
+> administracion de archivos se hace por `mc`/CLI.
 
 ---
 
@@ -301,15 +305,11 @@ ejecuta en orden:
 2. **Procesa los templates de `conf.d/`** (`geoserver-upstream.conf.template`) con `envsubst`
    sustituyendo `${GEOSERVER_HOST}` → escribe en `/etc/nginx/conf.d/`.
 3. **Genera `gateway.conf`** desde `gateway.conf.template` con `envsubst` sobre todas las
-   variables (`PORTAL_HOST`, `MAPALAB_HOST`, `ACERVO_HOST`, `ACERVO_CONSOLE_HOST`,
-   `MARIACHI_HOST`, `GEOSERVER_HOST`, `HUACHICOL_HOST`, `APP_DOMAIN`, `SSL_*`, `GTM_ID`,
-   `SEO_ENABLED`).
+   variables (`PORTAL_HOST`, `MAPALAB_HOST`, `ACERVO_HOST`, `MARIACHI_HOST`,
+   `GEOSERVER_HOST`, `HUACHICOL_HOST`, `APP_DOMAIN`, `SSL_*`, `GTM_ID`, `SEO_ENABLED`).
 4. **Genera `gtm.inc`**: si `GTM_ID` tiene valor, procesa `gtm.inc.template`; si no, crea
    el include vacio.
 5. **Inicia Nginx** en foreground (`daemon off`).
-
-> El `envsubst` de `gateway.conf` aun lista `${ACERVO_CONSOLE_HOST}` aunque la ruta de la
-> consola ya no existe. Es inocuo (la variable no se referencia en el template actual).
 
 ---
 
@@ -344,7 +344,7 @@ Todos los proyectos viven en `/IIEG/` y comparten la red Docker externa `iieg-ne
 ### MapaLab (`/IIEG/mapalab/`)
 - **Ruta:** `/mapalab/`
 - **Stack:** React 19 (Vite) + FastAPI (Gunicorn/Uvicorn) + nginx interno. Datos en
-  PostgreSQL/PostGIS (mapalab-dataengine) y GeoServer.
+  PostgreSQL/PostGIS (dataengine) y GeoServer.
 - **Containers (staging/prod):** `mapalab-nginx`, `mapalab-backend`.
 - **Redes:** `mapalab-network` (interna) + `iieg-network`.
 
@@ -358,7 +358,7 @@ Todos los proyectos viven en `/IIEG/` y comparten la red Docker externa `iieg-ne
 - **Ruta:** `/geoserver/`
 - **Imagen:** `kartoza/geoserver:2.27.0` · **Container:** `geoserver` (`:8080`)
 - **Servicios OGC:** WMS, WFS, WCS. Plugins GeoPackage incluidos.
-- **Base de datos:** PostgreSQL/PostGIS (mapalab-dataengine).
+- **Base de datos:** PostgreSQL/PostGIS (dataengine).
 
 ### SIEEJ (`/IIEG/sieej/`)
 - **Ruta:** `/sieej/` — el gateway lo sirve como **estatico** desde el `dist/` montado.
@@ -373,7 +373,7 @@ Todos los proyectos viven en `/IIEG/` y comparten la red Docker externa `iieg-ne
   Node Exporter, cAdvisor, `nginx-auth` (auth proxy para Prometheus/Loki).
 - **Red:** `monitoring` (interna) + `iieg-network`. Retencion: 30 dias.
 
-### MapaLab DataEngine (`/IIEG/mapalab-dataengine/`)
+### MapaLab DataEngine (`/IIEG/dataengine/`)
 - **Stack:** PostgreSQL + PostGIS 3.6, PgBouncer (pooler), backups semanales a Acervo,
   container `jobs` con cron de refresh (periodicidad 03:00, layer_tree 04:00, stats 04:30 UTC).
 - **No pasa por el gateway** — acceso directo via `iieg-network` desde mapalab/mariachi/geoserver.
@@ -413,7 +413,7 @@ Internet / Usuarios
             v               v
       ┌──────────────────────┐
       │ PostgreSQL/PostGIS    │
-      │ (mapalab-dataengine)  │  <- acceso directo, no via gateway
+      │ (dataengine)  │  <- acceso directo, no via gateway
       └──────────────────────┘
 
   SIEEJ -> servido como estatico desde el propio gateway (dist/ montado)

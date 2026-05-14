@@ -15,7 +15,7 @@ DB_MAX_OVERFLOW=12
 
 ## 2. DataEngine — postgresql.conf
 
-Editar `/IIEG/mapalab-dataengine/postgres/primary/config/postgresql.conf`:
+Editar `/IIEG/dataengine/postgres/primary/config/postgresql.conf`:
 
 ```
 max_connections = 400
@@ -31,7 +31,7 @@ queda margen para GeoServer, backups y mapalab-card.
 cd /IIEG/mapalab && make deploy
 
 # En servidor DataEngine
-cd /IIEG/mapalab-dataengine && make restart
+cd /IIEG/dataengine && make restart
 ```
 
 ## 4. Validar
