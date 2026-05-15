@@ -12,6 +12,18 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.24.13] - 2026-05-15
+
+### Corregido tuning JVM de GeoServer: usar variables nativas de kartoza
+
+El enfoque inicial (1.24.12) recomendaba flags raw en `JAVA_OPTS`. Al aplicarlo en GCP staging fallo con `Invalid maximum heap size: -Xmx2g-XX:MaxMetaspaceSize=512m`: el script `scripts/entrypoint.sh` de la imagen `kartoza/geoserver` ya define `-Xms`/`-Xmx`/`-XX:+UseG1GC` en su bloque `GEOSERVER_OPTS` interno y luego concatena con nuestro `JAVA_OPTS`, produciendo doble definicion y parsing roto.
+
+#### Changed
+
+- **`docs/recursos-servidores.md`** (seccion "Tuning de la JVM de GeoServer"): reemplazada la recomendacion de `JAVA_OPTS="-Xms... -Xmx..."` por las variables nativas de kartoza: `INITIAL_MEMORY`, `MAXIMUM_MEMORY` y `ADDITIONAL_JAVA_STARTUP_OPTIONS`. Incluye tabla de mapeo a flags JVM, valores recomendados por entorno y advertencia explicita "no usar JAVA_OPTS raw — colisiona con GEOSERVER_OPTS". Espejo del cambio en el repo `geoserver` (1.20.0).
+
+---
+
 ## [1.24.12] - 2026-05-15
 
 ### Documentado tuning de JVM para GeoServer en `recursos-servidores.md`

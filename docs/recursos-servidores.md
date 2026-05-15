@@ -195,18 +195,33 @@ Workers y pool son configurables via variables de entorno (`GUNICORN_WORKERS`, `
 
 ### Tuning de la JVM de GeoServer (`.env` del repo `geoserver`)
 
-La imagen `kartoza/geoserver` no setea caps explicitos de heap ni Metaspace; sin `JAVA_OPTS`
-con `-Xmx` / `-XX:MaxMetaspaceSize` la JVM queda con defaults chicos que saturan rapido bajo
-carga raster (sintoma observado: Old gen >99 % en segundos, Metaspace al 99 %, concurrent GC
-robando CPU al render).
+Kartoza/geoserver ya define internamente `-Xms`, `-Xmx`, G1GC, Marlin renderer y encoding via
+su `GEOSERVER_OPTS`. Meter flags raw en `JAVA_OPTS` causa **doble definicion** (dos `-Xmx`,
+dos `+UseG1GC`) y un parsing roto al concatenar JAVA_OPTS + GEOSERVER_OPTS: el JVM termino
+recibiendo `-Xmx2g-XX:MaxMetaspaceSize=512m` glued sin espacio y fallaba con
+"Invalid maximum heap size" (observado en GCP staging 2026-05-15).
 
-| Entorno | JAVA_OPTS recomendado | Racional |
-|---------|-----------------------|----------|
-| **GCP Staging** (2c/8GB, VM compartida) | `-Dfile.encoding=UTF-8 -Dsun.jnu.encoding=UTF-8 -Xms1g -Xmx2g -XX:MaxMetaspaceSize=512m -XX:+UseG1GC` | Heap conservador para no asfixiar a PostGIS/Mariachi en la misma VM. Cap explicito previene `OOM: Metaspace`. |
-| **S3 Produccion** (8c/15GB, dedicado a GeoServer) | `-Dfile.encoding=UTF-8 -Dsun.jnu.encoding=UTF-8 -Xms2g -Xmx8g -XX:MaxMetaspaceSize=1g -XX:+UseG1GC` | Heap a 8 GB de los 15 disponibles. Deja ~7 GB para page cache del kernel (donde el OS cachea GeoTIFFs leidos), acelerando rendering raster sostenido. |
+La forma correcta es usar las **variables nativas de kartoza**, no `JAVA_OPTS` raw:
+
+| Variable | Equivalente JVM | Default kartoza |
+|---|---|---|
+| `INITIAL_MEMORY` | `-Xms` | `2G` |
+| `MAXIMUM_MEMORY` | `-Xmx` | `4G` |
+| `INITIAL_HEAP_OCCUPANCY_PERCENT` | `-XX:InitiatingHeapOccupancyPercent` | `45` |
+| `ADDITIONAL_JAVA_STARTUP_OPTIONS` | flags extras al final | (vacio) |
+
+G1GC y Marlin ya estan activos por default; no hace falta repetirlos. `-XX:MaxMetaspaceSize`
+**si** hay que agregarlo (kartoza no lo setea) — va en `ADDITIONAL_JAVA_STARTUP_OPTIONS`.
+
+| Entorno | Configuracion recomendada | Racional |
+|---------|---------------------------|----------|
+| **Local / GCP Staging** (2c/8GB, VM compartida) | `INITIAL_MEMORY=1G`<br>`MAXIMUM_MEMORY=2G`<br>`ADDITIONAL_JAVA_STARTUP_OPTIONS=-XX:MaxMetaspaceSize=512m` | Heap conservador para no asfixiar a PostGIS/Mariachi en la misma VM. Cap explicito de Metaspace previene `OOM: Metaspace`. |
+| **S3 Produccion** (8c/15GB, dedicado a GeoServer) | `INITIAL_MEMORY=2G`<br>`MAXIMUM_MEMORY=8G`<br>`ADDITIONAL_JAVA_STARTUP_OPTIONS=-XX:MaxMetaspaceSize=1g` | Heap a 8 GB de los 15 disponibles. Deja ~7 GB para page cache del kernel donde el OS cachea GeoTIFFs leidos. |
 
 Aplicar via `.env` en cada host y `docker compose up -d` del contenedor de GeoServer. El
-`.env.example` del repo `geoserver` lleva la version conservadora como default seguro.
+`.env.example` del repo `geoserver` lleva los valores conservadores como default seguro.
+
+**No usar** `JAVA_OPTS="-Xms... -Xmx..."` directo — colisiona con `GEOSERVER_OPTS`.
 
 Validacion post-cambio:
 
