@@ -12,6 +12,51 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.24.20] - 2026-05-15
+
+### `make up` deja de rebuildear; nuevo `make deploy` para cambios reales
+
+Refinamiento del refactor anterior. En `1.24.19` agregue `--build` al `make up` para resolver un drift entre VERSION en disco y el container en runtime. Pero eso forzaba un build cada vez que se levantaba el gateway, aunque no hubiera cambios — incoherente con el patron del resto del ecosistema (`mariachi`, `mapalab`, `acervo`, `sitio2026`: `up` sin build, `deploy` con build).
+
+#### Cambiado
+
+- **`Makefile`**:
+  - `up`: vuelve a `docker compose up -d` (sin `--build`). Rapido, usa la imagen actual.
+  - `deploy` (NUEVO): `docker compose up -d --build`. Mismo verbo y comportamiento que `mariachi`/`mapalab`. Usar tras cambios en `nginx/templates/`, `includes/`, `error-pages/`, `Dockerfile`, etc.
+  - `build` (NUEVO): solo rebuildea la imagen sin tocar containers. Util en CI o para validar que el build no este roto.
+  - `ecosystem-up` paso `[8/8]` ahora invoca `$(MAKE) deploy` en lugar de `$(MAKE) up`. Asi el unico camino del orquestador que rebuildea son los tres servicios cuyo codigo/config puede cambiar entre runs: `mariachi deploy`, `mapalab deploy`, `gateway-hub deploy`. Los demas (`acervo`, `dataengine`, `geoserver`, `huachicol`) levantan con su imagen actual — coherente con el feedback "el restart NO debe rebuildear todo".
+- Help del Makefile documenta los tres verbos (`up` / `build` / `deploy`) y cuando usar cada uno.
+
+#### Notas
+
+- La consecuencia visible: `make ecosystem-restart` corre mas rapido en el caso comun (sin cambios). Solo paga el costo de build cuando realmente hay codigo/template nuevos en mariachi, mapalab o gateway-hub.
+- Si quieres forzar un rebuild de los demas servicios (acervo, dataengine, geoserver, huachicol), llamar `make build` de cada uno o usar `docker compose build` directo en su carpeta.
+
+---
+
+## [1.24.19] - 2026-05-15
+
+### Orquestador `ecosystem-up` reescrito y `make up` con auto-rebuild
+
+`make local-up` se renombro a `make ecosystem-up` (y simetricos `ecosystem-down`, `ecosystem-restart`, `ecosystem-status`) para que el nombre describa lo que hace. Se removieron bugs heredados de la era MinIO y se delego a los `make deploy` de los repos hijos en lugar de duplicar `docker compose` directo.
+
+#### Cambiado
+
+- **`Makefile`** (orquestador):
+  - `local-up` → `ecosystem-up`, `local-down` → `ecosystem-down`, `local-restart` → `ecosystem-restart`, `local-status` → `ecosystem-status`.
+  - Removida la linea `docker network connect $(NETWORK_NAME) acervo-minio 2>/dev/null || true` (el container `acervo-minio` ya no existe desde acervo 1.22.0; acervo-seaweedfs gestiona su red desde su propio compose).
+  - `mariachi` y `mapalab` ahora se invocan via `$(MAKE) -C <repo> deploy` en lugar de `docker compose ... up -d` directo. El comportamiento es el mismo (`.env.production` + build + up con profile staging para mapalab) pero el orquestador deja de duplicar conocimiento que ya vive en los Makefile hijos.
+  - `acervo` se invoca con `make up` (sin `ENV=prod`; ese parametro nunca existio en el Makefile de acervo).
+  - Header del help actualizado y se documentan explicitamente los servicios NO incluidos: `sitio2026` (corre con su propio `make up ENV=gcp`) y `minerva` (pendiente de integracion al ecosistema, se levanta manual).
+  - Numeracion de pasos corregida `[1/8] ... [8/8]`.
+- **`Makefile`** (`up:` del propio gateway-hub): agregado `--build` al `docker compose up -d`. Antes, levantar gateway sin un rebuild previo dejaba el contenedor con la imagen vieja del filesystem (visto hoy: el container reportaba `1.24.16` mientras `VERSION` en disco decia `1.24.18`). Con `--build`, cada `make up` regenera la imagen y aplica los cambios de nginx/templates, includes, error-pages, etc.
+
+#### Notas
+
+- El `make ecosystem-up` corrio end-to-end limpio en ~2:40 (cold cache parcial: builds frescos de mapalab-backend, mariachi-api, gateway-hub). Smoke test post-restart: gateway `/ontoy` reporta version correcta, mariachi → mapalab `/refresh-cache` con token responde 200 con 250 layers.
+
+---
+
 ## [1.24.18] - 2026-05-15
 
 ### Contrato del `MAPALAB_INTERNAL_TOKEN` documentado en `ecosystem.md`

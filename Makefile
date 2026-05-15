@@ -1,5 +1,5 @@
-.PHONY: help up down restart logs ps \
-        local-up local-down local-restart local-status \
+.PHONY: help up down restart deploy build logs ps \
+        ecosystem-up ecosystem-down ecosystem-restart ecosystem-status \
         network
 
 NETWORK_NAME := iieg-network
@@ -18,22 +18,28 @@ MARIACHI_ENV := --env-file .env.production
 MAPALAB_FILES := -f docker-compose.yml
 MAPALAB_ENV := --env-file .env.production
 GATEWAY_FILES := -f docker-compose.yml
-GATEWAY_ENV :=
 
 help:
 	@echo ""
 	@echo "  Gateway-hub (este repo):"
-	@echo "    up              Levantar gateway-hub (.env)"
-	@echo "    down            Tumbar gateway-hub"
-	@echo "    restart         Reiniciar gateway-hub"
-	@echo "    logs            Logs del gateway"
-	@echo "    ps              Status de gateway"
+	@echo "    up                  Levantar gateway-hub usando la imagen actual (rapido)"
+	@echo "    build               Solo rebuildear la imagen (sin levantar)"
+	@echo "    deploy              build + up (usar tras cambios en nginx config, templates, etc.)"
+	@echo "    down                Tumbar gateway-hub"
+	@echo "    restart             Reiniciar gateway-hub"
+	@echo "    logs                Logs del gateway"
+	@echo "    ps                  Status de gateway"
 	@echo ""
-	@echo "  Ecosistema completo (orden topologico):"
-	@echo "    local-up        Levantar todo el stack en local"
-	@echo "    local-down      Tumbar todo el stack local"
-	@echo "    local-restart   local-down + local-up"
-	@echo "    local-status    Ver estado de todos los compose projects"
+	@echo "  Ecosistema completo en modo production local (orden topologico):"
+	@echo "    ecosystem-up        Levantar acervo + huachicol + dataengine + geoserver"
+	@echo "                        + sieej dist + mariachi + mapalab + gateway-hub"
+	@echo "    ecosystem-down      Tumbar todo el stack"
+	@echo "    ecosystem-restart   ecosystem-down + ecosystem-up"
+	@echo "    ecosystem-status    docker compose ls (estado de cada compose project)"
+	@echo ""
+	@echo "  Servicios NO incluidos en ecosystem-up (levantar manualmente si se requiere):"
+	@echo "    - sitio2026 (cd ../sitio2026 && make up ENV=gcp)"
+	@echo "    - minerva   (cd ../minerva   && make up)"
 	@echo ""
 
 network:
@@ -41,7 +47,13 @@ network:
 	    (echo "Creando red $(NETWORK_NAME)..."; docker network create $(NETWORK_NAME))
 
 up: network
-	docker compose $(GATEWAY_FILES) $(GATEWAY_ENV) up -d
+	docker compose $(GATEWAY_FILES) up -d
+
+build:
+	docker compose $(GATEWAY_FILES) build
+
+deploy: network
+	docker compose $(GATEWAY_FILES) up -d --build
 
 down:
 	docker compose down
@@ -54,12 +66,11 @@ logs:
 ps:
 	docker compose ps
 
-local-up: network
-	@echo "[1/7] acervo (production standalone)..."
-	@$(MAKE) -C $(ACERVO_DIR) up ENV=prod
-	@docker network connect $(NETWORK_NAME) acervo-minio 2>/dev/null || true
+ecosystem-up: network
+	@echo "[1/7] acervo (SeaweedFS)..."
+	@$(MAKE) -C $(ACERVO_DIR) up
 	@echo ""
-	@echo "[2/7] huachicol..."
+	@echo "[2/7] huachicol (monitoring stack)..."
 	@$(MAKE) -C $(HUACHICOL_DIR) start
 	@echo ""
 	@echo "[3/7] dataengine..."
@@ -68,25 +79,22 @@ local-up: network
 	@echo "[4/7] geoserver..."
 	@cd $(GEOSERVER_DIR) && docker compose up -d
 	@echo ""
-	@echo "[5/7] sieej dist build (idempotente)..."
+	@echo "[5/7] sieej (build idempotente del dist)..."
 	@$(MAKE) -C $(SIEEJ_DIR) build
 	@echo ""
-	@echo "[5/7] mariachi (env=production)..."
-	@cd $(MARIACHI_DIR) && docker compose $(MARIACHI_FILES) $(MARIACHI_ENV) up -d
+	@echo "[6/7] mariachi (make deploy)..."
+	@$(MAKE) -C $(MARIACHI_DIR) deploy
 	@echo ""
-	@echo "[6/7] mapalab dist build (idempotente)..."
-	@cd $(MAPALAB_DIR) && docker compose $(MAPALAB_FILES) $(MAPALAB_ENV) --profile build run --rm --build frontend-build
+	@echo "[7/7] mapalab (make deploy)..."
+	@$(MAKE) -C $(MAPALAB_DIR) deploy
 	@echo ""
-	@echo "[6/7] mapalab nginx + backend (profile=staging, env=production)..."
-	@cd $(MAPALAB_DIR) && docker compose $(MAPALAB_FILES) $(MAPALAB_ENV) --profile staging up -d
-	@echo ""
-	@echo "[7/7] gateway-hub..."
-	@$(MAKE) up
+	@echo "[8/8] gateway-hub (make deploy)..."
+	@$(MAKE) deploy
 	@echo ""
 	@echo "Stack production local arriba."
-	@$(MAKE) local-status
+	@$(MAKE) ecosystem-status
 
-local-down:
+ecosystem-down:
 	@echo "Tumbando gateway-hub..."
 	-@$(MAKE) down
 	@echo "Tumbando mapalab..."
@@ -100,9 +108,9 @@ local-down:
 	@echo "Tumbando huachicol..."
 	-@$(MAKE) -C $(HUACHICOL_DIR) stop
 	@echo "Tumbando acervo..."
-	-@$(MAKE) -C $(ACERVO_DIR) down ENV=prod
+	-@$(MAKE) -C $(ACERVO_DIR) down
 
-local-restart: local-down local-up
+ecosystem-restart: ecosystem-down ecosystem-up
 
-local-status:
+ecosystem-status:
 	@docker compose ls
