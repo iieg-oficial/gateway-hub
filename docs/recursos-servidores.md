@@ -193,6 +193,29 @@ potenciales de MapaLab, tiene margen de 72 conexiones para otros servicios (GeoS
 Workers y pool son configurables via variables de entorno (`GUNICORN_WORKERS`, `DB_POOL_SIZE`,
 `DB_MAX_OVERFLOW`) en los archivos `.env.staging` y `.env.production` de MapaLab.
 
+### Tuning de la JVM de GeoServer (`.env` del repo `geoserver`)
+
+La imagen `kartoza/geoserver` no setea caps explicitos de heap ni Metaspace; sin `JAVA_OPTS`
+con `-Xmx` / `-XX:MaxMetaspaceSize` la JVM queda con defaults chicos que saturan rapido bajo
+carga raster (sintoma observado: Old gen >99 % en segundos, Metaspace al 99 %, concurrent GC
+robando CPU al render).
+
+| Entorno | JAVA_OPTS recomendado | Racional |
+|---------|-----------------------|----------|
+| **GCP Staging** (2c/8GB, VM compartida) | `-Dfile.encoding=UTF-8 -Dsun.jnu.encoding=UTF-8 -Xms1g -Xmx2g -XX:MaxMetaspaceSize=512m -XX:+UseG1GC` | Heap conservador para no asfixiar a PostGIS/Mariachi en la misma VM. Cap explicito previene `OOM: Metaspace`. |
+| **S3 Produccion** (8c/15GB, dedicado a GeoServer) | `-Dfile.encoding=UTF-8 -Dsun.jnu.encoding=UTF-8 -Xms2g -Xmx8g -XX:MaxMetaspaceSize=1g -XX:+UseG1GC` | Heap a 8 GB de los 15 disponibles. Deja ~7 GB para page cache del kernel (donde el OS cachea GeoTIFFs leidos), acelerando rendering raster sostenido. |
+
+Aplicar via `.env` en cada host y `docker compose up -d` del contenedor de GeoServer. El
+`.env.example` del repo `geoserver` lleva la version conservadora como default seguro.
+
+Validacion post-cambio:
+
+```
+docker exec geoserver jstat -gcutil 1 5s 5
+```
+
+Bajo carga normal, Old gen y Metaspace deberian estabilizarse por debajo del 90 %.
+
 ---
 
 ## Resumen visual

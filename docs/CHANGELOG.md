@@ -12,6 +12,18 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.24.12] - 2026-05-15
+
+### Documentado tuning de JVM para GeoServer en `recursos-servidores.md`
+
+Diagnostico reciente en GCP staging mostro que la JVM de GeoServer corre con defaults sin caps explicitos: Old gen y Metaspace saturados al 99 %, concurrent GC compitiendo con el render por CPU. La causa raiz no estaba documentada en este repo; cualquier persona dimensionando un nuevo host repetia el agujero. Se agrega seccion explicita con `JAVA_OPTS` recomendado por entorno.
+
+#### Added
+
+- **`docs/recursos-servidores.md`**: nueva subseccion "Tuning de la JVM de GeoServer" dentro de "Configuracion final por entorno". Tabla con `JAVA_OPTS` recomendado para staging (VM compartida, conservador) y produccion S3 (VM dedicada, generoso). Incluye comando `jstat -gcutil` para validar post-cambio. Cierra el loop con el commit correspondiente del repo `geoserver` (1.19.0) donde se aplica el cambio.
+
+---
+
 ## [1.24.11] - 2026-05-15
 
 ### Afinacion del cache de GeoServer y observabilidad de cache_status
