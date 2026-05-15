@@ -1,10 +1,12 @@
 .PHONY: help up down restart deploy build logs ps \
         ecosystem-up ecosystem-down ecosystem-restart ecosystem-status \
+        ecosystem-pull ecosystem-update \
         network
 
 NETWORK_NAME := iieg-network
 
 REPOS_DIR := ..
+GATEWAY_DIR := .
 ACERVO_DIR := $(REPOS_DIR)/acervo
 HUACHICOL_DIR := $(REPOS_DIR)/huachicol
 DATAENGINE_DIR := $(REPOS_DIR)/dataengine
@@ -12,6 +14,8 @@ GEOSERVER_DIR := $(REPOS_DIR)/geoserver
 MARIACHI_DIR := $(REPOS_DIR)/mariachi
 MAPALAB_DIR := $(REPOS_DIR)/mapalab
 SIEEJ_DIR := $(REPOS_DIR)/sieej
+
+ECOSYSTEM_REPOS := $(GATEWAY_DIR) $(ACERVO_DIR) $(HUACHICOL_DIR) $(DATAENGINE_DIR) $(GEOSERVER_DIR) $(MARIACHI_DIR) $(MAPALAB_DIR) $(SIEEJ_DIR)
 
 MARIACHI_FILES := -f docker-compose.yml
 MARIACHI_ENV := --env-file .env.production
@@ -36,6 +40,8 @@ help:
 	@echo "    ecosystem-down      Tumbar todo el stack"
 	@echo "    ecosystem-restart   ecosystem-down + ecosystem-up"
 	@echo "    ecosystem-status    docker compose ls (estado de cada compose project)"
+	@echo "    ecosystem-pull      git pull en cada repo del orquestador (sin levantar nada)"
+	@echo "    ecosystem-update    ecosystem-pull + ecosystem-up (despliegue completo)"
 	@echo ""
 	@echo "  Servicios NO incluidos en ecosystem-up (levantar manualmente si se requiere):"
 	@echo "    - sitio2026 (cd ../sitio2026 && make up ENV=gcp)"
@@ -114,3 +120,16 @@ ecosystem-restart: ecosystem-down ecosystem-up
 
 ecosystem-status:
 	@docker compose ls
+
+ecosystem-pull:
+	@for d in $(ECOSYSTEM_REPOS); do \
+	    echo ""; \
+	    echo "── git pull en $$d ──"; \
+	    if [ -d "$$d/.git" ]; then \
+	        git -C "$$d" pull --ff-only || echo "  ! pull fallo en $$d (probablemente working tree sucio o branch divergente)"; \
+	    else \
+	        echo "  (no es repo git, omitido)"; \
+	    fi; \
+	done
+
+ecosystem-update: ecosystem-pull ecosystem-up

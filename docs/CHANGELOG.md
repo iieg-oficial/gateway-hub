@@ -12,6 +12,19 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.24.21] - 2026-05-15
+
+### `ecosystem-pull` y `ecosystem-update`: git pull + up en un solo comando
+
+#### Agregado
+
+- **`Makefile`**: dos targets nuevos en el orquestador.
+  - `ecosystem-pull`: itera sobre los 8 repos (`gateway-hub`, `acervo`, `huachicol`, `dataengine`, `geoserver`, `mariachi`, `mapalab`, `sieej`) y corre `git pull --ff-only` en cada uno. Si el working tree esta sucio o la rama esta divergente, imprime warning sin abortar (continua con los siguientes repos).
+  - `ecosystem-update`: alias de `ecosystem-pull && ecosystem-up`. Caso de uso: la VM de produccion donde el operador quiere "actualizar todo desde GitHub y desplegar".
+- Help del Makefile documenta los dos nuevos verbos.
+
+---
+
 ## [1.24.20] - 2026-05-15
 
 ### `make up` deja de rebuildear; nuevo `make deploy` para cambios reales
