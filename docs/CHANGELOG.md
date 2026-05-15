@@ -12,6 +12,18 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.24.14] - 2026-05-15
+
+### Corregida la metodologia de validacion JVM en recursos-servidores
+
+Tras aplicar el tuning en GCP staging y observar `M=99 %` en `jstat -gcutil` con valores correctos (`MU=137 MB` de un cap de 512 MB), confirmamos que el porcentaje de `gcutil` reporta `used / committed`, no `used / max`. Era guia engañosa que podia hacer creer que habia un problema cuando no lo habia.
+
+#### Changed
+
+- **`docs/recursos-servidores.md`** (seccion "Tuning de la JVM de GeoServer", bloque de validacion): cambiada la recomendacion de `jstat -gcutil 1 5s 5` a `jstat -gc 1`. Documentadas las columnas relevantes (`OC`/`OU` y `MC`/`MU` en KB), el indicador clave `FGC = 0`, y advertencia explicita: NO usar `gcutil` porque su percentage de Metaspace es vs committed, no vs max. Espejo del cambio aplicado en el repo `geoserver` (1.20.1).
+
+---
+
 ## [1.24.13] - 2026-05-15
 
 ### Corregido tuning JVM de GeoServer: usar variables nativas de kartoza

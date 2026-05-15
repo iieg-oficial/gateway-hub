@@ -226,10 +226,20 @@ Aplicar via `.env` en cada host y `docker compose up -d` del contenedor de GeoSe
 Validacion post-cambio:
 
 ```
-docker exec geoserver jstat -gcutil 1 5s 5
+docker exec geoserver jstat -gc 1
 ```
 
-Bajo carga normal, Old gen y Metaspace deberian estabilizarse por debajo del 90 %.
+Columnas relevantes (todas en KB): `OC`/`OU` (Old capacity/used) y `MC`/`MU` (Metaspace
+capacity/used). Lo que indica salud:
+
+- **`FGC = 0`** (cero Full GC desde el arranque) — el indicador clave.
+- **`MU << MaxMetaspaceSize`** — ej. usado 137 MB de un cap de 512 MB tiene 75 % headroom.
+  Cap viene de `ADDITIONAL_JAVA_STARTUP_OPTIONS=-XX:MaxMetaspaceSize=...`.
+- **`OU < OC`** y la JVM puede crecer `OC` hasta `MAXIMUM_MEMORY` cuando le pegue presion.
+
+**Importante**: NO usar `jstat -gcutil`. Su porcentaje `M` reporta `used / committed`, no
+`used / max`. Puede mostrar 99 % cuando la JVM apenas crecio Metaspace y aun esta lejos
+del cap, induciendo a creer que hay un problema cuando no lo hay (visto 2026-05-15).
 
 ---
 
