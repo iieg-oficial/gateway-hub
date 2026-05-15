@@ -11,12 +11,11 @@ services:
       - '443:443'
     volumes:
       - ${SSL_VOLUME_PATH}
-      - nginx_logs:/var/log/nginx
-      - ${SIEEJ_DIST_PATH:-../sieej/frontend/dist}:/usr/share/nginx/html/sieej:ro
+      - ${SIEEJ_DIST_PATH}:/usr/share/nginx/html/sieej:ro
     environment:
       APP_DOMAIN: ${APP_DOMAIN}
-      SSL_CERTIFICATE: ${SSL_CERTIFICATE:-/etc/nginx/certs/fullchain.pem}
-      SSL_CERTIFICATE_KEY: ${SSL_CERTIFICATE_KEY:-/etc/nginx/certs/privkey.pem}
+      SSL_CERTIFICATE: ${SSL_CERTIFICATE}
+      SSL_CERTIFICATE_KEY: ${SSL_CERTIFICATE_KEY}
       PORTAL_HOST: ${PORTAL_HOST}
       MAPALAB_HOST: ${MAPALAB_HOST}
       ACERVO_HOST: ${ACERVO_HOST}
@@ -24,7 +23,8 @@ services:
       GEOSERVER_HOST: ${GEOSERVER_HOST}
       HUACHICOL_HOST: ${HUACHICOL_HOST}
       GTM_ID: ${GTM_ID}
-      SEO_ENABLED: ${SEO_ENABLED:-false}
+      SEO_ENABLED: ${SEO_ENABLED}
+      REAL_IP_FROM: ${REAL_IP_FROM}
 
     healthcheck:
       test: ["CMD-SHELL", "curl -fsk https://localhost/ || exit 1"]
@@ -49,24 +49,6 @@ services:
       - nginx
     restart: unless-stopped
 
-  promtail:
-    image: grafana/promtail:latest
-    container_name: promtail
-    volumes:
-      - ./promtail/promtail-config.yml:/etc/promtail/config.yml
-      - nginx_logs:/var/log/nginx:ro
-    command: -config.file=/etc/promtail/config.yml -config.expand-env=true
-    environment:
-      LOKI_URL: ${LOKI_URL:-http://loki:3100}
-    networks:
-      - iieg-network
-    depends_on:
-      - nginx
-    restart: unless-stopped
-
 networks:
   iieg-network:
     external: true
-
-volumes:
-  nginx_logs:

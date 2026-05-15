@@ -24,6 +24,10 @@ location ^~ /geoserver/j_spring_security {
 
 location ^~ /geoserver/ {
     location ~ ^/geoserver/ows {
+        limit_except GET HEAD OPTIONS {
+            deny all;
+        }
+
         set $referer_host "";
         if ($http_referer ~* "^https?://([^/:]+)") { set $referer_host $1; }
         set $valid_referer 0;
@@ -65,6 +69,10 @@ location ^~ /geoserver/ {
     }
 
     location ~ ^/geoserver/(wfs|wcs) {
+        limit_except GET HEAD OPTIONS {
+            deny all;
+        }
+
         set $referer_host "";
         if ($http_referer ~* "^https?://([^/:]+)") { set $referer_host $1; }
         set $valid_referer 0;
@@ -99,6 +107,10 @@ location ^~ /geoserver/ {
     }
 
     location ~ ^/geoserver/[^/]+/(wfs|wcs) {
+        limit_except GET HEAD OPTIONS {
+            deny all;
+        }
+
         set $referer_host "";
         if ($http_referer ~* "^https?://([^/:]+)") { set $referer_host $1; }
         set $valid_referer 0;

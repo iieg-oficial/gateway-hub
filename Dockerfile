@@ -3,7 +3,6 @@ FROM nginx:1.28.2-alpine
 RUN apk add --no-cache gettext \
     && rm -f /etc/nginx/conf.d/default.conf
 
-COPY nginx/nginx.conf /etc/nginx/nginx.conf
 COPY nginx/templates/ /etc/nginx/templates/
 COPY nginx/conf.d/ /etc/nginx/templates/conf.d/
 COPY nginx/includes/ /etc/nginx/includes/
@@ -16,7 +15,7 @@ RUN mkdir -p /etc/nginx/certs /var/cache/nginx/geoserver
 EXPOSE 80 443
 
 CMD ["/bin/sh", "-c", \
-    "rm -f /var/log/nginx/access.log /var/log/nginx/error.log && \
+    "envsubst '${REAL_IP_FROM}' < /etc/nginx/templates/nginx.conf.template > /etc/nginx/nginx.conf && \
     for f in /etc/nginx/templates/conf.d/*; do \
         envsubst '${GEOSERVER_HOST}' < \"$f\" > /etc/nginx/conf.d/$(basename \"${f%.template}\"); \
     done && \

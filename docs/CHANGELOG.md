@@ -12,6 +12,47 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.24.16] - 2026-05-15
+
+### `REAL_IP_FROM` parametrizable via `.env`
+
+#### Cambiado
+
+- **`nginx/nginx.conf`** → **`nginx/templates/nginx.conf.template`** (renombrado + tratamiento via `envsubst`). La directiva `set_real_ip_from 10.13.128.0/24;` ahora es `set_real_ip_from ${REAL_IP_FROM};`. Antes el rango trusted estaba hardcoded; cualquier ajuste (segundo balanceador, IPv6, prod multi-LAN) requeria editar el archivo y rebuildear.
+- **`Dockerfile`**: el `COPY nginx/nginx.conf` se reemplazo por el template; el CMD ahora corre `envsubst '${REAL_IP_FROM}'` antes de los otros templates para generar `/etc/nginx/nginx.conf`. La whitelist explicita evita que envsubst toque `$remote_addr`, `$binary_remote_addr`, etc.
+- **`.env`, `.env.example`** y **`docker-compose.yml`** (environment del servicio `nginx`): variable `REAL_IP_FROM` con default `10.13.128.0/24`. Si esta vacia, `set_real_ip_from` queda sin valor y nginx falla al arrancar — el default cubre el caso de `.env` heredado sin la variable.
+
+#### Notas
+
+- En local el real_ip queda inerte (no entra trafico via XFF desde 10.13.128.0/24), pero la directiva es valida y no rompe. En GCP prod sigue siendo el rango del FortiGate estatal.
+- Para mas de un CIDR (escenario futuro con multi-balanceador): la sintaxis nginx requiere multiples directivas `set_real_ip_from`. Si llega ese caso, evolucionar el template a un loop en el entrypoint sobre una variable separada por comas. Hoy no hace falta.
+
+---
+
+## [1.24.15] - 2026-05-15
+
+### Bloqueo de WFS-T por metodo HTTP + remocion de promtail
+
+Dos cambios independientes en un mismo bump.
+
+#### Cambiado
+
+- **`includes/geoserver-locations.inc`** (`/geoserver/ows`, `/geoserver/(wfs|wcs)`, `/geoserver/[^/]+/(wfs|wcs)`): agregado `limit_except GET HEAD OPTIONS { deny all; }` al inicio de cada location. El filtro previo `if ($arg_request ~* "Transaction") { return 403; }` solo inspeccionaba el query string; un POST XML estandar de WFS-T (`<wfs:Transaction>...</wfs:Transaction>` en el body) lo bypasea-ba y llegaba a GeoServer. Verificado en local: `curl -X POST .../geoserver/ows -d "<wfs:Transaction.../>"` ahora responde **HTTP 405**. Ningun cliente del ecosistema (mariachi, mapalab, sieej, dataengine) hace POST a `/geoserver/ows|wfs|wcs` — todo el trafico OGC del visor es GET. El filtro de query string se mantiene como defensa en profundidad por si alguien intenta `?request=Transaction` via GET.
+
+#### Removido
+
+- **Servicio `promtail` del `docker-compose.yml`** + volumen nombrado `nginx_logs` + bind mount en el servicio `nginx`. Razon: el `alloy` del stack `huachicol` (introducido en huachicol 1.18.0, commit `a6f7c5c`) ya recolecta logs de todos los contenedores Docker via `loki.source.docker` (socket Docker) y los publica a Loki con label `container_name`. Promtail estaba leyendo el `access.log` JSON del volumen `nginx_logs`, pero su `LOKI_URL=http://host.docker.internal:3100` no resolvia desde `iieg-network` (el servicio promtail no tenia `extra_hosts: host-gateway`), generando un loop de errores `dial tcp: lookup host.docker.internal on 127.0.0.11:53: no such host`. Cero logs llegando a Loki via promtail desde el rebuild de iieg-network; los logs nunca se perdieron del todo porque alloy los toma del stdout del container.
+- **`nginx/nginx.conf`** (`access_log`, `error_log`): dirigidos exclusivamente a `/dev/stdout` (JSON) y `/dev/stderr`. Removidos los dos `access_log /var/log/nginx/access.log json_logs;` y `error_log /var/log/nginx/error.log warn;` (no tenian lector tras quitar promtail).
+- **`Dockerfile`** (CMD entrypoint): removido el `rm -f /var/log/nginx/access.log /var/log/nginx/error.log` previo al arranque. Ya no hay archivos reales que limpiar — los symlinks de la imagen base `nginx:alpine` apuntan a `/dev/stdout` y `/dev/stderr`, que es exactamente lo que ahora queremos.
+- **`LOKI_URL`** en `.env` y `.env.example`. Sin uso tras la remocion.
+- **Carpeta `promtail/`** completa (`promtail-config.yml`).
+
+#### Trade-off
+
+Promtail extraia labels estructuradas del JSON (`subroute`, `status`, `request_method`); alloy no las extrae automaticamente. Los dashboards que filtran por `subroute` (`gateway-subroutes.json`, ya removido en huachicol 1.19.0) perderian esa dimension. Los logs siguen llegando a Loki con label `container_name=gateway-hub-nginx-1` y `job=docker`; las queries por path se hacen ahora con regex (`{container_name="gateway-hub-nginx-1"} |~ "\"request_uri\":\"/mapalab/"`).
+
+---
+
 ## [1.24.14] - 2026-05-15
 
 ### Corregida la metodologia de validacion JVM en recursos-servidores
