@@ -12,6 +12,29 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.24.11] - 2026-05-15
+
+### Afinacion del cache de GeoServer y observabilidad de cache_status
+
+Conjunto de ajustes al `proxy_cache geoserver_cache` que sirve los `GetMap` de los visores (incluyendo los frames del loop temporal de capas raster de mapalab). El cache ya estaba en gateway-hub, estos cambios mejoran su efectividad bajo carga, limpian directivas muertas y exponen el hit-rate por linea de log.
+
+#### Changed
+
+- **`includes/geoserver-locations.inc`** (`/geoserver/ows`): `proxy_cache_lock_timeout` subido de `10s` a `30s` y agregado `proxy_cache_lock_age 30s`. Reduce el riesgo de estampida hacia GeoServer cuando el primer render de un tile pesado supera los 10 s: los clientes que esperan el lock siguen esperando hasta 30 s a que el originador llene el cache, en lugar de soltarse y pegar todos al upstream simultaneamente. El `proxy_read_timeout 120s` heredado del bloque externo `/geoserver/` deja margen para que el render originador alcance a terminar.
+- **`includes/geoserver-locations.inc`** (`/geoserver/ows`): `proxy_cache_key "$request_uri$arg_outputFormat"` simplificado a `"$request_uri"`. El `$arg_outputFormat` ya formaba parte de `$request_uri`; la concatenacion duplicaba el parametro en la key sin cambiar el comportamiento. Limpieza, no afecta entradas existentes (siguen siendo validas porque la key para GetMap nunca tuvo `outputFormat`).
+- **`nginx.conf`** (`log_format json_logs`): agregado el campo `"upstream_cache_status":"$upstream_cache_status"`. Cada linea de log JSON emite ahora `HIT`/`MISS`/`BYPASS`/`STALE`/`EXPIRED`/`UPDATING`/`REVALIDATED` (o vacio para rutas no cacheadas), agregable desde promtail/Loki para calcular hit-rate del cache de GeoServer.
+
+#### Removed
+
+- **`includes/geoserver-locations.inc`** (`/geoserver/(wfs|wcs)`): removidas 9 directivas `proxy_cache*` y el `add_header X-Cache-Status` que eran letra muerta. La location tiene `proxy_buffering off` (necesario para streaming de descargas WCS grandes y respuestas WFS pesadas), y nginx no cachea cuando el buffering esta desactivado. Las directivas quedaron tras el move de `mapalab/nginx/conf.d/` a este repo pero nunca actuaron. Eliminarlas evita confusion al leer la config y previene activacion accidental si alguien quitara el `proxy_buffering off` sin entender la dependencia.
+
+#### Notas
+
+- Validar antes de deployar: `docker compose exec nginx nginx -t` dentro del contenedor.
+- Sin invalidacion reactiva del cache; sigue dependiendo de `inactive=12h` o del rm manual de `/var/cache/nginx/geoserver` en caso de stale en datos editables. Riesgo asumido conscientemente.
+
+---
+
 ## [1.24.10] - 2026-05-14
 
 ### Removed

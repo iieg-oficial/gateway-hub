@@ -44,10 +44,11 @@ location ^~ /geoserver/ {
         proxy_set_header Accept-Encoding identity;
 
         proxy_cache geoserver_cache;
-        proxy_cache_key "$request_uri$arg_outputFormat";
+        proxy_cache_key "$request_uri";
         proxy_cache_valid 200 6h;
         proxy_cache_lock on;
-        proxy_cache_lock_timeout 10s;
+        proxy_cache_lock_timeout 30s;
+        proxy_cache_lock_age 30s;
         proxy_cache_use_stale error timeout updating;
         proxy_ignore_headers "Set-Cookie" "Expires" "Cache-Control";
         proxy_no_cache $geoserver_no_cache;
@@ -87,16 +88,6 @@ location ^~ /geoserver/ {
         proxy_send_timeout 600s;
         proxy_buffering off;
 
-        proxy_cache geoserver_cache;
-        proxy_cache_key "$request_uri$arg_outputFormat";
-        proxy_cache_valid 200 6h;
-        proxy_cache_lock on;
-        proxy_cache_lock_timeout 10s;
-        proxy_cache_use_stale error timeout updating;
-        proxy_ignore_headers "Set-Cookie" "Expires" "Cache-Control";
-        proxy_no_cache $geoserver_no_cache;
-        proxy_cache_bypass $geoserver_no_cache;
-        add_header X-Cache-Status $upstream_cache_status always;
         add_header X-Frame-Options "SAMEORIGIN" always;
         add_header X-Content-Type-Options "nosniff" always;
 
