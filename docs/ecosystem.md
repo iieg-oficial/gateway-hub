@@ -210,6 +210,35 @@ Mapalab backend tiene dos endpoints administrativos:
 
 Ambos son llamados por mariachi **directamente via `iieg-network`** (no via gateway), usando `MAPALAB_BACKEND_URL=http://mapalab-backend:8000`. El gateway bloquea el acceso externo a estos paths con `return 403` (ver `nginx/templates/gateway.conf.template`).
 
+#### `MAPALAB_INTERNAL_TOKEN` — contrato compartido (desde mapalab 1.28.5 / mariachi 1.0.3)
+
+Defensa-en-profundidad: el 403 del gateway protege del trafico externo, pero cualquier container co-residente en `iieg-network` podia llegar al puerto 8000 de mapalab-backend sin gateway. Para cerrar esa ventana, ambos endpoints exigen el header `X-Internal-Token`:
+
+| Lado | Archivo | Variable | Comportamiento si falta |
+|---|---|---|---|
+| mapalab (servidor) | `backend/app/auth/internal_token.py` | `MAPALAB_INTERNAL_TOKEN` (settings) | `503` si no esta configurado, `401` si el header no coincide |
+| mariachi (cliente) | `api/app/services/mapalab_notifier.py` | `settings.mapalab_internal_token` | Agrega el header en el POST; si esta vacio no lo envia (mapalab devuelve 401) |
+
+Reglas operativas:
+
+1. **El valor debe ser literalmente identico** en `mariachi/.env*` y `mapalab/.env*`. Cualquier diferencia rompe la sincronizacion: mariachi recibe 401 en cada intento, agota los 3 retries y el tree de capas queda stale hasta el cron 04:00 UTC.
+2. **Rotacion coordinada**: cambiar el token requiere actualizar ambos `.env` y reiniciar ambos containers en la misma ventana. No rotar uno sin el otro.
+3. **Deteccion**: la alerta `MariachiTreeNotifyFailures` en huachicol (`prometheus/rules/alerts.yml`, agregada en huachicol `1.19.3`) dispara en Discord cuando el counter `mariachi_tree_notify_failed_total` incrementa. Esa es la senal canonica de que el token esta desalineado (otras causas posibles: mapalab-backend caido, red rota).
+4. **Generacion de un token nuevo**: `python3 -c "import secrets; print(secrets.token_urlsafe(32))"`. Aplicar el mismo valor en ambos repos.
+5. **Otros endpoints internos** que ya usaban el mismo patron pre-1.28.5: `POST /shares/{id}/pin-permanent`, `DELETE /shares/{id}/unpin`, `POST /embed/{token}/quota-check`. Todos comparten el mismo token y la misma regla de coordinacion.
+
+Diagnostico rapido en prod (desde gateway-hub VM):
+
+```bash
+# Confirmar que ambos lados tienen el mismo valor:
+diff <(grep ^MAPALAB_INTERNAL_TOKEN= /IIEG/mariachi/.env.production) \
+     <(grep ^MAPALAB_INTERNAL_TOKEN= /IIEG/mapalab/.env.production)
+# Sin output = identicos. Si hay diff, hay drift.
+
+# Counter de fallos:
+docker exec mariachi-api python -c "import httpx; print([l for l in httpx.get('http://localhost:8000/metrics').text.splitlines() if 'tree_notify' in l])"
+```
+
 ### 5.4. Rename portal --> mariachi a medias (2026-04-22)
 
 Intencional segun `mariachi/docs/context.md`. Resumen:

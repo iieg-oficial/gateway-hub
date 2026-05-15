@@ -50,10 +50,10 @@ gateway-hub/
 │       ├── checklist-produccion-gcp.md
 │       └── upgrade-mapalab-8cores.md
 ├── nginx/
-│   ├── nginx.conf                  # Configuracion principal (zonas, cache, logs, real_ip)
 │   ├── version.json                # Payload JSON servido en /ontoy
 │   ├── templates/
-│   │   └── gateway.conf.template   # Server block principal (usa envsubst)
+│   │   ├── nginx.conf.template     # Configuracion principal (envsubst para REAL_IP_FROM)
+│   │   └── gateway.conf.template   # Server block principal (envsubst para hosts/SSL/GTM/SEO)
 │   ├── conf.d/
 │   │   └── geoserver-upstream.conf.template  # Upstream, zona y cache de GeoServer
 │   ├── includes/
@@ -71,8 +71,6 @@ gateway-hub/
 │   ├── setup-swap.sh               # Provisiona swap en la VM
 │   ├── stress_test.py              # Stress test de carga
 │   └── stress_test_multi_ip.py     # Stress test con multiples IPs de origen
-├── promtail/
-│   └── promtail-config.yml         # Configuracion de Promtail (logs -> Loki)
 ├── docker-compose.yml              # Orquestacion de contenedores
 ├── Dockerfile                      # Imagen Nginx + entrypoint personalizado
 ├── Makefile                        # Targets del gateway + orquestacion del ecosistema
@@ -89,14 +87,13 @@ gateway-hub/
 |----------|--------|---------|---------|
 | `nginx` | Build local (`nginx:1.28.2-alpine`) | 80, 443 | Proxy inverso principal |
 | `nginx-exporter` | `nginx/nginx-prometheus-exporter` | — (solo red interna) | Metricas Prometheus via `/stub_status` |
-| `promtail` | `grafana/promtail` | — | Reenvia logs JSON a Loki |
 
 **Red:** `iieg-network` (externa, compartida con todos los servicios IIEG)
-**Volumen:** `nginx_logs` (compartido entre `nginx` y `promtail`)
 **Bind mount:** `${SIEEJ_DIST_PATH}` → `/usr/share/nginx/html/sieej` (read-only) — el `dist/`
 del frontend de SIEEJ se sirve directamente como estatico.
 **Healthcheck:** `curl -fsk https://localhost/` cada 30s.
 **extra_hosts:** `host.docker.internal:host-gateway` para alcanzar servicios en el host.
+**Logs:** nginx emite access (JSON) a `/dev/stdout` y error a `/dev/stderr`. El `alloy` del stack `huachicol` (red `monitoring`) los recolecta via socket Docker y los publica a Loki con label `container_name=gateway-hub-nginx-1` (desde gateway-hub `1.24.15`, antes habia un servicio `promtail` propio).
 
 ---
 
@@ -116,7 +113,7 @@ del frontend de SIEEJ se sirve directamente como estatico.
 | `GEOSERVER_HOST` | `host.docker.internal:8080` | Host de GeoServer |
 | `HUACHICOL_HOST` | `grafana:3000` | Host de Grafana (Huachicol) |
 | `SIEEJ_DIST_PATH` | `../sieej/frontend/dist` | Ruta host al `dist/` de SIEEJ montado como estatico |
-| `LOKI_URL` | `http://host.docker.internal:3100` | Endpoint de Loki para Promtail |
+| `REAL_IP_FROM` | `10.13.128.0/24` | CIDR confiable para `set_real_ip_from` en `nginx.conf` (FortiGate estatal). Renderizado via envsubst en runtime |
 | `SEO_ENABLED` | `false` | `true`: robots.txt permite crawlers, sitemap activo. `false`: bloquea indexacion |
 
 **Nota sobre `PORTAL_HOST`:** el upstream se llama `portal` por motivos historicos, pero
@@ -199,9 +196,10 @@ Nueve headers aplicados en el server `:443`:
   Incluye `upgrade-insecure-requests`, `object-src 'none'`, `frame-ancestors 'self'`.
 
 ### Real IP
-`nginx.conf` define `set_real_ip_from 10.13.128.0/24` con `real_ip_header X-Forwarded-For`
-y `real_ip_recursive on`. El trafico publico entra por el FortiGate estatal, que reenvia
-la IP real del cliente en `X-Forwarded-For`; esto la recupera para logs y rate limiting.
+`nginx.conf.template` define `set_real_ip_from ${REAL_IP_FROM}` con `real_ip_header X-Forwarded-For`
+y `real_ip_recursive on`. El CIDR se inyecta en runtime via envsubst desde `REAL_IP_FROM` en
+`.env` (default `10.13.128.0/24`, el rango del FortiGate estatal). En GCP/prod el FortiGate
+reenvia la IP real del cliente en `X-Forwarded-For`; esto la recupera para logs y rate limiting.
 
 ### Control de Acceso
 - **Autenticacion delegada:** los endpoints administrativos (Grafana, GeoServer admin,
@@ -210,9 +208,13 @@ la IP real del cliente en `X-Forwarded-For`; esto la recupera para logs y rate l
 - **Validacion de Referer:** en endpoints OGC de GeoServer, via `if` + captura de regex
   (no `valid_referers`, que no expande `$host`).
 - **Filtrado de User-Agent:** bloquea bots, scrapers, herramientas CLI y crawlers de IA.
-- **Bloqueo de WFS-T:** `request=Transaction` retorna 403 — previene escrituras en GeoServer.
+- **Bloqueo de WFS-T:** dos capas combinadas: (a) `limit_except GET HEAD OPTIONS { deny all; }`
+  rechaza con `405` cualquier metodo que no sea de lectura sobre `/geoserver/ows|wfs|wcs`,
+  cubriendo el POST XML estandar de WFS-T; (b) `if ($arg_request ~* "Transaction")` retorna
+  `403` si alguien intenta el bypass por query string (`?request=Transaction`).
 - **Endpoints admin de MapaLab:** `/mapalab/api/layers/refresh-cache` e
-  `/invalidate-cache` retornan 403 — MARIACHI los invoca directo via `iieg-network`.
+  `/invalidate-cache` retornan 403 en el gateway. MARIACHI los invoca directo via
+  `iieg-network` con el header `X-Internal-Token` (ver `ecosystem.md` § 5.3).
 - **Rate Limiting:** ver seccion 7.
 
 ### Proteccion contra bots (`bot-protection.inc`)
@@ -279,16 +281,16 @@ con la pagina de error amigable (countdown de 10s antes de habilitar el reintent
 ### Access Logs
 - **Formato JSON** (`json_logs`, `escape=json`): `time`, `remote_addr`, `request_method`,
   `request_uri`, `status`, `body_bytes_sent`, `http_referer`, `http_user_agent`,
-  `request_time`, `upstream_response_time`, `upstream_addr`.
-- **Destinos:** `/var/log/nginx/access.log` (JSON) + `/dev/stdout` (formato `main` humano).
-- El entrypoint borra `access.log`/`error.log` al arrancar (eran symlinks que rompian Promtail).
+  `request_time`, `upstream_response_time`, `upstream_addr`, `upstream_cache_status`.
+- **Destino:** unicamente `/dev/stdout` (JSON) y `/dev/stderr` (errores). Sin archivo en disco.
 
-### Promtail → Loki
-- Job `nginx`: parsea el access log JSON, extrae label `subroute` (primer segmento de la
-  ruta) ademas de `status` y `request_method`.
-- Job `nginx-errors`: envia `/var/log/nginx/error.log` con label `level: error`.
-- Labels comunes: `service: gateway-hub`, `environment: production`, `job: nginx`.
-- Endpoint configurable via `LOKI_URL`.
+### Recoleccion → Loki (via Alloy, desde gateway-hub 1.24.15)
+- El stack `huachicol` corre `alloy` (`grafana/alloy:v1.16.1`) que lee logs Docker via socket
+  y los pushea a Loki con label `container_name=gateway-hub-nginx-1` y `job=docker`. No requiere
+  configuracion local en este repo.
+- Para queries en Grafana: `{container_name="gateway-hub-nginx-1"}` o `|~ "\"request_uri\":\"/mapalab/"`
+  para filtrar por ruta. El parseo JSON estructurado (extraer `subroute` como label) se quito junto
+  con el promtail propio; si se necesita, se reactiva en la pipeline de alloy o en una query LogQL.
 
 ### Prometheus
 - `nginx-exporter` consume `http://nginx:8080/stub_status`.
@@ -301,7 +303,8 @@ con la pagina de error amigable (countdown de 10s antes de habilitar el reintent
 El `Dockerfile` (`nginx:1.28.2-alpine` + `gettext` para `envsubst`) define un `CMD` que
 ejecuta en orden:
 
-1. **Limpia** `access.log` y `error.log` preexistentes.
+1. **Genera `nginx.conf`** desde `nginx.conf.template` con `envsubst` sobre `${REAL_IP_FROM}`.
+   Whitelist explicita para no tocar variables nginx (`$remote_addr`, `$binary_remote_addr`, etc).
 2. **Procesa los templates de `conf.d/`** (`geoserver-upstream.conf.template`) con `envsubst`
    sustituyendo `${GEOSERVER_HOST}` → escribe en `/etc/nginx/conf.d/`.
 3. **Genera `gateway.conf`** desde `gateway.conf.template` con `envsubst` sobre todas las
@@ -429,12 +432,18 @@ Internet / Usuarios
 El sistema de configuracion es **template-based** (ver seccion 10):
 
 1. Los archivos `.template` en `nginx/templates/` y `nginx/conf.d/` usan variables `${VAR}`.
-2. El entrypoint ejecuta `envsubst` sustituyendo variables del `.env`.
-3. Los archivos procesados se escriben en `/etc/nginx/conf.d/`.
-4. `gtm.inc` se genera solo si `GTM_ID` tiene valor; si no, se crea vacio.
+2. El entrypoint ejecuta `envsubst` sustituyendo variables del `.env`. Cada `envsubst` usa
+   **whitelist explicita** del subset de variables aplicables, para no tocar accidentalmente
+   las variables de nginx en runtime (`$remote_addr`, `$binary_remote_addr`, `$request_uri`, etc).
+3. `nginx.conf.template` se procesa con `${REAL_IP_FROM}` y se escribe en `/etc/nginx/nginx.conf`.
+4. Los `.conf.template` de `conf.d/` se procesan con `${GEOSERVER_HOST}` (zona/upstream geoserver)
+   y se escriben en `/etc/nginx/conf.d/`.
+5. `gateway.conf.template` se procesa con los hosts upstream + SSL + GTM + SEO.
+6. `gtm.inc` se genera solo si `GTM_ID` tiene valor; si no, se crea vacio.
 
 **Importante:** los includes `.inc` (no templates) se copian tal cual en la imagen y se
-referencian con `include`. Solo `gtm.inc.template` y los `.conf.template` se procesan en runtime.
+referencian con `include`. Solo `gtm.inc.template`, `nginx.conf.template` y los `.conf.template`
+se procesan en runtime.
 
 ---
 
@@ -444,8 +453,9 @@ referencian con `include`. Solo `gtm.inc.template` y los `.conf.template` se pro
   variable de host en `.env`/`.env.example`, agregar el `location` block, agregar la
   variable a la lista de `envsubst` del `Dockerfile`, y una zona de rate limit si aplica.
 - **Cache:** solo MapaLab assets y GeoServer tienen cache. Para otro servicio, definir la
-  zona en `nginx.conf` y configurarla en el `location`.
-- **Logs:** todos los access logs son JSON; Promtail los envia a Loki automaticamente.
+  zona en `nginx.conf.template` y configurarla en el `location`.
+- **Logs:** todos los access logs son JSON a `/dev/stdout`; el `alloy` del stack `huachicol`
+  los recolecta automaticamente via socket Docker y los pushea a Loki.
 - **SSL en dev:** certificados self-signed en `certs/`. En produccion se montan certificados
   reales (wildcard `*.jalisco.gob.mx` de DigiCert) via volumen.
 - **Docker network:** todo servicio enrutado DEBE estar en `iieg-network`.

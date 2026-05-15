@@ -31,7 +31,7 @@ Todos los servicios corren en una sola VM.
 | grafana | 112 MB | 21.8% | Limitado a 512 MB |
 | cadvisor | 127 MB | 49.6% | Limitado a 256 MB |
 | loki | 67 MB | 6.5% | Limitado a 1 GB |
-| promtail | 22 MB | 0.3% | Logs a Loki |
+| alloy | 175 MB | 0.6% | Limitado a 256 MB (logs + node metrics) |
 | alertmanager | 21 MB | 0.3% | Alertas |
 | gateway-hub-nginx-1 | 13 MB | 0.2% | Proxy central |
 | node-exporter | 15 MB | 11.7% | Limitado a 128 MB |
@@ -75,7 +75,7 @@ Todos los servicios corren en una sola VM.
 | grafana | 80 MB | 15.6% (limit 512 MB) |
 | acervo-seaweedfs | 70 MB | 0.4% |
 | loki | 38 MB | 3.7% (limit 1 GB) |
-| promtail | 26 MB | 0.2% |
+| alloy | 60 MB | 0.4% (limit 256 MB) |
 | gateway-hub-nginx-1 | 20 MB | 0.1% |
 | alertmanager | 17 MB | 0.1% |
 | alertmanager-discord | 13 MB | 5.2% (limit 256 MB) |

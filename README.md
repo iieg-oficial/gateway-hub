@@ -37,9 +37,16 @@ docker compose up -d --build
 docker compose up -d --build
 ```
 
-El `Makefile` ofrece `make up/down/restart/logs/ps` para el gateway y los targets
-`local-up/local-down/local-restart/local-status` para levantar todo el ecosistema
-IIEG en orden topologico desde un solo comando.
+El `Makefile` ofrece dos niveles:
+
+| Comando | Alcance |
+|---------|---------|
+| `make up` / `down` / `restart` / `logs` / `ps` | Solo gateway-hub. `up` usa la imagen actual (rapido) |
+| `make deploy` | Solo gateway-hub: `docker compose up -d --build`. Usar tras cambios en `nginx/templates/`, `includes/`, `Dockerfile`, `.env`, etc. |
+| `make build` | Solo rebuildea la imagen, sin levantar containers |
+| `make ecosystem-up` / `ecosystem-down` / `ecosystem-restart` / `ecosystem-status` | Todo el stack production local (acervo, huachicol, dataengine, geoserver, sieej dist, mariachi, mapalab, gateway-hub) en orden topologico |
+
+Los servicios `sitio2026` y `minerva` quedan fuera del orquestador y se levantan manualmente (`cd ../sitio2026 && make up ENV=gcp` y `cd ../minerva && make up` respectivamente).
 
 ## Variables de entorno
 
@@ -59,7 +66,7 @@ Ver `.env.example` para la referencia completa. Las variables principales:
 | `GEOSERVER_HOST` | Host de GeoServer |
 | `HUACHICOL_HOST` | Host de Grafana |
 | `SIEEJ_DIST_PATH` | Ruta host al `dist/` de SIEEJ que se monta como estatico (default `../sieej/frontend/dist`) |
-| `LOKI_URL` | Endpoint de Loki para Promtail |
+| `REAL_IP_FROM` | CIDR confiable para `set_real_ip_from` (X-Forwarded-For). Default `10.13.128.0/24` (FortiGate estatal) |
 | `SEO_ENABLED` | `true` en produccion (robots.txt, sitemap, sin noindex). `false` en staging/dev (bloquea indexacion) |
 
 > Acervo migro de MinIO a SeaweedFS, que no expone consola web: el `upstream
@@ -72,7 +79,8 @@ Ver `.env.example` para la referencia completa. Las variables principales:
 |----------|---------|
 | `nginx` | Proxy inverso principal (puertos 80, 443) |
 | `nginx-exporter` | Metricas Prometheus via `/stub_status` |
-| `promtail` | Reenvio de logs JSON a Loki |
+
+Logs: nginx emite a `/dev/stdout` (JSON) y `/dev/stderr`; el `alloy` del stack `huachicol` los recolecta automaticamente via socket Docker. No requiere promtail propio (eliminado en `1.24.15`).
 
 ## Enrutamiento
 
@@ -108,17 +116,15 @@ gateway-hub/
 ├── .env.example
 ├── certs/                        # Certificados SSL (self-signed en dev)
 ├── nginx/
-│   ├── nginx.conf                # Configuracion principal (zonas, cache, logs)
 │   ├── version.json              # Payload de /ontoy
 │   ├── templates/
-│   │   └── gateway.conf.template # Server block principal (envsubst)
+│   │   ├── nginx.conf.template   # Configuracion principal (envsubst REAL_IP_FROM)
+│   │   └── gateway.conf.template # Server block principal (envsubst hosts/SSL/GTM/SEO)
 │   ├── conf.d/
 │   │   └── geoserver-upstream.conf.template
 │   ├── includes/                 # Modulos reutilizables (.inc / .inc.template)
 │   ├── error-pages/              # Paginas de error personalizadas
 │   └── static/                   # robots.txt, sitemap.xml, .well-known/
-├── promtail/
-│   └── promtail-config.yml
 ├── scripts/                      # check-model-drift, setup-swap, stress tests
 └── docs/
 ```
@@ -126,7 +132,7 @@ gateway-hub/
 ## Stack
 
 - **Proxy:** Nginx 1.28.2 (Alpine)
-- **Monitoreo:** Prometheus (nginx-exporter) + Promtail → Loki
+- **Monitoreo:** Prometheus (nginx-exporter) + Alloy (huachicol) → Loki
 - **SSL:** TLSv1.2/1.3, HSTS, OCSP Stapling
 - **Seguridad:** CSP, 9 headers de seguridad, bot protection (scrapers, crawlers IA, herramientas CLI)
 - **Red:** `iieg-network` (externa, compartida con todos los servicios IIEG)

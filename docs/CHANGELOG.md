@@ -12,6 +12,34 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.24.18] - 2026-05-15
+
+### Contrato del `MAPALAB_INTERNAL_TOKEN` documentado en `ecosystem.md`
+
+#### Agregado
+
+- **`docs/ecosystem.md`** § 5.3: subseccion "`MAPALAB_INTERNAL_TOKEN` — contrato compartido" con tabla cliente/servidor, reglas operativas (rotacion coordinada, generacion, deteccion via `MariachiTreeNotifyFailures`), endpoints adicionales que comparten el patron (`shares.pin-permanent`, `embed.quota-check`) y bloque de diagnostico rapido. Cierra el gap documental que dejaba al proximo dev sin contexto sobre por que ambos `.env` exigen el mismo valor literal.
+
+---
+
+## [1.24.17] - 2026-05-15
+
+### Checklist de produccion actualizado a SeaweedFS
+
+`docs/pendientes/checklist-produccion-gcp.md` reescrito de punta a punta. La version anterior describia el modelo MinIO + consola web, ambos retirados en `acervo 1.22.0` y `gateway-hub 1.24.10` respectivamente. El runbook actual:
+
+- Snapshot de versiones del ecosistema en seccion F (gateway-hub 1.24.16, acervo 1.22.1, mariachi 1.0.4, etc.).
+- Smoke test seccion A incluye verificacion explicita de WFS-T bloqueado (`POST /geoserver/ows` debe responder 405) y de versiones reportadas en `/sistema/plataformas`.
+- Seccion D: nueva entrada para `Drop de public.mapalab_card` con la condicion "no dropear hasta el primer go-live", `Backups dataengine` semanal→diario, y `Sincronizacion de platforms_config.py` como deuda manual.
+- Seccion de diagnostico: agregado el flujo "Tree de capas no se actualiza tras editar" cubriendo el `MAPALAB_INTERNAL_TOKEN` requerido por mapalab 1.28.5+; y "Alloy unhealthy" para el bug del healthcheck `wget` (huachicol < 1.19.2).
+- Removidas las secciones obsoletas de "Acervo console: assets MIME type", "MINIO_BROWSER_REDIRECT_URL", `mc admin user add` y `init-buckets.sh --rotate` (todas MinIO-specific).
+
+#### Cambiado
+
+- **`docs/pendientes/checklist-produccion-gcp.md`** (rewrite completo).
+
+---
+
 ## [1.24.16] - 2026-05-15
 
 ### `REAL_IP_FROM` parametrizable via `.env`
