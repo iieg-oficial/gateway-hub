@@ -38,21 +38,6 @@ upstream huachicol {
     keepalive_timeout 60s;
 }
 
-upstream geoserver_ontoy {
-    server geoserver-version-api:8088;
-    keepalive 4;
-}
-
-upstream acervo_ontoy {
-    server acervo-version-api:8088;
-    keepalive 4;
-}
-
-upstream huachicol_ontoy {
-    server huachicol-version-api:8088;
-    keepalive 4;
-}
-
 map $request_uri $acervo_content_disposition {
     default         "";
     ~*\.(txt|xlsx)$ "attachment";
@@ -62,6 +47,8 @@ server {
     listen 80 default_server;
     server_name ${APP_DOMAIN} _;
 
+    resolver 127.0.0.11 valid=10s ipv6=off;
+
     location = /ontoy {
         default_type application/json;
         add_header Cache-Control "no-cache, no-store, must-revalidate" always;
@@ -69,21 +56,24 @@ server {
     }
 
     location = /geoserver/ontoy {
-        proxy_pass http://geoserver_ontoy/ontoy;
+        set $geoserver_ontoy_upstream "geoserver-version-api:8088";
+        proxy_pass http://$geoserver_ontoy_upstream/ontoy;
         proxy_http_version 1.1;
         proxy_set_header Connection "";
         add_header Cache-Control "no-cache, no-store, must-revalidate" always;
     }
 
     location = /acervo/ontoy {
-        proxy_pass http://acervo_ontoy/ontoy;
+        set $acervo_ontoy_upstream "acervo-version-api:8088";
+        proxy_pass http://$acervo_ontoy_upstream/ontoy;
         proxy_http_version 1.1;
         proxy_set_header Connection "";
         add_header Cache-Control "no-cache, no-store, must-revalidate" always;
     }
 
     location = /huachicol/ontoy {
-        proxy_pass http://huachicol_ontoy/ontoy;
+        set $huachicol_ontoy_upstream "huachicol-version-api:8088";
+        proxy_pass http://$huachicol_ontoy_upstream/ontoy;
         proxy_http_version 1.1;
         proxy_set_header Connection "";
         add_header Cache-Control "no-cache, no-store, must-revalidate" always;
@@ -117,7 +107,7 @@ server {
 
     ssl_stapling on;
     ssl_stapling_verify on;
-    resolver 8.8.8.8 8.8.4.4 valid=300s;
+    resolver 127.0.0.11 8.8.8.8 8.8.4.4 valid=10s ipv6=off;
     resolver_timeout 5s;
 
     server_tokens off;
@@ -150,21 +140,24 @@ server {
     }
 
     location = /geoserver/ontoy {
-        proxy_pass http://geoserver_ontoy/ontoy;
+        set $geoserver_ontoy_upstream "geoserver-version-api:8088";
+        proxy_pass http://$geoserver_ontoy_upstream/ontoy;
         proxy_http_version 1.1;
         proxy_set_header Connection "";
         add_header Cache-Control "no-cache, no-store, must-revalidate" always;
     }
 
     location = /acervo/ontoy {
-        proxy_pass http://acervo_ontoy/ontoy;
+        set $acervo_ontoy_upstream "acervo-version-api:8088";
+        proxy_pass http://$acervo_ontoy_upstream/ontoy;
         proxy_http_version 1.1;
         proxy_set_header Connection "";
         add_header Cache-Control "no-cache, no-store, must-revalidate" always;
     }
 
     location = /huachicol/ontoy {
-        proxy_pass http://huachicol_ontoy/ontoy;
+        set $huachicol_ontoy_upstream "huachicol-version-api:8088";
+        proxy_pass http://$huachicol_ontoy_upstream/ontoy;
         proxy_http_version 1.1;
         proxy_set_header Connection "";
         add_header Cache-Control "no-cache, no-store, must-revalidate" always;

@@ -12,6 +12,30 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.25.1] - 2026-05-18
+
+### Fix: nginx crashea al startup si un sidecar `version-api` aun no resuelve
+
+Bug introducido en `1.25.0`. Los `upstream geoserver_ontoy { server geoserver-version-api:8088; }` (idem para acervo y huachicol) declaraban hostnames Docker que nginx **resuelve al parsear el config**, no por request. Si el sidecar correspondiente no estaba listo cuando nginx arrancaba (race comun en `docker compose up` o restart de la VM), nginx fallaba con `[emerg] host not found in upstream "geoserver-version-api:8088"` y entraba en restart loop infinito — tumbaba **TODO el gateway**, no solo ese endpoint. Observado en VM staging post-deploy de 1.25.0.
+
+#### Cambiado
+
+- **`nginx/templates/gateway.conf.template`**: removidos los 3 bloques `upstream geoserver_ontoy/acervo_ontoy/huachicol_ontoy`. Los locations `/geoserver/ontoy`, `/acervo/ontoy`, `/huachicol/ontoy` ahora usan el patron Docker DNS dinamico: `set $..._upstream "host:8088"` + `proxy_pass http://$..._upstream/ontoy`. Resolucion es por request (no por parse), asi que si el sidecar no esta, ese endpoint devuelve 502 pero nginx sigue arriba.
+- **`nginx/templates/gateway.conf.template`** (server HTTP, server HTTPS): agregado `resolver 127.0.0.11 valid=10s ipv6=off;` (Docker embedded DNS). En el server HTTPS se preserva 8.8.8.8/8.8.4.4 como fallback para OCSP stapling: `resolver 127.0.0.11 8.8.8.8 8.8.4.4`.
+
+#### Verificacion
+
+```bash
+docker stop geoserver-version-api
+docker exec gateway-hub-nginx-1 curl -s -o /dev/null -w "%{http_code}\n" http://localhost/geoserver/ontoy   # antes: nginx crasheaba; ahora: 502
+docker exec gateway-hub-nginx-1 curl -s -o /dev/null -w "%{http_code}\n" http://localhost/                  # 302 → mapalab (gateway sigue arriba)
+docker start geoserver-version-api
+sleep 3
+docker exec gateway-hub-nginx-1 curl -s http://localhost/geoserver/ontoy                                    # vuelve a responder JSON
+```
+
+---
+
 ## [1.25.0] - 2026-05-18
 
 ### `/{servicio}/ontoy` ahora hace `proxy_pass` real + auto-regen de `nginx/version.json`
