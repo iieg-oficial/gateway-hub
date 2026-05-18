@@ -12,6 +12,23 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.25.2] - 2026-05-18
+
+### Fix: `X-Forwarded-Host` ahora refleja el host real del request
+
+`nginx/includes/proxy-params.inc` enviaba `X-Forwarded-Host: $server_name` a los upstreams. `$server_name` devuelve el **primer nombre declarado en el server block**, no el `Host` header del request — siempre era `${APP_DOMAIN}` (en staging: `iieg.local`) sin importar como llegara la peticion. En produccion no se notaba porque `APP_DOMAIN` y el host real coinciden; en staging cualquier backend que generara URLs absolutas desde ese header (canonical, redirects, emails) recibia `iieg.local` aunque el cliente entrara por IP de la VM o `iieg-staging.example.com`.
+
+#### Cambiado
+
+- **`nginx/includes/proxy-params.inc`**: `proxy_set_header X-Forwarded-Host $server_name;` → `proxy_set_header X-Forwarded-Host $host;`. `$host` es el header `Host` del request entrante (o `$server_name` como fallback si no viene), que es el comportamiento esperado del header `X-Forwarded-Host` segun convencion HTTP.
+
+#### Impacto
+
+- `APP_DOMAIN` queda **solo como server_name decorativo** (el server block es `default_server` con `_` como catch-all, asi que no filtra trafico). Si en el futuro se quiere eliminar la variable, se puede sin afectar funcionamiento — pero conservarla no cuesta.
+- Mariachi, Mapalab y demas upstreams ahora reciben el host real. Validar que ningun backend dependa de recibir `iieg.local` literal en staging.
+
+---
+
 ## [1.25.1] - 2026-05-18
 
 ### Fix: nginx crashea al startup si un sidecar `version-api` aun no resuelve
