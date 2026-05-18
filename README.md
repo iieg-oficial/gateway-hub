@@ -154,6 +154,8 @@ gateway-hub/
 | [Proyecto Minerva](docs/minerva.md) | Propuesta de SSO/IAM centralizado (Authentik) para el ecosistema |
 | [Pendiente: Upgrade MapaLab](docs/pendientes/upgrade-mapalab-8cores.md) | Pasos cuando S2 suba a 8 cores / 16 GB |
 | [Pendiente: Checklist produccion GCP](docs/pendientes/checklist-produccion-gcp.md) | Validacion y pendientes del despliegue en GCP |
+| [Evaluacion: migrar a k3s/k8s](docs/pendientes/evaluacion-k3s.md) | Analisis de costo, esfuerzo, riesgos y plan por fases. Decision pendiente |
+| [Reorganizacion y puertos firewall](docs/pendientes/reorganizacion-y-puertos.md) | Plan de consolidacion de servidores (apagar S4) + checklist exhaustivo de aperturas FortiGate (caso reorganizado y caso actual) |
 
 ## Licencia
 
