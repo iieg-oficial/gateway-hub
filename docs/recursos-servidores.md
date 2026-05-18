@@ -97,11 +97,22 @@ en regimen estable. El gateway, el stack de monitoreo y mariachi conviven sin pr
 
 | Componente | Valor recomendado | Justificacion |
 |-----------|-------------------|---------------|
-| Gunicorn workers | 4 | Server compartido con gateway + huachicol + acervo. Aunque hay 8 cores, conviene dejar margen para Acervo (lectura concurrente desde mapalab/visor) y para los exporters de huachicol. |
-| DB pool por worker | 5 + 10 overflow (default SQLAlchemy) | Defaults actuales son suficientes: ~7 conexiones activas observadas vs `max_connections=100` del postgres local de mariachi. |
+| Gunicorn workers | 8 | SQLAlchemy con psycopg2-binary es sync: cada query bloquea el worker, asi que la formula clasica `~cores` aplica. Con 8 cores en S1 y consumo bajo del resto del stack (~525 MB combinados), hay margen. |
+| DB pool por worker | 5 + 10 overflow (default SQLAlchemy) | Con 8 workers = 120 conexiones potenciales contra `max_connections=200`. Pool default es suficiente. |
 | Healthcheck interval | 5s (default) | Genera ~12 req/min de `/health` pero no impacta latencia. Aceptable. |
 
-Se activa exportando `GUNICORN_WORKERS=4` en `mariachi/.env.production`. Sin la variable, `api/scripts/start_backend.sh` aplica un default conservador de **2 workers**, que es el cuello observado en `mariachi-api` al servir el panel admin (los 2 workers se saturan cuando una request bloquea por GeoServer/DataEngine/Acervo).
+### Matriz de valores por entorno (Mariachi)
+
+| Variable | GCP Staging (2c/7.8GB todo junto) | S1 Production (8c/15GB compartido) | Dev local (workstation) | Racional |
+|---|---|---|---|---|
+| `GUNICORN_WORKERS` | 4 | 8 | 8 | psycopg2 sync ⇒ formula `~cores`. En GCP comparte 2 cores con todo el ecosistema. |
+| `POSTGRES_MAX_CONNECTIONS` | 100 (default) | 200 | 200 | 8 workers x 15 conn = 120; subir a 200 da margen para cron/healthchecks. |
+| `POSTGRES_SHARED_BUFFERS` | `128MB` (default) | `512MB` | `512MB` | BD de mariachi es pequena (catalogos + borradores + colibri). 512MB cubre con holgura sin acaparar RAM de Acervo en S1. |
+| `POSTGRES_EFFECTIVE_CACHE_SIZE` | `512MB` | `2GB` | `2GB` | Hint al planner sobre cache del OS. 2GB en S1 (que tiene 15GB) es estimacion realista de paginas cacheadas. |
+
+Sin estas variables, `api/scripts/start_backend.sh` aplica un default conservador de **2 workers** y mariachi-postgres queda con defaults (`max_connections=100`, `shared_buffers=128MB`, `effective_cache_size=4GB` del kernel) — cuello observado al servir el panel admin: los 2 workers se saturan cuando una request bloquea por GeoServer/DataEngine/Acervo.
+
+Las variables se setean en `mariachi/.env.<entorno>` (no versionado) y los `.env.*.example` traen los valores recomendados como referencia.
 
 ### S2: MapaLab
 
@@ -173,10 +184,23 @@ de 15 GB tiene margen para crecer. El mayor uso de swap (471 MB) sugiere picos d
 | dataengine-backup | ~1 MB | 0.01% |
 | **Total estimado** | **~676 MB** | **~8.6%** |
 
-**Nota:** PostgreSQL consume 620 MB con `shared_buffers=256MB` y `effective_cache_size=768MB`.
-El uso de swap (1.5 GB de 4 GB) indica que PostgreSQL esta usando mas memoria de la visible
-en el contenedor (buffer/page cache del OS). Con `max_connections=200` y 128 conexiones
-potenciales de MapaLab, tiene margen de 72 conexiones para otros servicios (GeoServer, backups, etc.).
+**Nota:** PostgreSQL en S4 esta tuneado para servidor dedicado: `shared_buffers=2GB`,
+`effective_cache_size=5632MB`, `max_connections=200`. El uso de swap (1.5 GB de 4 GB)
+indica picos de presion de memoria; con 128 conexiones potenciales de MapaLab tiene
+margen de 72 conexiones para otros servicios (GeoServer, backups, etc.).
+
+### Configuracion recomendada para DataEngine
+
+| Variable env | GCP Staging (2c/7.8GB compartido) | S4 Production (4c/7.7GB dedicado) | Justificacion |
+|---|---|---|---|
+| `POSTGRES_MAX_CONNECTIONS` | 100 | 200 | En GCP comparte VM con todo el ecosistema; 200 conexiones (~5 MB c/u) desperdicia ~500 MB. |
+| `POSTGRES_SHARED_BUFFERS` | `256MB` | `2GB` | 25% de RAM del server. En GCP 2GB asfixiaria a geoserver+mapalab+huachicol; en S4 dedicado es ideal. |
+| `POSTGRES_EFFECTIVE_CACHE_SIZE` | `768MB` | `5632MB` | 73% de RAM del server (memoria que el planner asume cacheada por el OS). |
+
+Se definen en `dataengine/.env` y se aplican por overrides `-c` despues del `config_file`
+en el `command` del compose (postgres respeta el ultimo valor: archivo + CLI). El
+`postgresql.conf` queda inmutable con los defaults production-grade; staging override
+solo lo necesario para no asfixiar a sus vecinos.
 
 ---
 
