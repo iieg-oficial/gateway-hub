@@ -4,7 +4,7 @@
 >
 > Este archivo NO reemplaza los `docs/context.md` de cada repo — los complementa. Cada repo documenta lo suyo; este documento documenta lo que **solo se ve cuando se miran juntos**: flujos cruzados, acoplamientos, decisiones arquitectonicas compartidas y deuda tecnica coordinada.
 >
-> Ultima actualizacion: 2026-05-14
+> Ultima actualizacion: 2026-05-18
 
 ---
 
@@ -247,6 +247,57 @@ Intencional segun `mariachi/docs/context.md`. Resumen:
 - **No cambiado**: URL `/api/portal`, DB `iieg_portal`, branding UI, upstream `portal` en gateway.
 
 Por que no cambio todo: conflicto de nombres con otro upstream ya existente en el gateway. Mantener `PORTAL_HOST` apuntando a `mariachi-nginx-*` es el compromiso. Para el lector desprevenido del `.env` del gateway, esto parece inconsistente.
+
+### 5.5. Endpoints `/ontoy` y descubrimiento de versiones (resuelto 2026-05-18)
+
+Cada servicio del ecosistema expone su version en `GET /ontoy` y `mariachi` los agrega en `/api/sistema/plataformas` para pintar la seccion "Plataformas del ecosistema" del inicio. Fuente de verdad: el repo de cada servicio. **Nadie debe hardcodear versiones de otro repo.**
+
+#### Patron canonico
+
+| Servicio | Quien sirve `/ontoy` | Fuente del numero |
+|---|---|---|
+| `gateway-hub` | el propio nginx (`alias /etc/nginx/version.json`) | `VERSION` + `docs/CHANGELOG.md` -> `make version-json` regenera `nginx/version.json` |
+| `acervo`, `geoserver`, `huachicol` | container sidecar `*-version-api` (`python:3.13-alpine` + `ontoy_server.py` 47 lineas, sin deps) en `iieg-network`, puerto interno `8088` | `VERSION` + `docs/CHANGELOG.md` -> `make version-json` regenera `version-api/html/version.json` |
+| `dataengine` | mismo `ontoy_server.py` pero embebido en el container `jobs` (no es sidecar separado) | `VERSION` + `docs/CHANGELOG.md` -> `make version-json` |
+| `sieej` | gateway-hub via `alias /usr/share/nginx/html/sieej/ontoy.json` | generado en build de `sieej/frontend/dist/` |
+| `mapalab` | backend FastAPI en `app/server.py` | `backend/app/__version__.py` |
+| `mariachi` | implicito via `api/pyproject.toml` (`get_app_version()` en `core/version.py`) | `pyproject.toml` |
+
+#### Exposicion publica via gateway-hub
+
+`gateway-hub` proxea cada `/ontoy` hacia el upstream correcto. Hasta `1.24.21` lo hacia con `return 200 '<hardcode>'` que se desfasaba; desde `1.25.0` usa `proxy_pass` real:
+
+| URL publica | Upstream interno |
+|---|---|
+| `/ontoy` | el propio nginx |
+| `/geoserver/ontoy` | `geoserver_ontoy` -> `geoserver-version-api:8088` |
+| `/acervo/ontoy` | `acervo_ontoy` -> `acervo-version-api:8088` |
+| `/huachicol/ontoy` | `huachicol_ontoy` -> `huachicol-version-api:8088` |
+| `/sieej/ontoy` | alias estatico (sin proxy) |
+
+`/mapalab/ontoy` y `/mariachi/ontoy` no estan expuestos publicamente; `mariachi` los consume directamente del backend.
+
+#### Configuracion en mariachi
+
+`mariachi` lee URLs desde `*_ONTOY_URL` en `.env.production` / `.env.staging`. Plantillas en `mariachi/.env.production.example`. El hardcode `static_version` en `mariachi/api/app/core/platforms_config.py` fue removido en `mariachi/1.1.0` — ya no hay override.
+
+#### Reglas
+
+- **Cada repo bumpea su `VERSION` y escribe la entrada en `docs/CHANGELOG.md` antes de hacer deploy.** El `make version-json` del repo lee ambos y publica el JSON nuevo automaticamente. Si la entrada del changelog falta, se publica `released_at: ""` con un warning.
+- **No agregar `static_version` a `platforms_config.py`.** Si un servicio no expone `/ontoy`, la solucion es agregarlo (mismo patron sidecar) o dejar el probe en `none`/`http_health`, nunca hardcodear el numero.
+- **Si un sidecar `version-api` no esta arriba, la plataforma aparece como `healthy: false`** en el dashboard — eso es informativo, antes mentia con un numero.
+
+#### Verificacion rapida
+
+```bash
+curl -s http://localhost/ontoy
+curl -s http://localhost/geoserver/ontoy
+curl -s http://localhost/acervo/ontoy
+curl -s http://localhost/huachicol/ontoy
+curl -s http://localhost/sieej/ontoy
+```
+
+Todos deben devolver `{"version": "x.y.z", ...}` con la version del repo correspondiente.
 
 ---
 
