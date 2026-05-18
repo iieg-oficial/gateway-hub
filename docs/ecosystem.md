@@ -331,9 +331,9 @@ Un merge significaria que un bug del CMS tira el visor, o un `COPY TO STDOUT` gr
 
 Estos items aparecen en mas de un repo y requieren coordinacion.
 
-### 7.1.1. Migracion prod one-shot (preparado 2026-04-23)
+### 7.1.1. Release acumulado a produccion: `make prod-migration`
 
-Para el deploy a produccion — donde mariachi aun no existe, el Sheet es la fuente de verdad, y dataengine esta en una version LTS anterior — hay un script que orquesta todo en una llamada:
+`prod-migration` esta diseñado para la **ventana de release acumulado a prod** — no para el dia a dia. Agrupa en una sola corrida todo lo que se acumula entre release y release: pull final del Sheet (si aplica), bootstrap-v14 idempotente, seed, migraciones alembic pendientes y stamp. Si solo necesitas aplicar una migracion alembic posterior a un deploy normal, ver 7.1.2.
 
 ```bash
 cd /IIEG/dataengine
@@ -344,10 +344,11 @@ make prod-migration PROD_MIGRATION_FLAGS="--layers-json /ruta/custom.json"
 make prod-migration PROD_MIGRATION_FLAGS="--skip-etl"
 ```
 
-Es el **unico target** relacionado al bootstrap (antes habia `bootstrap-v14`, `bootstrap-v14-dry`, `migrate-mapalab-card` — consolidados aqui).
+Es el **unico target** relacionado al bootstrap completo (antes habia `bootstrap-v14`, `bootstrap-v14-dry`, `migrate-mapalab-card` — consolidados aqui).
 
 Que hace, en orden:
 
+- **Pre. Rebuild de la imagen `jobs`** (agregado 2026-05-18): `docker compose build jobs && up -d jobs`. Necesario porque `jobs` tiene `/app/alembic/versions/` embebido en la imagen, no via bind-mount — sin rebuild, alembic no ve migraciones nuevas aunque `git pull` ya las haya traido al host. Ver 7.1.3.
 - **A. Pull final del Google Sheet -> `public.mapalab_card`**: restaura el ETL legacy desde el commit `1f70a88~1` en `jobs/_legacy_etl/` (gitignored), lo corre via `docker compose exec jobs` con `FORCE_LEGACY_ETL=1`, y limpia al terminar. El ETL hace `DELETE + INSERT` — sobrescribe `mapalab_card` completo con el ultimo snapshot del Sheet. **Esta parte es la unica "destructiva" del flujo**.
 - **B. Bootstrap v1.4.0**: invoca `scripts/bootstrap-v14.sh` (crea schema, aplica `v14_schema.sql`, seed de layers desde JSON, migracion `mapalab_card -> layer_metadata + layer_stats`, stamp alembic en `dataengine@head`). Todo upsert, **no destructivo**.
 
@@ -357,7 +358,36 @@ Que hace, en orden:
 - `MAPALAB_CARD_GOOGLE_SHEET_URL` — URL del Sheet.
 - `DATAENGINE_DB_*` o `POSTGRES_*` — credenciales DB.
 
-**Warning operativo**: este script esta diseñado para correrse **una vez**, durante la ventana de migracion donde mariachi aun no existe en prod. Re-correrlo DESPUES de que haya ediciones en mariachi sobrescribiria esas ediciones (los upserts del paso B vienen del JSON baseline + mapalab_card, no de mariachi). Post-migracion, **congelar el Sheet** y usar unicamente mariachi.
+**Warning operativo**: este script esta diseñado para correrse **una vez por ventana de release**, durante la migracion donde se acumulan cambios. Re-correrlo en operacion rutinaria mezcla pasos pesados/destructivos (el pull del Sheet) que no corresponden — para aplicar una migracion alembic suelta tras un deploy menor, usar `make migrate` (7.1.2). Post-go-live, **congelar el Sheet** y usar unicamente mariachi.
+
+### 7.1.2. Migracion rutinaria con `make migrate` (2026-05-18)
+
+Tras un `git pull` en la VM con migraciones alembic nuevas, el flujo dia-a-dia es:
+
+```bash
+cd /IIEG/dataengine
+make migrate                  # build jobs + up -d jobs + alembic upgrade head
+make migrate-status           # confirma que alembic quedo en head
+```
+
+`make migrate` incluye el rebuild de la imagen `jobs` por la razon de 7.1.3. No requiere credenciales Google ni archivos extra — solo aplica lo que alembic encuentre pendiente.
+
+**Cuando usar `migrate` vs `prod-migration`**:
+
+- `migrate` — operacion normal. Un commit con una migracion nueva entra a prod. Tras el deploy: `git pull && make migrate`.
+- `prod-migration` — release acumulado. Varios cambios juntos, incluye bootstrap completo, posible pull del Sheet. Reservado para ventanas planificadas de release.
+
+### 7.1.3. Gotcha: imagen `jobs` no tiene bind-mount del codigo (2026-05-18)
+
+El container `dataengine-jobs` solo bind-montea `VERSION` y `version-api/html/version.json`. Todo el resto (incluyendo `/app/alembic/versions/`, `/app/bootstrap/`, jobs Python) vive embebido en la imagen Docker.
+
+**Implicacion**: tras `git pull` en la VM, hay que rebuildear la imagen antes de que `alembic upgrade head` vea las migraciones nuevas. Si no, alembic se queda mirando el arbol viejo y reporta "ya estoy en head" silenciosamente — y el endpoint que consume la tabla nueva tira `relation "X" does not exist`.
+
+**Incidente origen** (2026-05-18): `GET /api/administrador/mapalab/symbol-categories` devolvio 500 en prod. La migracion `0007_symbol_catalog` (que crea `mapalab.symbol_categories` + `mapalab.symbols` y siembra ~1000 emojis) estaba en el repo desde el commit `7b1078a`, ya pull-eada al host, pero la imagen `dataengine-jobs` seguia con el arbol que terminaba en `0006_layer_icon_url`.
+
+**Fix aplicado**: `make migrate` y `scripts/prod-migration.sh` ahora hacen `docker compose build jobs && up -d jobs` automaticamente antes de invocar a alembic. Idempotente; sin migraciones pendientes no causa nada visible salvo el rebuild rapido.
+
+**Sintoma a recordar**: si tras un deploy ves `500 — relation "mapalab.<X>" does not exist`, primero `make migrate-status` para confirmar el head de alembic. Si esta atrasado pese a que el archivo .py esta en el host, es este caso.
 
 ### 7.1. Drop `public.mapalab_card` (preparado 2026-04-23, ejecucion pendiente)
 
@@ -378,25 +408,28 @@ Que hace, en orden:
 - **Tests**: `test_notifier_retries_on_failure`, `test_notifier_succeeds_on_retry` en `tests/test_integration_notify.py`. Bonus: se arreglo el patch pattern recursivo que dejaba 4 tests pre-existentes fallando.
 - **Pendiente (fix robusto opcional)**: mariachi marca flag `mapalab.layer_tree_dirty=true` en DB; mapalab lee flag antes de servir tree. Hoy el etag-check de mapalab (seccion 4.1) ya cubre el caso general, asi que este fix robusto es baja prioridad.
 
-### 7.3. Ownership de migraciones del schema `mapalab.*` (resuelto 2026-04-23)
+### 7.3. Ownership de migraciones del schema `mapalab.*` (revisado 2026-05-18 — politica invertida)
 
-**Estado detectado**: DDL duplicado real.
+**Historia corta**: la decision original (2026-04-23) era "alembic en mariachi es autoritativo". Se invirtio: ahora **alembic en dataengine es autoritativo**. La nota original quedaba desincronizada del codigo y causaba confusion al onboardear.
 
-- `dataengine/jobs/bootstrap/v14_schema.sql` (129 lineas, idempotente via `IF NOT EXISTS`)
-- `mariachi/api/alembic/versions/dataengine/20260422_000[1-3]_*.py` (266 lineas, branch label `dataengine`)
+**Estado actual en codigo**:
 
-Ambos crean el mismo schema `mapalab.*`. Riesgo de divergencia al agregar columna/tabla.
+- `mariachi/api/alembic/env.py` (linea ~14): comentario explicito *"mariachi gestiona unicamente su propio schema 'mariachi'. Las migraciones del schema 'mapalab' viven en dataengine/jobs/alembic/"*.
+- `mariachi/api/alembic/versions/dataengine/`: **vacio**.
+- `dataengine/jobs/alembic/versions/`: contiene la cadena de migraciones del schema `mapalab.*` (al 2026-05-18, llega hasta `0007_symbol_catalog`).
+- `dataengine/jobs/bootstrap/v14_schema.sql`: sigue **frozen**, baseline idempotente para bootstrap de ambientes nuevos.
 
-**Decision tomada**: **Alembic (en mariachi) es la fuente autoritativa de DDL del schema `mapalab.*` hacia adelante.**
+**Politica actual**:
 
-- `v14_schema.sql` queda **frozen**: sirve como baseline idempotente para bootstrap de ambientes nuevos (v1.4.0 schema completo). No se toca mas.
-- Cambios futuros de schema viven unicamente en `mariachi/api/alembic/versions/dataengine/` (proximo sera `0004_*`).
-- Si alguien necesita cambiar el DDL en dataengine, primero escribe la migracion en mariachi alembic, aprueba/mergea, y luego aplica.
-- Bootstrap de ambientes nuevos sigue invocando `scripts/bootstrap-v14.sh` (que corre `v14_schema.sql` + stampea alembic en `dataengine@head` automaticamente si detecta el container mariachi corriendo). Cambios posteriores: `alembic -x db=dataengine upgrade dataengine@head`.
+- Cambios de schema de `mapalab.*` viven **solo** en `dataengine/jobs/alembic/versions/` con la numeracion `00NN_<descripcion>`.
+- En mariachi se actualizan los modelos SQLAlchemy en `api/app/models/` para reflejar la nueva estructura, **sin** agregar migracion alembic (mariachi no tiene rama `dataengine`).
+- Aplicacion: tras `git pull` en la VM, `make migrate` (ver 7.1.2) en dataengine.
+
+**Por que el cambio**: poner las migraciones en mariachi obligaba a que `dataengine-jobs` tuviera acceso al alembic de mariachi (cross-container exec o copiar archivos). Dejarlas en dataengine es operativamente mas simple y ya tiene su propio `alembic` corriendo en el container `jobs`.
 
 **Guardrail**: `gateway-hub/scripts/check-model-drift.py` (seccion 7.4) detecta drift entre los modelos SQLAlchemy de mapalab y mariachi — sirve de test indirecto para la politica.
 
-**Cleanup futuro opcional** (no urgente): refactor `bootstrap-v14.sh` para correr alembic en vez de `v14_schema.sql`, y luego borrar `v14_schema.sql`. Requiere que el container `dataengine-jobs` tenga acceso a mariachi alembic (exec cross-container o copiar migraciones). Baja prioridad porque el baseline no cambia.
+**Pendiente**: confirmar si `check-model-drift.py` sigue siendo relevante bajo esta politica (mariachi mantiene modelos solo para lectura; el DDL nace en dataengine). Probablemente si, porque mariachi sigue importando los modelos para queries via `DATAENGINE_DATABASE_URL`.
 
 ### 7.4. Contrato de modelos mariachi <--> mapalab (resuelto 2026-04-23)
 
