@@ -12,6 +12,30 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.25.3] - 2026-05-18
+
+### Fix: los 5 upstreams (portal, mapalab, acervo, mariachi, huachicol) ahora resuelven DNS en runtime
+
+Mismo bug latente que `1.25.1` arreglo para los 3 sidecars version-api, pero aplicaba tambien a los 5 upstreams "principales" del gateway. Los bloques `upstream portal { server ${PORTAL_HOST}; ... }` (idem para mapalab/acervo/mariachi/huachicol) eran resueltos por nginx **al parsear el config** y la IP del container destino quedaba cacheada hasta el siguiente restart de nginx. Cuando cualquier container destino se recreaba (mariachi-nginx, grafana, acervo-seaweedfs, mapalab-nginx) y Docker le asignaba otra IP, el gateway seguia intentando la IP vieja → `502 Connection refused` constante. Observado en staging post-restart de huachicol: `grafana` paso de `172.18.0.4` a `172.18.0.3`, gateway seguia apuntando a `172.18.0.4` (que ahora era `nginx-auth`).
+
+#### Cambiado
+
+- **`nginx/templates/gateway.conf.template`**:
+  - Removidos los 5 bloques `upstream portal/mapalab/acervo/mariachi/huachicol`.
+  - Cada `location` que hacia `proxy_pass http://NAME` ahora declara `set $NAME_upstream "${NAME_HOST}"` y usa `proxy_pass http://$NAME_upstream`. Resolucion DNS por request (via `resolver 127.0.0.11`), no por parse.
+  - Para los 4 locations que removian prefijo de path (`proxy_pass http://mapalab/` reemplazaba `/mapalab/` con `/`), se agrega `rewrite ^/mapalab/(.*) /$1 break;` antes del `proxy_pass`. Sin esto, nginx con variable mantiene el URI original — cambio de semantica que rompia el routing al upstream. Aplica a `/mapalab/assets/`, `/mapalab/api/download/`, `/mapalab/` y `/acervo/`. Los locations `/mariachi/`, `/huachicol/` y `/huachicol/public/` no tenian path en el proxy_pass original, asi que siguen igual.
+  - **Resolver HTTPS reducido a solo `127.0.0.11`** (antes era `127.0.0.11 8.8.8.8 8.8.4.4`). Nginx hace round-robin entre los nameservers configurados: cuando le tocaba 8.8.8.8/8.8.4.4 intentaba resolver hostnames internos de Docker (`grafana`, `mariachi-nginx`, `geoserver-version-api`) por Google DNS y obtenia NXDOMAIN, causando 502 intermitente (~2 de cada 3 requests). El `127.0.0.11` (Docker embedded DNS) ya recursa hacia los DNS del host para hostnames publicos, asi que OCSP stapling sigue funcionando sin el fallback explicito.
+
+#### Trade-off
+
+- Se pierde el `keepalive 32; keepalive_timeout 60s;` que tenian los upstream blocks. Para el trafico actual (gobierno, picos modestos), el impacto es despreciable: la conexion TCP+TLS al upstream se establece por request en vez de reusarse del pool. Si en el futuro se ve carga sostenida que justifique reanudar keepalive, se puede combinar con resolver dinamico via `upstream` + `keepalive` + `resolve` (requiere `nginx-plus`, no aplica aqui) o mediante un sidecar tipo `consul-template`.
+
+#### Verificacion
+
+Tras `make deploy`, ningun container destino requiere restart del gateway aunque cambie de IP. Si un upstream cae, ese endpoint da 502 pero el resto del gateway sigue arriba.
+
+---
+
 ## [1.25.2] - 2026-05-18
 
 ### Fix: `X-Forwarded-Host` ahora refleja el host real del request
