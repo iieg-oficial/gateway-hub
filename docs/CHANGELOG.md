@@ -12,6 +12,31 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.25.0] - 2026-05-18
+
+### `/{servicio}/ontoy` ahora hace `proxy_pass` real + auto-regen de `nginx/version.json`
+
+Hasta `1.24.21` el gateway eclipsaba las versiones reales de geoserver y acervo con `return 200 '...'` hardcoded en `gateway.conf.template` (`geoserver` quedo congelado en `1.14.1` real `1.20.1+`, `acervo` en `1.20.1` real `1.22.4+`), y `/huachicol/ontoy` ni existia. Ademas `nginx/version.json` se sincronizaba a mano con `VERSION`, asi que tambien podia desfasarse.
+
+#### Agregado
+
+- **`nginx/templates/gateway.conf.template`**:
+  - upstreams `geoserver_ontoy`, `acervo_ontoy`, `huachicol_ontoy` apuntando a los sidecars `*-version-api:8088` en `iieg-network` (creados en `geoserver/1.21.0`, `acervo/1.23.0`, `huachicol/1.20.0`).
+  - location `/huachicol/ontoy` en los dos server blocks (HTTP y HTTPS), antes no existia.
+- **`Makefile`**: target `version-json` que regenera `nginx/version.json` leyendo `VERSION` y la fecha de `docs/CHANGELOG.md`. Hookeado a `up`, `build` y `deploy` como prerequisito.
+
+#### Cambiado
+
+- **`nginx/templates/gateway.conf.template`** (HTTP y HTTPS): `location = /geoserver/ontoy` y `location = /acervo/ontoy` cambian de `return 200 '<hardcode>'` a `proxy_pass http://{servicio}_ontoy/ontoy` con `keepalive`. Ahora la version que se ve por `https://dominio/{servicio}/ontoy` viene del repo de cada servicio.
+- **`Makefile`** (`ecosystem-up`, paso `[4/7] geoserver`): `cd $(GEOSERVER_DIR) && docker compose up -d` reemplazado por `$(MAKE) -C $(GEOSERVER_DIR) up` para que el `version-json` de geoserver se regenere en cada despliegue del ecosistema (mismo patron que ya usaban acervo, huachicol y dataengine).
+- **`.gitignore`**: `nginx/version.json` ahora se ignora (se regenera por `make version-json`). El archivo se removio del index con `git rm --cached`; el `Dockerfile` lo sigue copiando porque los hooks de `build`/`deploy` garantizan que existe antes del build.
+
+#### Notas
+
+`mariachi` debe eliminar los `static_version` de `geoserver`, `acervo`, `huachicol`, `gateway-hub` y `dataengine` en `platforms_config.py` para que la version mostrada en el dashboard de ecosistema venga 100 % en vivo. Si el sidecar de un servicio no esta arriba, el probe ya distingue (devuelve `healthy: false` en vez de un hardcode mentiroso).
+
+---
+
 ## [1.24.21] - 2026-05-15
 
 ### `ecosystem-pull` y `ecosystem-update`: git pull + up en un solo comando

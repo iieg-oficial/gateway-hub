@@ -1,7 +1,7 @@
 .PHONY: help up down restart deploy build logs ps \
         ecosystem-up ecosystem-down ecosystem-restart ecosystem-status \
         ecosystem-pull ecosystem-update \
-        network
+        network version-json
 
 NETWORK_NAME := iieg-network
 
@@ -33,6 +33,7 @@ help:
 	@echo "    restart             Reiniciar gateway-hub"
 	@echo "    logs                Logs del gateway"
 	@echo "    ps                  Status de gateway"
+	@echo "    version-json        Regenerar nginx/version.json desde VERSION + CHANGELOG"
 	@echo ""
 	@echo "  Ecosistema completo en modo production local (orden topologico):"
 	@echo "    ecosystem-up        Levantar acervo + huachicol + dataengine + geoserver"
@@ -52,14 +53,22 @@ network:
 	@docker network inspect $(NETWORK_NAME) >/dev/null 2>&1 || \
 	    (echo "Creando red $(NETWORK_NAME)..."; docker network create $(NETWORK_NAME))
 
-up: network
+up: network version-json
 	docker compose $(GATEWAY_FILES) up -d
 
-build:
+build: version-json
 	docker compose $(GATEWAY_FILES) build
 
-deploy: network
+deploy: network version-json
 	docker compose $(GATEWAY_FILES) up -d --build
+
+version-json:
+	@SERVICE=gateway-hub; LABEL="Gateway Hub"; \
+	 VERSION=$$(tr -d '[:space:]' < VERSION); \
+	 RELEASED_AT=$$(grep -m1 "^## \[$$VERSION\]" docs/CHANGELOG.md | sed -E 's/^## \[[^]]+\] - ([0-9-]+).*/\1/'); \
+	 if [ -z "$$RELEASED_AT" ]; then echo "WARN: no se encontro entrada '## [$$VERSION] - YYYY-MM-DD' en docs/CHANGELOG.md" >&2; fi; \
+	 printf '{"slug":"%s","label":"%s","version":"%s","released_at":"%s"}\n' "$$SERVICE" "$$LABEL" "$$VERSION" "$$RELEASED_AT" > nginx/version.json; \
+	 echo "nginx/version.json -> $$VERSION ($$SERVICE, $$RELEASED_AT)"
 
 down:
 	docker compose down
@@ -83,7 +92,7 @@ ecosystem-up: network
 	@$(MAKE) -C $(DATAENGINE_DIR) up
 	@echo ""
 	@echo "[4/7] geoserver..."
-	@cd $(GEOSERVER_DIR) && docker compose up -d
+	@$(MAKE) -C $(GEOSERVER_DIR) up
 	@echo ""
 	@echo "[5/7] sieej (build idempotente del dist)..."
 	@$(MAKE) -C $(SIEEJ_DIR) build

@@ -3,3 +3,4 @@
 *.pem
 *.key
 *.crt
+nginx/version.json

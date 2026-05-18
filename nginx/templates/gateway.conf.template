@@ -38,6 +38,21 @@ upstream huachicol {
     keepalive_timeout 60s;
 }
 
+upstream geoserver_ontoy {
+    server geoserver-version-api:8088;
+    keepalive 4;
+}
+
+upstream acervo_ontoy {
+    server acervo-version-api:8088;
+    keepalive 4;
+}
+
+upstream huachicol_ontoy {
+    server huachicol-version-api:8088;
+    keepalive 4;
+}
+
 map $request_uri $acervo_content_disposition {
     default         "";
     ~*\.(txt|xlsx)$ "attachment";
@@ -54,15 +69,24 @@ server {
     }
 
     location = /geoserver/ontoy {
-        default_type application/json;
+        proxy_pass http://geoserver_ontoy/ontoy;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
         add_header Cache-Control "no-cache, no-store, must-revalidate" always;
-        return 200 '{"slug":"geoserver","label":"GeoServer","version":"1.14.1"}';
     }
 
     location = /acervo/ontoy {
-        default_type application/json;
+        proxy_pass http://acervo_ontoy/ontoy;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
         add_header Cache-Control "no-cache, no-store, must-revalidate" always;
-        return 200 '{"slug":"acervo","label":"Acervo","version":"1.20.1"}';
+    }
+
+    location = /huachicol/ontoy {
+        proxy_pass http://huachicol_ontoy/ontoy;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        add_header Cache-Control "no-cache, no-store, must-revalidate" always;
     }
 
     location = /sieej/ontoy {
@@ -126,15 +150,24 @@ server {
     }
 
     location = /geoserver/ontoy {
-        default_type application/json;
+        proxy_pass http://geoserver_ontoy/ontoy;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
         add_header Cache-Control "no-cache, no-store, must-revalidate" always;
-        return 200 '{"slug":"geoserver","label":"GeoServer","version":"1.14.1"}';
     }
 
     location = /acervo/ontoy {
-        default_type application/json;
+        proxy_pass http://acervo_ontoy/ontoy;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
         add_header Cache-Control "no-cache, no-store, must-revalidate" always;
-        return 200 '{"slug":"acervo","label":"Acervo","version":"1.20.1"}';
+    }
+
+    location = /huachicol/ontoy {
+        proxy_pass http://huachicol_ontoy/ontoy;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        add_header Cache-Control "no-cache, no-store, must-revalidate" always;
     }
 
     location = / {
