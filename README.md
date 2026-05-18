@@ -149,6 +149,7 @@ gateway-hub/
 | [Recursos de servidores](docs/recursos-servidores.md) | Hardware, memoria y configuracion por entorno |
 | [Auditoria de seguridad](docs/auditoria-seguridad.md) | Comparativa de seguridad web: sitio anterior vs actual |
 | [Arquitectura](docs/arquitectura.mmd) | Diagrama de arquitectura (Mermaid) |
+| [Componentes](docs/componentes.mmd) | Diagrama de componentes: containers por repo, sidecars version-api, flujos /ontoy (Mermaid) |
 | [SSH Deploy Keys](docs/ssh-deploy-keys.md) | Configuracion de llaves SSH para despliegue |
 | [Proyecto Minerva](docs/minerva.md) | Propuesta de SSO/IAM centralizado (Authentik) para el ecosistema |
 | [Pendiente: Upgrade MapaLab](docs/pendientes/upgrade-mapalab-8cores.md) | Pasos cuando S2 suba a 8 cores / 16 GB |
