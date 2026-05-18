@@ -54,7 +54,7 @@ Todos los servicios corren en una sola VM.
 
 ## Produccion — 4 Servidores
 
-### S1: Gateway + Huachicol + Acervo
+### S1: Gateway + Huachicol + Acervo + Mariachi
 
 | Recurso | Valor |
 |---------|-------|
@@ -82,10 +82,26 @@ Todos los servicios corren en una sola VM.
 | node-exporter | 8 MB | 6.3% (limit 128 MB) |
 | nginx-exporter | 6 MB | 0.04% |
 | nginx-auth | 3 MB | 2.4% (limit 128 MB) |
-| **Total estimado** | **~525 MB** | **~3.4%** |
+| mariachi-api | ~250 MB por worker | depende de `GUNICORN_WORKERS` |
+| mariachi-postgres | ~60 MB | 0.4% |
+| mariachi-redis | ~15 MB | 0.1% |
+| mariachi-nginx | ~25 MB | 0.2% |
+| mariachi-cron-sieej | ~2 MB | 0.01% |
+| **Total estimado** | **~1.6 GB** (con 4 workers) | **~10.7%** |
 
-**Nota:** Este servidor tiene mucho margen (15 GB RAM, solo 525 MB en uso). Gateway Hub y el stack
-de monitoreo consumen muy poco.
+**Nota:** Este servidor tiene mucho margen (15 GB RAM, ~1.6 GB en uso con mariachi a 4 workers).
+Mariachi-api comparte el server pero con consumo bajo: cada worker gunicorn ronda los 250 MB de RSS
+en regimen estable. El gateway, el stack de monitoreo y mariachi conviven sin presion de memoria.
+
+### Configuracion recomendada para Mariachi en S1
+
+| Componente | Valor recomendado | Justificacion |
+|-----------|-------------------|---------------|
+| Gunicorn workers | 4 | Server compartido con gateway + huachicol + acervo. Aunque hay 8 cores, conviene dejar margen para Acervo (lectura concurrente desde mapalab/visor) y para los exporters de huachicol. |
+| DB pool por worker | 5 + 10 overflow (default SQLAlchemy) | Defaults actuales son suficientes: ~7 conexiones activas observadas vs `max_connections=100` del postgres local de mariachi. |
+| Healthcheck interval | 5s (default) | Genera ~12 req/min de `/health` pero no impacta latencia. Aceptable. |
+
+Se activa exportando `GUNICORN_WORKERS=4` en `mariachi/.env.production`. Sin la variable, `api/scripts/start_backend.sh` aplica un default conservador de **2 workers**, que es el cuello observado en `mariachi-api` al servir el panel admin (los 2 workers se saturan cuando una request bloquea por GeoServer/DataEngine/Acervo).
 
 ### S2: MapaLab
 
