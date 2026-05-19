@@ -68,6 +68,7 @@ gateway-hub/
 │   └── static/                     # robots.txt, sitemap.xml, .well-known/security.txt
 ├── scripts/
 │   ├── check-model-drift.py        # AST diff entre modelos SQLAlchemy mapalab/mariachi
+│   ├── gen-version-json.sh         # Genera nginx/version.json desde VERSION + CHANGELOG (usado por `make version-json`)
 │   ├── setup-swap.sh               # Provisiona swap en la VM
 │   ├── stress_test.py              # Stress test de carga
 │   └── stress_test_multi_ip.py     # Stress test con multiples IPs de origen

@@ -12,6 +12,36 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.25.4] - 2026-05-19
+
+### Tooling: limpieza del Makefile (sin cambios funcionales en Nginx)
+
+Refactor del `Makefile` y extraccion del generador de `version.json`. No toca rutas, certificados, headers, rate limits ni la imagen de nginx — solo la ergonomia del orquestador local. El bump es porque `make version-json` regenera el JSON con la nueva version del repo.
+
+#### Anadido
+
+- **`scripts/gen-version-json.sh`**: extraido del heredoc multilinea que vivia dentro del target `version-json` del Makefile. Ahora es ejecutable standalone, con `set -euo pipefail` y resolucion absoluta de `$ROOT` para correrse desde cualquier directorio.
+- **Target `urls`**: imprime las rutas publicas del gateway leyendo `APP_DOMAIN` desde `.env` (fallback `iieg.local`). Se invoca automaticamente al final de `make up`, `make deploy` y `make ecosystem-up`.
+- **Filtro `STACKS`** en `ecosystem-up` y `ecosystem-down`: `STACKS=mariachi,mapalab make ecosystem-up` levanta solo esos stacks (respetando el orden topologico). Sin la variable, comportamiento original (todos).
+- **Guard `check-sieej-dist`**: dependencia de `up` y `deploy`. Falla rapido con mensaje claro si `SIEEJ_DIST_PATH` no existe en disco, en vez de levantar el gateway con un bind mount vacio que sirve 404 silencioso en `/sieej/`.
+- **Target `ecosystem-pull-others`**: `git pull --ff-only` en todos los repos del orquestador EXCEPTO gateway-hub. Util cuando hay cambios locales no commiteados aqui.
+
+#### Cambiado
+
+- **Help auto-generado**: el bloque `help:` ya no es una pared de `@echo` manual. Un parser `awk` extrae la descripcion `## ...` al lado de cada target y las secciones `##@ ...`. Renombrar un target ya no requiere actualizar la doc por separado.
+- **Tabla `ECOSYSTEM_STEPS`**: los 8 pasos del `ecosystem-up` ahora viven en una variable como tabla `nombre:dir:target-up:target-down`. El loop de bash itera sobre ella y deriva el contador `[I/TOTAL]` dinamicamente (antes era `[1/7]`…`[8/8]` hardcodeado e inconsistente).
+- **`ecosystem-down` delega a subrepos**: ahora corre `make -C <dir> down` de cada uno en orden inverso, en vez de duplicar `docker compose down` con flags hardcodeados. Si el subrepo cambia su logica de teardown, este Makefile lo respeta automaticamente. Elimina las variables `MARIACHI_FILES/ENV` y `MAPALAB_FILES/ENV` que solo existian para este caso.
+- **`down` del gateway** ahora usa `$(GATEWAY_FILES)` explicito (simetria con `up`/`build`/`deploy`).
+- **Shell estricto**: `SHELL := bash` + `.SHELLFLAGS := -eu -o pipefail -c`. Las recetas shell que fallan a media linea ahora abortan en vez de seguir silenciosamente.
+- **`MAKEFLAGS += --no-print-directory`**: elimina el ruido `make[1]: Entering directory '…'` al delegar a subrepos.
+- **`.DEFAULT_GOAL := help`** explicito (antes funcionaba por coincidencia del orden de declaracion).
+
+#### Verificacion
+
+`make help`, `make urls`, `make version-json` corren OK localmente. El filtro `STACKS` se valido standalone con la lista de pasos. `make ecosystem-up` real (con subrepos) queda pendiente de probarse en proxima sesion de despliegue.
+
+---
+
 ## [1.25.3] - 2026-05-18
 
 ### Fix: los 5 upstreams (portal, mapalab, acervo, mariachi, huachicol) ahora resuelven DNS en runtime
