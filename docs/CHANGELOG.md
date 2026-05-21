@@ -12,6 +12,22 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.26.0] - 2026-05-21
+
+### ontoy: schema homologado del endpoint `/ontoy`
+
+El JSON expuesto en `/ontoy` se alinea con el formato que ya servían los `version-api` de huachicol, acervo y geoserver: `{version, service, released_at}`. Se eliminan los campos `slug` y `label`, que duplicaban información que el consumidor (Mariachi `/sistema/plataformas`) ya tiene hardcoded en `platforms_config.py`.
+
+#### Cambiado
+
+- **`scripts/gen-version-json.sh`**: el `printf` final ahora emite `{"version","service","released_at"}` en ese orden. Se elimina la constante `LABEL` (ya no se usa) y se renombra el orden para que `version` sea el primer campo, igual que el resto del ecosistema.
+
+#### Por qué bump minor
+
+Cambio en el contrato público de `/ontoy`. Aunque el consumidor único conocido (Mariachi) sólo lee `version`, otros clientes externos podrían depender de `slug`/`label` — el bump avisa la ruptura.
+
+---
+
 ## [1.25.4] - 2026-05-19
 
 ### Tooling: limpieza del Makefile (sin cambios funcionales en Nginx)
