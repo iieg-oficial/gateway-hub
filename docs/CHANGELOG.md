@@ -12,6 +12,22 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.26.1] - 2026-05-26
+
+### gzip: comprimir respuestas `text/csv`
+
+Se agrega `text/csv` a la directiva `gzip_types` en `nginx.conf.template`. Los CSVs servidos desde `/mapalab/api/download/` (descargas de capas de MapaLab) son texto y comprimen 5–10×; sin esto, las descargas viajaban sin comprimir y la latencia percibida en `http_request_duration_seconds` (que mide hasta el cierre del response) saturaba el bucket superior del histograma del backend, generando alertas `HighLatency` que no reflejaban un problema real sino el tiempo de transferencia al cliente.
+
+#### Cambiado
+
+- **`nginx/templates/nginx.conf.template`**: `gzip_types` ahora incluye `text/csv` junto con los formatos de texto ya comprimidos.
+
+#### Por qué patch
+
+Cambio interno de configuración que no altera rutas, contratos ni endpoints; solo cómo se transmite la carga. Compatible con `proxy_buffering off` del location de download (nginx comprime por chunks).
+
+---
+
 ## [1.26.0] - 2026-05-21
 
 ### ontoy: schema homologado del endpoint `/ontoy`
