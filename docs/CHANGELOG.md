@@ -12,6 +12,26 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.26.2] - 2026-06-03
+
+### ecosystem-status: tabla de estatus git+docker del ecosistema
+
+El target `make ecosystem-status` ahora muestra una tabla compacta con el estado de cada repo del ecosistema: rama, cambios locales, sync con remote (push/pull pendientes) y contenedores Docker corriendo. Reemplaza el `docker compose ls` anterior que solo listaba proyectos de compose sin información de git.
+
+#### Agregado
+
+- **`scripts/ecosystem-status.sh`**: script que recorre los 8 repos del ecosistema y consulta `git status`, `git rev-list` (ahead/behind vs upstream) y `docker compose ps` para construir una tabla con columnas centradas. Incluye resumen final con contadores de repos limpios, con cambios, sin push y sin pull.
+
+#### Cambiado
+
+- **`Makefile`**: target `ecosystem-status` ahora invoca `./scripts/ecosystem-status.sh` en lugar de `docker compose ls`.
+
+#### Por qué patch
+
+Cambio interno de tooling que no altera rutas, contratos ni endpoints. Solo afecta el output de un target de Makefile usado en desarrollo local.
+
+---
+
 ## [1.26.1] - 2026-05-26
 
 ### gzip: comprimir respuestas `text/csv`

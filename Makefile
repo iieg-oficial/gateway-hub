@@ -173,8 +173,8 @@ ecosystem-down:  ## Tumbar todo el stack (orden inverso, acepta STACKS=a,b)
 
 ecosystem-restart: ecosystem-down ecosystem-up  ## ecosystem-down + ecosystem-up
 
-ecosystem-status:  ## docker compose ls (estado de cada compose project)
-	@docker compose ls
+ecosystem-status:  ## Estatus del ecosistema: git (cambios, push, pull) + docker de cada repo
+	@./scripts/ecosystem-status.sh "$(REPOS_DIR)" "$(GATEWAY_DIR)"
 
 ecosystem-pull:  ## git pull --ff-only en cada repo (incluye gateway-hub)
 	@for d in $(ECOSYSTEM_REPOS); do \
