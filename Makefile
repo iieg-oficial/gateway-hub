@@ -1,6 +1,7 @@
 .PHONY: help up down restart deploy build logs ps urls \
         ecosystem-up ecosystem-down ecosystem-restart ecosystem-status \
         ecosystem-pull ecosystem-pull-others ecosystem-update \
+        ecosystem-down-options \
         network version-json check-sieej-dist
 
 # Targets sin comando real (phony) y default goal explicito
@@ -76,7 +77,10 @@ network:  ## Crear la red iieg-network si no existe
 	    (echo "Creando red $(NETWORK_NAME)..."; docker network create $(NETWORK_NAME))
 
 check-sieej-dist:
-	@SIEEJ_DIST_PATH=$$(grep -E '^SIEEJ_DIST_PATH=' .env 2>/dev/null | tail -n1 | cut -d= -f2- | tr -d '"'); \
+	@if [ ! -f .env ]; then \
+	    echo "WARN: .env no encontrado, usando default SIEEJ_DIST_PATH=../sieej/frontend/dist" >&2; \
+	 fi; \
+	 SIEEJ_DIST_PATH=$$(grep -E '^SIEEJ_DIST_PATH=' .env 2>/dev/null | tail -n1 | cut -d= -f2- | tr -d '"'); \
 	 SIEEJ_DIST_PATH=$${SIEEJ_DIST_PATH:-../sieej/frontend/dist}; \
 	 if [ ! -d "$$SIEEJ_DIST_PATH" ]; then \
 	     echo "ERROR: SIEEJ_DIST_PATH no existe: $$SIEEJ_DIST_PATH" >&2; \
@@ -107,10 +111,17 @@ ps:  ## Status de gateway
 	docker compose $(GATEWAY_FILES) ps
 
 version-json:  ## Regenerar nginx/version.json desde VERSION + CHANGELOG
-	@./scripts/gen-version-json.sh
+	@if [ ! -x scripts/gen-version-json.sh ]; then \
+	    echo "ERROR: scripts/gen-version-json.sh no encontrado o no ejecutable" >&2; \
+	    exit 1; \
+	 fi; \
+	 ./scripts/gen-version-json.sh
 
 urls:  ## Imprimir URLs publicas del gateway (usa APP_DOMAIN de .env)
-	@DOMAIN=$$(grep -E '^APP_DOMAIN=' .env 2>/dev/null | tail -n1 | cut -d= -f2- | tr -d '"'); \
+	@if [ ! -f .env ]; then \
+	    echo "WARN: .env no encontrado, usando APP_DOMAIN=iieg.local" >&2; \
+	 fi; \
+	 DOMAIN=$$(grep -E '^APP_DOMAIN=' .env 2>/dev/null | tail -n1 | cut -d= -f2- | tr -d '"'); \
 	 DOMAIN=$${DOMAIN:-iieg.local}; \
 	 BASE="https://$$DOMAIN"; \
 	 echo ""; \
@@ -163,15 +174,69 @@ ecosystem-down:  ## Tumbar todo el stack (orden inverso, acepta STACKS=a,b)
 	         REVERSED="$$step $$REVERSED"; \
 	     fi; \
 	 done; \
+	 TOTAL=$$(echo $$REVERSED | wc -w); \
+	 I=0; \
 	 for step in $$REVERSED; do \
+	     I=$$((I+1)); \
 	     name=$$(echo $$step | cut -d: -f1); \
 	     dir=$$(echo $$step | cut -d: -f2); \
 	     tgt=$$(echo $$step | cut -d: -f4); \
-	     echo "Tumbando $$name..."; \
+	     echo "[$$I/$$TOTAL] Tumbando $$name..."; \
 	     $(MAKE) -C $$dir $$tgt || echo "  ! fallo al tumbar $$name (continuando)"; \
 	 done
 
 ecosystem-restart: ecosystem-down ecosystem-up  ## ecosystem-down + ecosystem-up
+
+ecosystem-down-options:  ## Bajar servicios interactivamente (elige cual bajar)
+	@STEPS="$(ECOSYSTEM_STEPS)"; \
+	 while true; do \
+	     UP_STEPS=""; \
+	     UP_NAMES=""; \
+	     for step in $$STEPS; do \
+	         name=$$(echo $$step | cut -d: -f1); \
+	         dir=$$(echo $$step | cut -d: -f2); \
+	         if (cd "$$dir" 2>/dev/null && docker compose ps -q 2>/dev/null) | grep -q .; then \
+	             UP_STEPS="$$UP_STEPS $$step"; \
+	             UP_NAMES="$$UP_NAMES $$name"; \
+	         fi; \
+	     done; \
+	     if [ -z "$$UP_STEPS" ]; then \
+	         echo ""; \
+	         echo "No hay servicios levantados en el ecosistema."; \
+	         break; \
+	     fi; \
+	     echo ""; \
+	     echo "=== Servicios levantados ==="; \
+	     PS3="Selecciona (0 para salir): "; \
+	     select opt in $$UP_NAMES "TODOS" "Salir"; do \
+	         if [ "$$opt" = "Salir" ] || [ -z "$$opt" ]; then \
+	             echo "Adios."; \
+	             break 2; \
+	         elif [ "$$opt" = "TODOS" ]; then \
+	             for step in $$UP_STEPS; do \
+	                 name=$$(echo $$step | cut -d: -f1); \
+	                 dir=$$(echo $$step | cut -d: -f2); \
+	                 tgt=$$(echo $$step | cut -d: -f4); \
+	                 echo "Tumbando $$name..."; \
+	                 $(MAKE) -C $$dir $$tgt || true; \
+	             done; \
+	             echo "Todo abajo."; \
+	             break 2; \
+	         else \
+	             for step in $$UP_STEPS; do \
+	                 name=$$(echo $$step | cut -d: -f1); \
+	                 if [ "$$name" = "$$opt" ]; then \
+	                     dir=$$(echo $$step | cut -d: -f2); \
+	                     tgt=$$(echo $$step | cut -d: -f4); \
+	                     echo "Tumbando $$name..."; \
+	                     $(MAKE) -C $$dir $$tgt || true; \
+	                     break; \
+	                 fi; \
+	             done; \
+	             break; \
+	         fi; \
+	     done; \
+	 done
 
 ecosystem-status:  ## Estatus del ecosistema: git (cambios, push, pull) + docker de cada repo
 	@./scripts/ecosystem-status.sh "$(REPOS_DIR)" "$(GATEWAY_DIR)"

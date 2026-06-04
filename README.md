@@ -45,6 +45,7 @@ El `Makefile` ofrece dos niveles:
 | `make deploy` | Solo gateway-hub: `docker compose up -d --build`. Usar tras cambios en `nginx/templates/`, `includes/`, `Dockerfile`, `.env`, etc. |
 | `make build` | Solo rebuildea la imagen, sin levantar containers |
 | `make ecosystem-up` / `ecosystem-down` / `ecosystem-restart` | Todo el stack production local (acervo, huachicol, dataengine, geoserver, sieej dist, mariachi, mapalab, gateway-hub) en orden topologico |
+| `make ecosystem-down-options` | Menu interactivo para bajar servicios del ecosistema individualmente |
 | `make ecosystem-status` | Tabla de estatus del ecosistema: rama, cambios locales, sync remote (push/pull) y Docker de cada repo |
 
 Los servicios `sitio2026` y `minerva` quedan fuera del orquestador y se levantan manualmente (`cd ../sitio2026 && make up ENV=gcp` y `cd ../minerva && make up` respectivamente).

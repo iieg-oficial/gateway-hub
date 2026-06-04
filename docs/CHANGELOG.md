@@ -12,6 +12,26 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.26.3] - 2026-06-04
+
+### Makefile: contador en ecosystem-down, validaciones .env/scripts y target interactivo ecosystem-down-options
+
+Mejoras de robustez y ergonomia en el Makefile del orquestador. `ecosystem-down` ahora muestra progreso `[I/N]` como su contraparte `ecosystem-up`. Los targets que leen `.env` (`check-sieej-dist`, `urls`) advierten si el archivo no existe en lugar de fallar silenciosamente. `version-json` valida que `scripts/gen-version-json.sh` sea ejecutable antes de invocarlo. Nuevo target `ecosystem-down-options` que detecta qué servicios están levantados via `docker compose ps` y presenta un menú interactivo (`select`) para bajar uno, todos o salir; tras bajar uno la lista se refresca automáticamente.
+
+#### Agregado
+
+- **`ecosystem-down-options`**: target interactivo que detecta contenedores activos de cada repo del ecosistema, muestra menú numerado con `bash select` y ejecuta el target `down` correspondiente. Bucle de refresco tras cada bajada.
+
+#### Cambiado
+
+- **`Makefile`**: `ecosystem-down` ahora itera con contador `[I/TOTAL]` al igual que `ecosystem-up`. `check-sieej-dist` y `urls` emiten warning si falta `.env`. `version-json` verifica existencia y permisos del script antes de ejecutarlo.
+
+#### Por qué patch
+
+Solo afecta targets de Makefile usados en desarrollo local. No altera rutas, contratos, endpoints, configuracion de Nginx ni el comportamiento en produccion.
+
+---
+
 ## [1.26.2] - 2026-06-03
 
 ### ecosystem-status: tabla de estatus git+docker del ecosistema
