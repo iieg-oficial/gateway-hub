@@ -201,6 +201,18 @@ server {
         proxy_buffering off;
     }
 
+    location ^~ /mapalab/mcp {
+        limit_req zone=general burst=20 nodelay;
+        set $mapalab_upstream "${MAPALAB_HOST}";
+        rewrite ^/mapalab/(.*) /$1 break;
+        proxy_pass http://$mapalab_upstream;
+        include /etc/nginx/includes/proxy-params.inc;
+        proxy_read_timeout 600s;
+        proxy_send_timeout 600s;
+        proxy_buffering off;
+        proxy_cache off;
+    }
+
     location ^~ /mapalab/ {
         limit_req zone=general burst=150 nodelay;
         include /etc/nginx/includes/bot-protection.inc;
