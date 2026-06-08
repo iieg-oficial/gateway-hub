@@ -253,8 +253,14 @@ ecosystem-down:
 	         if [ $$rc -eq 0 ]; then \
 	             printf "  $(C_GREEN)ok$(C_RESET)            %-14s %02d:%02d\n" "$$name" "$$((elapsed/60))" "$$((elapsed%60))"; \
 	         else \
-	             printf "  $(C_RED)fail$(C_RESET)          %-14s %02d:%02d\n" "$$name" "$$((elapsed/60))" "$$((elapsed%60))"; \
-	             while IFS= read -r line; do echo "         $$line"; done < /tmp/ecosystem-down-$$name.log; \
+	             if ( cd "$$dir" && docker compose down ) > /tmp/ecosystem-down-fb-$$name.log 2>&1; then \
+	                 printf "  $(C_GREEN)ok$(C_RESET)            %-14s %02d:%02d\n" "$$name" "$$((elapsed/60))" "$$((elapsed%60))"; \
+	             else \
+	                 printf "  $(C_RED)fail$(C_RESET)          %-14s %02d:%02d\n" "$$name" "$$((elapsed/60))" "$$((elapsed%60))"; \
+	                 while IFS= read -r line; do echo "         $$line"; done < /tmp/ecosystem-down-$$name.log; \
+	                 while IFS= read -r line; do echo "         $$line"; done < /tmp/ecosystem-down-fb-$$name.log; \
+	             fi; \
+	             rm -f /tmp/ecosystem-down-fb-$$name.log; \
 	         fi; \
 	         rm -f /tmp/ecosystem-down-$$name.log; \
 	     else \
