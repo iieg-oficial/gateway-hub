@@ -1,16 +1,10 @@
-.PHONY: help up down restart deploy build logs ps urls \
-        ecosystem-up ecosystem-down ecosystem-restart ecosystem-status \
-        ecosystem-pull ecosystem-pull-others ecosystem-update \
-        ecosystem-down-options \
-        network version-json check-sieej-dist
+.PHONY: help up deploy down \
+        ecosystem-up ecosystem-down ecosystem-deploy ecosystem-status
 
-# Targets sin comando real (phony) y default goal explicito
 .DEFAULT_GOAL := help
 
-# Evitar el ruido "Entering directory 'X'" al delegar a subrepos
 MAKEFLAGS += --no-print-directory
 
-# Shell estricto: fallar rapido si algo sale mal a media linea
 SHELL := bash
 .SHELLFLAGS := -eu -o pipefail -c
 
@@ -27,16 +21,7 @@ MAPALAB_DIR := $(REPOS_DIR)/mapalab
 SIEEJ_DIR := $(REPOS_DIR)/sieej
 
 ECOSYSTEM_REPOS := $(GATEWAY_DIR) $(ACERVO_DIR) $(HUACHICOL_DIR) $(DATAENGINE_DIR) $(GEOSERVER_DIR) $(MARIACHI_DIR) $(MAPALAB_DIR) $(SIEEJ_DIR)
-ECOSYSTEM_REPOS_OTHERS := $(ACERVO_DIR) $(HUACHICOL_DIR) $(DATAENGINE_DIR) $(GEOSERVER_DIR) $(MARIACHI_DIR) $(MAPALAB_DIR) $(SIEEJ_DIR)
 
-# Orden topologico del ecosistema: "<nombre>:<dir>:<target-up>:<target-down>".
-# nombre   = etiqueta legible para el filtro STACKS y los mensajes
-# dir      = directorio del subrepo
-# target-up   = make target para levantar
-# target-down = make target para tumbar
-# El orden importa: dependencias de datos primero (storage, monitoring, db),
-# luego servicios que las consumen (geoserver, sieej build, mariachi, mapalab),
-# y al final el gateway que enruta todo.
 ECOSYSTEM_STEPS := \
     acervo:$(ACERVO_DIR):up:down \
     huachicol:$(HUACHICOL_DIR):start:stop \
@@ -48,97 +33,150 @@ ECOSYSTEM_STEPS := \
     gateway:.:deploy:down
 
 GATEWAY_FILES := -f docker-compose.yml
-
-# Filtro opcional: `make ecosystem-up STACKS=mariachi,mapalab` levanta solo
-# esos. Sin STACKS, levanta todos.
 STACKS ?=
 
-help:  ## Mostrar esta ayuda
-	@awk 'BEGIN { \
-	    FS = ":.*?## "; \
-	    print ""; \
-	    print "Targets disponibles:"; \
-	    print ""; \
-	} \
-	/^[a-zA-Z_-]+:.*?## / { printf "  \033[36m%-22s\033[0m %s\n", $$1, $$2 } \
-	/^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) }' $(MAKEFILE_LIST)
+C_BOLD := \033[1m
+C_DIM := \033[2m
+C_GREEN := \033[0;32m
+C_RED := \033[0;31m
+C_YELLOW := \033[0;33m
+C_CYAN := \033[0;36m
+C_RESET := \033[0m
+
+help:
 	@echo ""
-	@echo "  Servicios NO incluidos en ecosystem-up (levantar manualmente si se requiere):"
-	@echo "    - sitio2026 (cd ../sitio2026 && make up ENV=gcp)"
-	@echo "    - minerva   (cd ../minerva   && make up)"
+	@echo "Gateway Hub"
 	@echo ""
-	@echo "  Filtro: STACKS=mariachi,mapalab make ecosystem-up   (levanta solo esos)"
+	@echo "  up              Iniciar gateway-hub (sin rebuildear)"
+	@echo "  deploy          Detener + rebuild + levantar gateway-hub"
+	@echo "  down            Detener gateway-hub"
+	@echo ""
+	@echo "Ecosistema:"
+	@echo ""
+	@echo "  ecosystem-up          Levantar todo el ecosistema en orden topologico"
+	@echo "  ecosystem-down        Detener todo el ecosistema en orden inverso"
+	@echo "  ecosystem-deploy      Pull + down + deploy de todo el ecosistema"
+	@echo "  ecosystem-status      Estado del ecosistema: git, docker y errores en logs"
+	@echo ""
+	@echo "  Filtro: STACKS=mariachi,mapalab make ecosystem-up"
 	@echo ""
 
-##@ Gateway (este repo)
-
-network:  ## Crear la red iieg-network si no existe
-	@docker network inspect $(NETWORK_NAME) >/dev/null 2>&1 || \
-	    (echo "Creando red $(NETWORK_NAME)..."; docker network create $(NETWORK_NAME))
-
-check-sieej-dist:
-	@if [ ! -f .env ]; then \
-	    echo "WARN: .env no encontrado, usando default SIEEJ_DIST_PATH=../sieej/frontend/dist" >&2; \
-	 fi; \
-	 SIEEJ_DIST_PATH=$$(grep -E '^SIEEJ_DIST_PATH=' .env 2>/dev/null | tail -n1 | cut -d= -f2- | tr -d '"'); \
+up:
+	@echo ""
+	@echo -e "  $(C_BOLD)GATEWAY HUB — UP$(C_RESET)"
+	@echo -e "  $(C_DIM)------------------------------------------$(C_RESET)"
+	@if docker network inspect $(NETWORK_NAME) >/dev/null 2>&1; then \
+	     echo -e "  Red           $(C_GREEN)ya existe$(C_RESET)    ($(NETWORK_NAME))"; \
+	 else \
+	     docker network create $(NETWORK_NAME) >/dev/null 2>&1 && echo -e "  Red           $(C_GREEN)creada$(C_RESET)      ($(NETWORK_NAME))"; \
+	 fi
+	@SIEEJ_DIST_PATH=$$(grep -E '^SIEEJ_DIST_PATH=' .env 2>/dev/null | tail -n1 | cut -d= -f2- | tr -d '"'); \
 	 SIEEJ_DIST_PATH=$${SIEEJ_DIST_PATH:-../sieej/frontend/dist}; \
-	 if [ ! -d "$$SIEEJ_DIST_PATH" ]; then \
-	     echo "ERROR: SIEEJ_DIST_PATH no existe: $$SIEEJ_DIST_PATH" >&2; \
-	     echo "       Construye el dist primero: make -C $(SIEEJ_DIR) build" >&2; \
+	 if [ -d "$$SIEEJ_DIST_PATH" ]; then \
+	     echo -e "  SIEEJ dist    $(C_GREEN)OK$(C_RESET)           $$SIEEJ_DIST_PATH"; \
+	 else \
+	     echo -e "  SIEEJ dist    $(C_RED)ERROR$(C_RESET)         $$SIEEJ_DIST_PATH no existe"; \
+	     echo ""; \
+	     echo "  Construye el dist primero: make -C $(SIEEJ_DIR) build"; \
 	     exit 1; \
 	 fi
-
-up: network version-json check-sieej-dist  ## Levantar gateway-hub usando la imagen actual (rapido)
-	docker compose $(GATEWAY_FILES) up -d
-	@$(MAKE) urls
-
-build: version-json  ## Solo rebuildear la imagen (sin levantar)
-	docker compose $(GATEWAY_FILES) build
-
-deploy: network version-json check-sieej-dist  ## build + up (usar tras cambios en nginx config, templates, etc.)
-	docker compose $(GATEWAY_FILES) up -d --build
-	@$(MAKE) urls
-
-down:  ## Tumbar gateway-hub
-	docker compose $(GATEWAY_FILES) down
-
-restart: down up  ## Reiniciar gateway-hub
-
-logs:  ## Logs del gateway (follow, tail 100)
-	docker compose $(GATEWAY_FILES) logs -f --tail=100
-
-ps:  ## Status de gateway
-	docker compose $(GATEWAY_FILES) ps
-
-version-json:  ## Regenerar nginx/version.json desde VERSION + CHANGELOG
-	@if [ ! -x scripts/gen-version-json.sh ]; then \
-	    echo "ERROR: scripts/gen-version-json.sh no encontrado o no ejecutable" >&2; \
-	    exit 1; \
+	@echo -e "  $(C_DIM)------------------------------------------$(C_RESET)"
+	@printf "  $(C_DIM)...%s$(C_RESET) " "Up"; \
+	 docker compose $(GATEWAY_FILES) up -d > /tmp/gateway-up.log 2>&1 & pid=$$!; \
+	 sp='⣾⣽⣻⢿⡿⣟⣯⣷'; start=$$(date +%s); i=0; elapsed=0; \
+	 while kill -0 $$pid 2>/dev/null; do \
+	     now=$$(date +%s); elapsed=$$((now - start)); \
+	     frame="$${sp:$$((i % 8)):1}"; \
+	     printf "\r\033[K  $(C_DIM)...%s$(C_RESET)  %s  %02d:%02d" "Up" "$$frame" "$$((elapsed/60))" "$$((elapsed%60))"; \
+	     sleep 0.15; \
+	     i=$$((i+1)); \
+	 done; \
+	 printf "\r\033[K"; \
+	 wait $$pid; \
+	 if [ $$? -eq 0 ]; then \
+	     printf "  $(C_GREEN)Up$(C_RESET)            ok  %02d:%02d\n" "$$((elapsed/60))" "$$((elapsed%60))"; \
+	 else \
+	     printf "  $(C_RED)Up$(C_RESET)            fail  %02d:%02d\n" "$$((elapsed/60))" "$$((elapsed%60))"; \
+	     while IFS= read -r line; do echo "         $$line"; done < /tmp/gateway-up.log; \
+	     rm -f /tmp/gateway-up.log; \
+	     exit 1; \
 	 fi; \
-	 ./scripts/gen-version-json.sh
+	 rm -f /tmp/gateway-up.log
+	@echo -e "  $(C_DIM)------------------------------------------$(C_RESET)"
+	@echo ""
 
-urls:  ## Imprimir URLs publicas del gateway (usa APP_DOMAIN de .env)
-	@if [ ! -f .env ]; then \
-	    echo "WARN: .env no encontrado, usando APP_DOMAIN=iieg.local" >&2; \
+deploy:
+	@echo ""
+	@deploy_start=$$(date +%s); \
+	 echo -e "  $(C_BOLD)GATEWAY HUB — DEPLOY$(C_RESET)"; \
+	 echo -e "  $(C_DIM)------------------------------------------$(C_RESET)"; \
+	 if docker network inspect $(NETWORK_NAME) >/dev/null 2>&1; then \
+	     echo -e "  Red           $(C_GREEN)ya existe$(C_RESET)    ($(NETWORK_NAME))"; \
+	 else \
+	     docker network create $(NETWORK_NAME) >/dev/null 2>&1 && echo -e "  Red           $(C_GREEN)creada$(C_RESET)      ($(NETWORK_NAME))"; \
 	 fi; \
-	 DOMAIN=$$(grep -E '^APP_DOMAIN=' .env 2>/dev/null | tail -n1 | cut -d= -f2- | tr -d '"'); \
-	 DOMAIN=$${DOMAIN:-iieg.local}; \
-	 BASE="https://$$DOMAIN"; \
+	 version=$$(cat VERSION 2>/dev/null || echo "?"); \
+	 echo -e "  Version       $(C_GREEN)$$version$(C_RESET)"; \
+	 ./scripts/gen-version-json.sh 2>&1 | while IFS= read -r line; do \
+	     case "$$line" in \
+	         *WARN*) echo -e "               $(C_YELLOW)$$line$(C_RESET)" ;; \
+	         *)      echo -e "               $(C_DIM)$$line$(C_RESET)" ;; \
+	     esac; \
+	 done; \
+	 SIEEJ_DIST_PATH=$$(grep -E '^SIEEJ_DIST_PATH=' .env 2>/dev/null | tail -n1 | cut -d= -f2- | tr -d '"'); \
+	 SIEEJ_DIST_PATH=$${SIEEJ_DIST_PATH:-../sieej/frontend/dist}; \
+	 if [ -d "$$SIEEJ_DIST_PATH" ]; then \
+	     echo -e "  SIEEJ dist    $(C_GREEN)OK$(C_RESET)           $$SIEEJ_DIST_PATH"; \
+	 else \
+	     echo -e "  SIEEJ dist    $(C_RED)ERROR$(C_RESET)         $$SIEEJ_DIST_PATH no existe"; \
+	     echo ""; \
+	     echo "  Construye el dist primero: make -C $(SIEEJ_DIR) build"; \
+	     exit 1; \
+	 fi; \
+	 echo -e "  $(C_DIM)------------------------------------------$(C_RESET)"; \
+	 if output=$$(docker compose $(GATEWAY_FILES) down 2>&1); then \
+	     echo -e "  Down          $(C_GREEN)ok$(C_RESET)"; \
+	 else \
+	     echo -e "  Down          $(C_RED)fail$(C_RESET)"; \
+	     echo "$$output" | while IFS= read -r line; do echo "         $$line"; done; \
+	     exit 1; \
+	 fi; \
 	 echo ""; \
-	 echo "URLs disponibles ($$BASE):"; \
-	 printf "  %-22s %s\n" "/"                  "redirect -> /mapalab/"; \
-	 printf "  %-22s %s\n" "/mapalab/"          "MapaLab (visor de mapas)"; \
-	 printf "  %-22s %s\n" "/sieej/"            "SIEEJ (sistema estadistico)"; \
-	 printf "  %-22s %s\n" "/administrador/"    "MARIACHI (panel admin del portal)"; \
-	 printf "  %-22s %s\n" "/mariachi/"         "MARIACHI (CMS del ecosistema)"; \
-	 printf "  %-22s %s\n" "/huachicol/"        "Huachicol (Grafana)"; \
-	 printf "  %-22s %s\n" "/geoserver/web/"    "GeoServer (admin)"; \
-	 printf "  %-22s %s\n" "/ontoy"             "version JSON del gateway"; \
+	 printf "  $(C_DIM)...%s$(C_RESET) " "Build+Up"; \
+	 docker compose $(GATEWAY_FILES) up -d --build > /tmp/gateway-build.log 2>&1 & pid=$$!; \
+	 sp='⣾⣽⣻⢿⡿⣟⣯⣷'; start=$$(date +%s); i=0; elapsed=0; \
+	 while kill -0 $$pid 2>/dev/null; do \
+	     now=$$(date +%s); elapsed=$$((now - start)); \
+	     frame="$${sp:$$((i % 8)):1}"; \
+	     printf "\r\033[K  $(C_DIM)...%s$(C_RESET)  %s  %02d:%02d" "Build+Up" "$$frame" "$$((elapsed/60))" "$$((elapsed%60))"; \
+	     sleep 0.15; \
+	     i=$$((i+1)); \
+	 done; \
+	 printf "\r\033[K"; \
+	 wait $$pid; \
+	 if [ $$? -eq 0 ]; then \
+	     printf "  $(C_GREEN)Build+Up$(C_RESET)      ok  %02d:%02d\n" "$$((elapsed/60))" "$$((elapsed%60))"; \
+	 else \
+	     printf "  $(C_RED)Build+Up$(C_RESET)      fail  %02d:%02d\n" "$$((elapsed/60))" "$$((elapsed%60))"; \
+	     while IFS= read -r line; do echo "         $$line"; done < /tmp/gateway-build.log; \
+	     rm -f /tmp/gateway-build.log; \
+	     exit 1; \
+	 fi; \
+	 rm -f /tmp/gateway-build.log; \
+	 echo -e "  $(C_DIM)------------------------------------------$(C_RESET)"; \
+	 deploy_end=$$(date +%s); \
+	 total=$$((deploy_end - deploy_start)); \
+	 echo ""; \
+	 printf "  $(C_GREEN)Deploy completado$(C_RESET)  %02d:%02d\n" "$$((total/60))" "$$((total%60))"; \
 	 echo ""
 
-##@ Ecosistema (orquestador local)
+down:
+	docker compose $(GATEWAY_FILES) down
 
-ecosystem-up: network  ## Levantar todo el stack en orden topologico (acepta STACKS=a,b)
+ecosystem-up:
+	@echo ""
+	@echo -e "  $(C_BOLD)ECOSISTEMA — UP + BUILD$(C_RESET)"
+	@echo -e "  $(C_DIM)------------------------------------------$(C_RESET)"
 	@STEPS="$(ECOSYSTEM_STEPS)"; \
 	 FILTER="$(STACKS)"; \
 	 SELECTED=""; \
@@ -148,23 +186,40 @@ ecosystem-up: network  ## Levantar todo el stack en orden topologico (acepta STA
 	         SELECTED="$$SELECTED $$step"; \
 	     fi; \
 	 done; \
-	 TOTAL=$$(echo $$SELECTED | wc -w); \
-	 I=0; \
 	 for step in $$SELECTED; do \
-	     I=$$((I+1)); \
 	     name=$$(echo $$step | cut -d: -f1); \
 	     dir=$$(echo $$step | cut -d: -f2); \
 	     tgt=$$(echo $$step | cut -d: -f3); \
-	     echo ""; \
-	     echo "[$$I/$$TOTAL] $$name ($$dir -> make $$tgt)..."; \
-	     $(MAKE) -C $$dir $$tgt; \
+	     printf "  $(C_DIM)...%s$(C_RESET) " "$$name"; \
+	     $(MAKE) -C $$dir $$tgt > /tmp/ecosystem-up-$$name.log 2>&1 & pid=$$!; \
+	     sp='⣾⣽⣻⢿⡿⣟⣯⣷'; start=$$(date +%s); i=0; elapsed=0; \
+	     while kill -0 $$pid 2>/dev/null; do \
+	         now=$$(date +%s); elapsed=$$((now - start)); \
+	         frame="$${sp:$$((i % 8)):1}"; \
+	         printf "\r\033[K  $(C_DIM)...%s$(C_RESET)  %s  %02d:%02d" "$$name" "$$frame" "$$((elapsed/60))" "$$((elapsed%60))"; \
+	         sleep 0.15; \
+	         i=$$((i+1)); \
+	     done; \
+	     printf "\r\033[K"; \
+	     wait $$pid; \
+	     if [ $$? -eq 0 ]; then \
+	         printf "  $(C_GREEN)ok$(C_RESET)            %-14s %02d:%02d\n" "$$name" "$$((elapsed/60))" "$$((elapsed%60))"; \
+	     else \
+	         printf "  $(C_RED)fail$(C_RESET)          %-14s %02d:%02d\n" "$$name" "$$((elapsed/60))" "$$((elapsed%60))"; \
+	         while IFS= read -r line; do echo "         $$line"; done < /tmp/ecosystem-up-$$name.log; \
+	         rm -f /tmp/ecosystem-up-$$name.log; \
+	         exit 1; \
+	     fi; \
+	     rm -f /tmp/ecosystem-up-$$name.log; \
 	 done
+	@echo -e "  $(C_DIM)------------------------------------------$(C_RESET)"
 	@echo ""
-	@echo "Stack production local arriba."
 	@$(MAKE) ecosystem-status
-	@$(MAKE) urls
 
-ecosystem-down:  ## Tumbar todo el stack (orden inverso, acepta STACKS=a,b)
+ecosystem-down:
+	@echo ""
+	@echo -e "  $(C_BOLD)ECOSISTEMA — DOWN$(C_RESET)"
+	@echo -e "  $(C_DIM)------------------------------------------$(C_RESET)"
 	@STEPS="$(ECOSYSTEM_STEPS)"; \
 	 FILTER="$(STACKS)"; \
 	 REVERSED=""; \
@@ -174,93 +229,91 @@ ecosystem-down:  ## Tumbar todo el stack (orden inverso, acepta STACKS=a,b)
 	         REVERSED="$$step $$REVERSED"; \
 	     fi; \
 	 done; \
-	 TOTAL=$$(echo $$REVERSED | wc -w); \
-	 I=0; \
 	 for step in $$REVERSED; do \
-	     I=$$((I+1)); \
 	     name=$$(echo $$step | cut -d: -f1); \
 	     dir=$$(echo $$step | cut -d: -f2); \
 	     tgt=$$(echo $$step | cut -d: -f4); \
-	     echo "[$$I/$$TOTAL] Tumbando $$name..."; \
-	     $(MAKE) -C $$dir $$tgt || echo "  ! fallo al tumbar $$name (continuando)"; \
-	 done
-
-ecosystem-restart: ecosystem-down ecosystem-up  ## ecosystem-down + ecosystem-up
-
-ecosystem-down-options:  ## Bajar servicios interactivamente (elige cual bajar)
-	@STEPS="$(ECOSYSTEM_STEPS)"; \
-	 while true; do \
-	     UP_STEPS=""; \
-	     UP_NAMES=""; \
-	     for step in $$STEPS; do \
-	         name=$$(echo $$step | cut -d: -f1); \
-	         dir=$$(echo $$step | cut -d: -f2); \
-	         if (cd "$$dir" 2>/dev/null && docker compose ps -q 2>/dev/null) | grep -q .; then \
-	             UP_STEPS="$$UP_STEPS $$step"; \
-	             UP_NAMES="$$UP_NAMES $$name"; \
-	         fi; \
+	     printf "  $(C_DIM)...%s$(C_RESET) " "$$name"; \
+	     $(MAKE) -C $$dir $$tgt > /tmp/ecosystem-down-$$name.log 2>&1 & pid=$$!; \
+	     sp='⣾⣽⣻⢿⡿⣟⣯⣷'; start=$$(date +%s); i=0; elapsed=0; \
+	     while kill -0 $$pid 2>/dev/null; do \
+	         now=$$(date +%s); elapsed=$$((now - start)); \
+	         frame="$${sp:$$((i % 8)):1}"; \
+	         printf "\r\033[K  $(C_DIM)...%s$(C_RESET)  %s  %02d:%02d" "$$name" "$$frame" "$$((elapsed/60))" "$$((elapsed%60))"; \
+	         sleep 0.15; \
+	         i=$$((i+1)); \
 	     done; \
-	     if [ -z "$$UP_STEPS" ]; then \
-	         echo ""; \
-	         echo "No hay servicios levantados en el ecosistema."; \
-	         break; \
+	     printf "\r\033[K"; \
+	     wait $$pid; \
+	     if [ $$? -eq 0 ]; then \
+	         printf "  $(C_GREEN)ok$(C_RESET)            %-14s %02d:%02d\n" "$$name" "$$((elapsed/60))" "$$((elapsed%60))"; \
+	     else \
+	         printf "  $(C_RED)fail$(C_RESET)          %-14s %02d:%02d\n" "$$name" "$$((elapsed/60))" "$$((elapsed%60))"; \
+	         while IFS= read -r line; do echo "         $$line"; done < /tmp/ecosystem-down-$$name.log; \
 	     fi; \
-	     echo ""; \
-	     echo "=== Servicios levantados ==="; \
-	     PS3="Selecciona (0 para salir): "; \
-	     select opt in $$UP_NAMES "TODOS" "Salir"; do \
-	         if [ "$$opt" = "Salir" ] || [ -z "$$opt" ]; then \
-	             echo "Adios."; \
-	             break 2; \
-	         elif [ "$$opt" = "TODOS" ]; then \
-	             for step in $$UP_STEPS; do \
-	                 name=$$(echo $$step | cut -d: -f1); \
-	                 dir=$$(echo $$step | cut -d: -f2); \
-	                 tgt=$$(echo $$step | cut -d: -f4); \
-	                 echo "Tumbando $$name..."; \
-	                 $(MAKE) -C $$dir $$tgt || true; \
-	             done; \
-	             echo "Todo abajo."; \
-	             break 2; \
-	         else \
-	             for step in $$UP_STEPS; do \
-	                 name=$$(echo $$step | cut -d: -f1); \
-	                 if [ "$$name" = "$$opt" ]; then \
-	                     dir=$$(echo $$step | cut -d: -f2); \
-	                     tgt=$$(echo $$step | cut -d: -f4); \
-	                     echo "Tumbando $$name..."; \
-	                     $(MAKE) -C $$dir $$tgt || true; \
-	                     break; \
-	                 fi; \
-	             done; \
-	             break; \
-	         fi; \
-	     done; \
+	     rm -f /tmp/ecosystem-down-$$name.log; \
 	 done
+	@echo -e "  $(C_DIM)------------------------------------------$(C_RESET)"
+	@echo ""
 
-ecosystem-status:  ## Estatus del ecosistema: git (cambios, push, pull) + docker de cada repo
+ecosystem-deploy:
+	@echo ""
+	@deploy_start=$$(date +%s); \
+	 echo -e "  $(C_BOLD)ECOSISTEMA — DEPLOY$(C_RESET)"; \
+	 echo -e "  $(C_DIM)------------------------------------------$(C_RESET)"; \
+	 echo -e "  $(C_CYAN)Pull ...$(C_RESET)"; \
+	 section_start=$$(date +%s); \
+	 STEPS="$(ECOSYSTEM_STEPS)"; \
+	 FILTER="$(STACKS)"; \
+	 for step in $$STEPS; do \
+	     name=$$(echo $$step | cut -d: -f1); \
+	     dir=$$(echo $$step | cut -d: -f2); \
+	     if [ -z "$$FILTER" ] || echo ",$$FILTER," | grep -q ",$$name,"; then \
+	         if [ -d "$$dir/.git" ]; then \
+	             printf "  $(C_DIM)...%s$(C_RESET) " "$$name"; \
+	             git -C "$$dir" pull --ff-only > /tmp/ecosystem-pull-$$name.log 2>&1 & pid=$$!; \
+	             sp='⣾⣽⣻⢿⡿⣟⣯⣷'; start=$$(date +%s); i=0; elapsed=0; \
+	             while kill -0 $$pid 2>/dev/null; do \
+	                 now=$$(date +%s); elapsed=$$((now - start)); \
+	                 frame="$${sp:$$((i % 8)):1}"; \
+	                 printf "\r\033[K  $(C_DIM)...%s$(C_RESET)  %s  %02d:%02d" "$$name" "$$frame" "$$((elapsed/60))" "$$((elapsed%60))"; \
+	                 sleep 0.15; \
+	                 i=$$((i+1)); \
+	             done; \
+	             printf "\r\033[K"; \
+	             wait $$pid; \
+	             if [ $$? -eq 0 ]; then \
+	                 printf "  $(C_GREEN)ok$(C_RESET)            %-14s %02d:%02d\n" "$$name" "$$((elapsed/60))" "$$((elapsed%60))"; \
+	             else \
+	                 printf "  $(C_RED)fail$(C_RESET)          %-14s %02d:%02d\n" "$$name" "$$((elapsed/60))" "$$((elapsed%60))"; \
+	                 while IFS= read -r line; do echo "         $$line"; done < /tmp/ecosystem-pull-$$name.log; \
+	             fi; \
+	             rm -f /tmp/ecosystem-pull-$$name.log; \
+	         else \
+	             printf "  $(C_DIM)n/a$(C_RESET)           %s\n" "$$name"; \
+	         fi; \
+	     fi; \
+	 done; \
+	 section_end=$$(date +%s); \
+	 section_elapsed=$$((section_end - section_start)); \
+	 echo -e "  $(C_DIM)------------------------------------------$(C_RESET)"; \
+	 printf "  $(C_DIM)Pull total$(C_RESET)    %02d:%02d\n\n" "$$((section_elapsed/60))" "$$((section_elapsed%60))"; \
+	 section_start=$$(date +%s); \
+	 $(MAKE) ecosystem-down; \
+	 section_end=$$(date +%s); \
+	 section_elapsed=$$((section_end - section_start)); \
+	 printf "  $(C_DIM)Down total$(C_RESET)    %02d:%02d\n\n" "$$((section_elapsed/60))" "$$((section_elapsed%60))"; \
+	 section_start=$$(date +%s); \
+	 $(MAKE) ecosystem-up; \
+	 section_end=$$(date +%s); \
+	 section_elapsed=$$((section_end - section_start)); \
+	 printf "  $(C_DIM)Up total$(C_RESET)      %02d:%02d\n" "$$((section_elapsed/60))" "$$((section_elapsed%60))"; \
+	 total_end=$$(date +%s); \
+	 total_elapsed=$$((total_end - deploy_start)); \
+	 echo ""; \
+	 echo -e "  $(C_DIM)------------------------------------------$(C_RESET)"; \
+	 printf "  $(C_BOLD)Total$(C_RESET)         %02d:%02d\n" "$$((total_elapsed/60))" "$$((total_elapsed%60))"; \
+	 echo ""
+
+ecosystem-status:
 	@./scripts/ecosystem-status.sh "$(REPOS_DIR)" "$(GATEWAY_DIR)"
-
-ecosystem-pull:  ## git pull --ff-only en cada repo (incluye gateway-hub)
-	@for d in $(ECOSYSTEM_REPOS); do \
-	    echo ""; \
-	    echo "-- git pull en $$d --"; \
-	    if [ -d "$$d/.git" ]; then \
-	        git -C "$$d" pull --ff-only || echo "  ! pull fallo en $$d (probablemente working tree sucio o branch divergente)"; \
-	    else \
-	        echo "  (no es repo git, omitido)"; \
-	    fi; \
-	done
-
-ecosystem-pull-others:  ## git pull --ff-only en todos los repos EXCEPTO gateway-hub
-	@for d in $(ECOSYSTEM_REPOS_OTHERS); do \
-	    echo ""; \
-	    echo "-- git pull en $$d --"; \
-	    if [ -d "$$d/.git" ]; then \
-	        git -C "$$d" pull --ff-only || echo "  ! pull fallo en $$d (probablemente working tree sucio o branch divergente)"; \
-	    else \
-	        echo "  (no es repo git, omitido)"; \
-	    fi; \
-	done
-
-ecosystem-update: ecosystem-pull ecosystem-up  ## ecosystem-pull + ecosystem-up (despliegue completo)

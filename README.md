@@ -41,12 +41,13 @@ El `Makefile` ofrece dos niveles:
 
 | Comando | Alcance |
 |---------|---------|
-| `make up` / `down` / `restart` / `logs` / `ps` | Solo gateway-hub. `up` usa la imagen actual (rapido) |
-| `make deploy` | Solo gateway-hub: `docker compose up -d --build`. Usar tras cambios en `nginx/templates/`, `includes/`, `Dockerfile`, `.env`, etc. |
-| `make build` | Solo rebuildea la imagen, sin levantar containers |
-| `make ecosystem-up` / `ecosystem-down` / `ecosystem-restart` | Todo el stack production local (acervo, huachicol, dataengine, geoserver, sieej dist, mariachi, mapalab, gateway-hub) en orden topologico |
-| `make ecosystem-down-options` | Menu interactivo para bajar servicios del ecosistema individualmente |
-| `make ecosystem-status` | Tabla de estatus del ecosistema: rama, cambios locales, sync remote (push/pull) y Docker de cada repo |
+| `make up` | Gateway-hub: levanta sin rebuildear |
+| `make deploy` | Gateway-hub: down + build + up. Usar tras cambios en config |
+| `make down` | Gateway-hub: detener |
+| `make ecosystem-up` | Levantar el ecosistema en orden topologico (filtrable con `STACKS=`) |
+| `make ecosystem-down` | Detener el ecosistema en orden inverso (filtrable con `STACKS=`) |
+| `make ecosystem-deploy` | Pull + down + deploy de todo el ecosistema |
+| `make ecosystem-status` | Git, Docker y errores recientes en logs del ecosistema |
 
 Los servicios `sitio2026` y `minerva` quedan fuera del orquestador y se levantan manualmente (`cd ../sitio2026 && make up ENV=gcp` y `cd ../minerva && make up` respectivamente).
 

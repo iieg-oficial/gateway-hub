@@ -68,13 +68,13 @@ gateway-hub/
 │   └── static/                     # robots.txt, sitemap.xml, .well-known/security.txt
 ├── scripts/
 │   ├── check-model-drift.py        # AST diff entre modelos SQLAlchemy mapalab/mariachi
-│   ├── gen-version-json.sh         # Genera nginx/version.json desde VERSION + CHANGELOG (usado por `make version-json`)
+│   ├── gen-version-json.sh         # Genera nginx/version.json desde VERSION + CHANGELOG
 │   ├── setup-swap.sh               # Provisiona swap en la VM
 │   ├── stress_test.py              # Stress test de carga
 │   └── stress_test_multi_ip.py     # Stress test con multiples IPs de origen
 ├── docker-compose.yml              # Orquestacion de contenedores
 ├── Dockerfile                      # Imagen Nginx + entrypoint personalizado
-├── Makefile                        # Targets del gateway + orquestacion del ecosistema
+├── Makefile                        # up/deploy/down + ecosystem-up/down/deploy/status
 ├── VERSION                         # Version del repo (SemVer)
 ├── .env                            # Variables de entorno (dev)
 └── .env.example                    # Plantilla de variables
@@ -368,7 +368,7 @@ Todos los proyectos viven en `/IIEG/` y comparten la red Docker externa `iieg-ne
 - **Ruta:** `/sieej/` — el gateway lo sirve como **estatico** desde el `dist/` montado.
 - **Que es:** Sistema de Informacion Estadistica del Estado de Jalisco — frontend de
   captura de datos por dependencias.
-- **Stack:** React 19 + Vite + Tailwind. No tiene compose propio de produccion: `make build`
+- **Stack:** React 19 + Vite + Tailwind. No tiene compose propio de produccion: genera
   genera `frontend/dist/` y el gateway lo monta. El backend vive en `mariachi/api` (schema `sieej`).
 
 ### Huachicol (`/IIEG/huachicol/`) — Stack de Observabilidad
@@ -466,5 +466,4 @@ se procesan en runtime.
   MARIACHI verifique el estado del ecosistema. Los de GeoServer y Acervo estan hardcodeados
   inline en `gateway.conf.template` — al cambiar el `static_version` de esos repos hay que
   actualizar el `return 200` y bumpear gateway-hub.
-- **Despliegue:** en la VM de produccion solo se ejecuta (`git pull`, `docker compose build`,
-  `make restart`); no se edita codigo ahi.
+- **Despliegue:** en la VM de produccion solo se ejecuta (`git pull`, `make deploy`);

@@ -12,6 +12,38 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.27.0] - 2026-06-08
+
+### Refactor del Makefile: salida compacta, spinner con cronometro y totales acumulados
+
+Reescritura completa de la experiencia del orquestador. Todos los targets muestran ahora una interfaz unificada con colores, spinner braille `⣾⣽⣻⢿⡿⣟⣯⣷` y cronometro `MM:SS` por paso. Los comandos de build/up corren en background con la salida capturada; solo se muestra en caso de error. Al final de cada seccion y del total general se imprimen los tiempos acumulados.
+
+#### Agregado
+
+- **Spinner con cronometro**: cada paso largo (`up`, `Build+Up`, `ecosystem-up`, `ecosystem-down`, pull) muestra spinner braille + `MM:SS` en tiempo real. La linea se limpia al terminar y se reemplaza con `ok`/`fail` + tiempo total.
+- **Totales acumulados**: `ecosystem-deploy` imprime `Pull total`, `Down total`, `Up total` y `Total` general. `deploy` imprime el total al cerrar.
+- **Errores en logs via `ecosystem-status`**: el script `ecosystem-status.sh` ahora escanea las ultimas 15 lineas de cada contenedor buscando `error|fatal|critical|panic` y solo muestra si hay hallazgos.
+- **Salida estilizada**: todos los headers usan colores ANSI (bold, dim, green, red, yellow, cyan) consistentes con `ecosystem-status.sh`.
+
+#### Cambiado
+
+- **`deploy`**: ahora hace `down` (sin `--volumes`) + `build` + `up`. Incluye validacion condicional de red, `version-json` y `check-sieej-dist` inline.
+- **`up`**: mantiene `up -d` sin rebuild. Mismo estilo visual que `deploy`.
+- **`ecosystem-up` / `ecosystem-down`**: salida compacta con spinner por repo. `ecosystem-down` ahora tambien usa spinner.
+- **`ecosystem-deploy`**: reemplaza a `ecosystem-restart`. Incluye `git pull --ff-only` + `ecosystem-down` + `ecosystem-up` en un solo paso, con STACKS filtrable en las tres fases.
+
+#### Eliminado
+
+- **`build`** standalone (integrado en `deploy`)
+- **`restart`**, **`logs`**, **`ps`** (integrados en `ecosystem-status`)
+- **`network`**, **`urls`**, **`version-json`** (inlineados en `deploy`)
+- **`ecosystem-restart`** (reemplazado por `ecosystem-deploy`)
+- **`ecosystem-pull`**, **`ecosystem-update`**, **`ecosystem-pull-others`** (integrados en `ecosystem-deploy`)
+- **`ecosystem-down-options`** (no funcional)
+- Frases redundantes `Ecosistema arriba.` / `Ecosistema abajo.`
+
+---
+
 ## [1.26.3] - 2026-06-04
 
 ### Makefile: contador en ecosystem-down, validaciones .env/scripts y target interactivo ecosystem-down-options

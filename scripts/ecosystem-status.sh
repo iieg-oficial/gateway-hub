@@ -214,3 +214,38 @@ if [ "$total_dirty" -eq 0 ] && [ "$total_ahead" -eq 0 ] && [ "$total_behind" -eq
 fi
 
 echo ""
+printf "  ${BOLD}${WHITE}ERRORES RECIENTES${RESET}  ${DIM}(ultimas 15 lineas por contenedor)${RESET}\n"
+dashes
+has_errors=false
+
+for dir in "${REPO_ORDER[@]}"; do
+    compose_file=""
+    [ -f "$dir/docker-compose.yml" ] && compose_file="$dir/docker-compose.yml"
+    [ -f "$dir/docker-compose.yaml" ] && compose_file="$dir/docker-compose.yaml"
+    [ -f "$dir/compose.yml" ] && compose_file="$dir/compose.yml"
+    [ -f "$dir/compose.yaml" ] && compose_file="$dir/compose.yaml"
+
+    [ -z "$compose_file" ] && continue
+    command -v docker &>/dev/null || continue
+
+    containers=$(docker compose -f "$compose_file" ps -q 2>/dev/null || true)
+    [ -z "$containers" ] && continue
+
+    for container_id in $containers; do
+        errors=$(docker logs --tail 15 "$container_id" 2>&1 | grep -iE '\b(error|fatal|critical|panic)\b' | tail -3 || true)
+        if [ -n "$errors" ]; then
+            has_errors=true
+            cname=$(docker inspect --format '{{.Name}}' "$container_id" 2>/dev/null | sed 's|^/||')
+            printf "  ${RED}%s${RESET}\n" "$cname"
+            echo "$errors" | while IFS= read -r line; do
+                printf "    ${DIM}%s${RESET}\n" "$(echo "$line" | head -c 140)"
+            done
+        fi
+    done
+done
+
+if [ "$has_errors" = false ]; then
+    printf "  ${GREEN}Sin errores detectados.${RESET}\n"
+fi
+
+echo ""
