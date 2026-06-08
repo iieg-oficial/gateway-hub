@@ -283,26 +283,27 @@ ecosystem-deploy:
 	     name=$$(echo $$step | cut -d: -f1); \
 	     dir=$$(echo $$step | cut -d: -f2); \
 	     if [ -z "$$FILTER" ] || echo ",$$FILTER," | grep -q ",$$name,"; then \
-	         if [ -d "$$dir/.git" ]; then \
-	             printf "  $(C_DIM)...%s$(C_RESET) " "$$name"; \
-	             git -C "$$dir" pull --ff-only > /tmp/ecosystem-pull-$$name.log 2>&1 & pid=$$!; \
-	             sp='⣾⣽⣻⢿⡿⣟⣯⣷'; start=$$(date +%s); i=0; elapsed=0; \
-	             while kill -0 $$pid 2>/dev/null; do \
-	                 now=$$(date +%s); elapsed=$$((now - start)); \
-	                 frame="$${sp:$$((i % 8)):1}"; \
-	                 printf "\r\033[K  $(C_DIM)...%s$(C_RESET)  %s  %02d:%02d" "$$name" "$$frame" "$$((elapsed/60))" "$$((elapsed%60))"; \
-	                 sleep 0.15; \
-	                 i=$$((i+1)); \
-	             done; \
-	             printf "\r\033[K"; \
-	             set +e; wait $$pid; rc=$$?; set -e; \
-	             if [ $$rc -eq 0 ]; then \
-	                 printf "  $(C_GREEN)ok$(C_RESET)            %-14s %02d:%02d\n" "$$name" "$$((elapsed/60))" "$$((elapsed%60))"; \
-	             else \
-	                 printf "  $(C_RED)fail$(C_RESET)          %-14s %02d:%02d\n" "$$name" "$$((elapsed/60))" "$$((elapsed%60))"; \
-	                 while IFS= read -r line; do echo "         $$line"; done < /tmp/ecosystem-pull-$$name.log; \
-	             fi; \
-	             rm -f /tmp/ecosystem-pull-$$name.log; \
+	     if [ -d "$$dir/.git" ]; then \
+	         branch=$$(git -C "$$dir" branch --show-current 2>/dev/null || echo "?"); \
+	         printf "  $(C_DIM)...%s$(C_RESET) " "$$name"; \
+	         git -C "$$dir" pull --ff-only > /tmp/ecosystem-pull-$$name.log 2>&1 & pid=$$!; \
+	         sp='⣾⣽⣻⢿⡿⣟⣯⣷'; start=$$(date +%s); i=0; elapsed=0; \
+	         while kill -0 $$pid 2>/dev/null; do \
+	             now=$$(date +%s); elapsed=$$((now - start)); \
+	             frame="$${sp:$$((i % 8)):1}"; \
+	             printf "\r\033[K  $(C_DIM)...%s$(C_RESET)  %s  %02d:%02d" "$$name" "$$frame" "$$((elapsed/60))" "$$((elapsed%60))"; \
+	             sleep 0.15; \
+	             i=$$((i+1)); \
+	         done; \
+	         printf "\r\033[K"; \
+	         set +e; wait $$pid; rc=$$?; set -e; \
+	         if [ $$rc -eq 0 ]; then \
+	             printf "  $(C_GREEN)ok$(C_RESET)            %-14s %-12s %02d:%02d\n" "$$name" "$$branch" "$$((elapsed/60))" "$$((elapsed%60))"; \
+	         else \
+	             printf "  $(C_RED)fail$(C_RESET)          %-14s %-12s %02d:%02d\n" "$$name" "$$branch" "$$((elapsed/60))" "$$((elapsed%60))"; \
+	             while IFS= read -r line; do echo "         $$line"; done < /tmp/ecosystem-pull-$$name.log; \
+	         fi; \
+	         rm -f /tmp/ecosystem-pull-$$name.log; \
 	         elif [ -d "$$dir" ]; then \
 	             printf "  $(C_DIM)n/a$(C_RESET)           %s\n" "$$name"; \
 	         else \
