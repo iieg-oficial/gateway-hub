@@ -92,8 +92,8 @@ up:
 	     i=$$((i+1)); \
 	 done; \
 	 printf "\r\033[K"; \
-	 wait $$pid; \
-	 if [ $$? -eq 0 ]; then \
+	 set +e; wait $$pid; rc=$$?; set -e; \
+	 if [ $$rc -eq 0 ]; then \
 	     printf "  $(C_GREEN)Up$(C_RESET)            ok  %02d:%02d\n" "$$((elapsed/60))" "$$((elapsed%60))"; \
 	 else \
 	     printf "  $(C_RED)Up$(C_RESET)            fail  %02d:%02d\n" "$$((elapsed/60))" "$$((elapsed%60))"; \
@@ -153,8 +153,8 @@ deploy:
 	     i=$$((i+1)); \
 	 done; \
 	 printf "\r\033[K"; \
-	 wait $$pid; \
-	 if [ $$? -eq 0 ]; then \
+	 set +e; wait $$pid; rc=$$?; set -e; \
+	 if [ $$rc -eq 0 ]; then \
 	     printf "  $(C_GREEN)Build+Up$(C_RESET)      ok  %02d:%02d\n" "$$((elapsed/60))" "$$((elapsed%60))"; \
 	 else \
 	     printf "  $(C_RED)Build+Up$(C_RESET)      fail  %02d:%02d\n" "$$((elapsed/60))" "$$((elapsed%60))"; \
@@ -202,8 +202,8 @@ ecosystem-up:
 	             i=$$((i+1)); \
 	         done; \
 	         printf "\r\033[K"; \
-	         wait $$pid; \
-	         if [ $$? -eq 0 ]; then \
+	         set +e; wait $$pid; rc=$$?; set -e; \
+	         if [ $$rc -eq 0 ]; then \
 	             printf "  $(C_GREEN)ok$(C_RESET)            %-14s %02d:%02d\n" "$$name" "$$((elapsed/60))" "$$((elapsed%60))"; \
 	         else \
 	             printf "  $(C_RED)fail$(C_RESET)          %-14s %02d:%02d\n" "$$name" "$$((elapsed/60))" "$$((elapsed%60))"; \
@@ -249,8 +249,8 @@ ecosystem-down:
 	             i=$$((i+1)); \
 	         done; \
 	         printf "\r\033[K"; \
-	         wait $$pid; \
-	         if [ $$? -eq 0 ]; then \
+	         set +e; wait $$pid; rc=$$?; set -e; \
+	         if [ $$rc -eq 0 ]; then \
 	             printf "  $(C_GREEN)ok$(C_RESET)            %-14s %02d:%02d\n" "$$name" "$$((elapsed/60))" "$$((elapsed%60))"; \
 	         else \
 	             printf "  $(C_RED)fail$(C_RESET)          %-14s %02d:%02d\n" "$$name" "$$((elapsed/60))" "$$((elapsed%60))"; \
@@ -289,8 +289,8 @@ ecosystem-deploy:
 	                 i=$$((i+1)); \
 	             done; \
 	             printf "\r\033[K"; \
-	             wait $$pid; \
-	             if [ $$? -eq 0 ]; then \
+	             set +e; wait $$pid; rc=$$?; set -e; \
+	             if [ $$rc -eq 0 ]; then \
 	                 printf "  $(C_GREEN)ok$(C_RESET)            %-14s %02d:%02d\n" "$$name" "$$((elapsed/60))" "$$((elapsed%60))"; \
 	             else \
 	                 printf "  $(C_RED)fail$(C_RESET)          %-14s %02d:%02d\n" "$$name" "$$((elapsed/60))" "$$((elapsed%60))"; \
