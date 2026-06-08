@@ -97,7 +97,7 @@ up:
 	     printf "  $(C_GREEN)Up$(C_RESET)            ok  %02d:%02d\n" "$$((elapsed/60))" "$$((elapsed%60))"; \
 	 else \
 	     printf "  $(C_RED)Up$(C_RESET)            fail  %02d:%02d\n" "$$((elapsed/60))" "$$((elapsed%60))"; \
-	     while IFS= read -r line; do echo "         $$line"; done < /tmp/gateway-up.log; \
+	     tail -40 /tmp/gateway-up.log | while IFS= read -r line; do echo "         $$line"; done; \
 	     rm -f /tmp/gateway-up.log; \
 	     exit 1; \
 	 fi; \
@@ -138,7 +138,7 @@ deploy:
 	     echo -e "  Down          $(C_GREEN)ok$(C_RESET)"; \
 	 else \
 	     echo -e "  Down          $(C_RED)fail$(C_RESET)"; \
-	     echo "$$output" | while IFS= read -r line; do echo "         $$line"; done; \
+	     echo "$$output" | tail -40 | while IFS= read -r line; do echo "         $$line"; done; \
 	     exit 1; \
 	 fi; \
 	 echo ""; \
@@ -158,7 +158,7 @@ deploy:
 	     printf "  $(C_GREEN)Build+Up$(C_RESET)      ok  %02d:%02d\n" "$$((elapsed/60))" "$$((elapsed%60))"; \
 	 else \
 	     printf "  $(C_RED)Build+Up$(C_RESET)      fail  %02d:%02d\n" "$$((elapsed/60))" "$$((elapsed%60))"; \
-	     while IFS= read -r line; do echo "         $$line"; done < /tmp/gateway-build.log; \
+	     tail -40 /tmp/gateway-build.log | while IFS= read -r line; do echo "         $$line"; done; \
 	     rm -f /tmp/gateway-build.log; \
 	     exit 1; \
 	 fi; \
@@ -207,7 +207,7 @@ ecosystem-up:
 	             printf "  $(C_GREEN)ok$(C_RESET)            %-14s %02d:%02d\n" "$$name" "$$((elapsed/60))" "$$((elapsed%60))"; \
 	         else \
 	             printf "  $(C_RED)fail$(C_RESET)          %-14s %02d:%02d\n" "$$name" "$$((elapsed/60))" "$$((elapsed%60))"; \
-	             while IFS= read -r line; do echo "         $$line"; done < /tmp/ecosystem-up-$$name.log; \
+	             tail -40 /tmp/ecosystem-up-$$name.log | while IFS= read -r line; do echo "         $$line"; done; \
 	             rm -f /tmp/ecosystem-up-$$name.log; \
 	             exit 1; \
 	         fi; \
@@ -255,10 +255,12 @@ ecosystem-down:
 	         else \
 	             if ( cd "$$dir" && docker compose down ) > /tmp/ecosystem-down-fb-$$name.log 2>&1; then \
 	                 printf "  $(C_GREEN)ok$(C_RESET)            %-14s %02d:%02d\n" "$$name" "$$((elapsed/60))" "$$((elapsed%60))"; \
+	             elif ( cd "$$dir" && for f in docker-compose.yml compose.yml docker-compose.yaml compose.yaml; do [ -f "$$f" ] && docker compose -f "$$f" down && exit 0; done; exit 1 ) > /tmp/ecosystem-down-fb-$$name.log 2>&1; then \
+	                 printf "  $(C_GREEN)ok$(C_RESET)            %-14s %02d:%02d\n" "$$name" "$$((elapsed/60))" "$$((elapsed%60))"; \
 	             else \
 	                 printf "  $(C_RED)fail$(C_RESET)          %-14s %02d:%02d\n" "$$name" "$$((elapsed/60))" "$$((elapsed%60))"; \
-	                 while IFS= read -r line; do echo "         $$line"; done < /tmp/ecosystem-down-$$name.log; \
-	                 while IFS= read -r line; do echo "         $$line"; done < /tmp/ecosystem-down-fb-$$name.log; \
+	                 tail -40 /tmp/ecosystem-down-$$name.log | while IFS= read -r line; do echo "         $$line"; done; \
+	                 tail -40 /tmp/ecosystem-down-fb-$$name.log | while IFS= read -r line; do echo "         $$line"; done; \
 	             fi; \
 	             rm -f /tmp/ecosystem-down-fb-$$name.log; \
 	         fi; \
@@ -301,7 +303,7 @@ ecosystem-deploy:
 	             printf "  $(C_GREEN)ok$(C_RESET)            %-14s %-12s %02d:%02d\n" "$$name" "$$branch" "$$((elapsed/60))" "$$((elapsed%60))"; \
 	         else \
 	             printf "  $(C_RED)fail$(C_RESET)          %-14s %-12s %02d:%02d\n" "$$name" "$$branch" "$$((elapsed/60))" "$$((elapsed%60))"; \
-	             while IFS= read -r line; do echo "         $$line"; done < /tmp/ecosystem-pull-$$name.log; \
+	             tail -40 /tmp/ecosystem-pull-$$name.log | while IFS= read -r line; do echo "         $$line"; done; \
 	         fi; \
 	         rm -f /tmp/ecosystem-pull-$$name.log; \
 	         elif [ -d "$$dir" ]; then \
