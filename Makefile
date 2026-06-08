@@ -190,27 +190,31 @@ ecosystem-up:
 	     name=$$(echo $$step | cut -d: -f1); \
 	     dir=$$(echo $$step | cut -d: -f2); \
 	     tgt=$$(echo $$step | cut -d: -f3); \
-	     printf "  $(C_DIM)...%s$(C_RESET) " "$$name"; \
-	     $(MAKE) -C $$dir $$tgt > /tmp/ecosystem-up-$$name.log 2>&1 & pid=$$!; \
-	     sp='⣾⣽⣻⢿⡿⣟⣯⣷'; start=$$(date +%s); i=0; elapsed=0; \
-	     while kill -0 $$pid 2>/dev/null; do \
-	         now=$$(date +%s); elapsed=$$((now - start)); \
-	         frame="$${sp:$$((i % 8)):1}"; \
-	         printf "\r\033[K  $(C_DIM)...%s$(C_RESET)  %s  %02d:%02d" "$$name" "$$frame" "$$((elapsed/60))" "$$((elapsed%60))"; \
-	         sleep 0.15; \
-	         i=$$((i+1)); \
-	     done; \
-	     printf "\r\033[K"; \
-	     wait $$pid; \
-	     if [ $$? -eq 0 ]; then \
-	         printf "  $(C_GREEN)ok$(C_RESET)            %-14s %02d:%02d\n" "$$name" "$$((elapsed/60))" "$$((elapsed%60))"; \
-	     else \
-	         printf "  $(C_RED)fail$(C_RESET)          %-14s %02d:%02d\n" "$$name" "$$((elapsed/60))" "$$((elapsed%60))"; \
-	         while IFS= read -r line; do echo "         $$line"; done < /tmp/ecosystem-up-$$name.log; \
+	     if [ -d "$$dir" ]; then \
+	         printf "  $(C_DIM)...%s$(C_RESET) " "$$name"; \
+	         $(MAKE) -C $$dir $$tgt > /tmp/ecosystem-up-$$name.log 2>&1 & pid=$$!; \
+	         sp='⣾⣽⣻⢿⡿⣟⣯⣷'; start=$$(date +%s); i=0; elapsed=0; \
+	         while kill -0 $$pid 2>/dev/null; do \
+	             now=$$(date +%s); elapsed=$$((now - start)); \
+	             frame="$${sp:$$((i % 8)):1}"; \
+	             printf "\r\033[K  $(C_DIM)...%s$(C_RESET)  %s  %02d:%02d" "$$name" "$$frame" "$$((elapsed/60))" "$$((elapsed%60))"; \
+	             sleep 0.15; \
+	             i=$$((i+1)); \
+	         done; \
+	         printf "\r\033[K"; \
+	         wait $$pid; \
+	         if [ $$? -eq 0 ]; then \
+	             printf "  $(C_GREEN)ok$(C_RESET)            %-14s %02d:%02d\n" "$$name" "$$((elapsed/60))" "$$((elapsed%60))"; \
+	         else \
+	             printf "  $(C_RED)fail$(C_RESET)          %-14s %02d:%02d\n" "$$name" "$$((elapsed/60))" "$$((elapsed%60))"; \
+	             while IFS= read -r line; do echo "         $$line"; done < /tmp/ecosystem-up-$$name.log; \
+	             rm -f /tmp/ecosystem-up-$$name.log; \
+	             exit 1; \
+	         fi; \
 	         rm -f /tmp/ecosystem-up-$$name.log; \
-	         exit 1; \
+	     else \
+	         printf "  $(C_DIM)skip$(C_RESET)          %s\n" "$$name"; \
 	     fi; \
-	     rm -f /tmp/ecosystem-up-$$name.log; \
 	 done
 	@echo -e "  $(C_DIM)------------------------------------------$(C_RESET)"
 	@echo ""
@@ -233,25 +237,29 @@ ecosystem-down:
 	     name=$$(echo $$step | cut -d: -f1); \
 	     dir=$$(echo $$step | cut -d: -f2); \
 	     tgt=$$(echo $$step | cut -d: -f4); \
-	     printf "  $(C_DIM)...%s$(C_RESET) " "$$name"; \
-	     $(MAKE) -C $$dir $$tgt > /tmp/ecosystem-down-$$name.log 2>&1 & pid=$$!; \
-	     sp='⣾⣽⣻⢿⡿⣟⣯⣷'; start=$$(date +%s); i=0; elapsed=0; \
-	     while kill -0 $$pid 2>/dev/null; do \
-	         now=$$(date +%s); elapsed=$$((now - start)); \
-	         frame="$${sp:$$((i % 8)):1}"; \
-	         printf "\r\033[K  $(C_DIM)...%s$(C_RESET)  %s  %02d:%02d" "$$name" "$$frame" "$$((elapsed/60))" "$$((elapsed%60))"; \
-	         sleep 0.15; \
-	         i=$$((i+1)); \
-	     done; \
-	     printf "\r\033[K"; \
-	     wait $$pid; \
-	     if [ $$? -eq 0 ]; then \
-	         printf "  $(C_GREEN)ok$(C_RESET)            %-14s %02d:%02d\n" "$$name" "$$((elapsed/60))" "$$((elapsed%60))"; \
+	     if [ -d "$$dir" ]; then \
+	         printf "  $(C_DIM)...%s$(C_RESET) " "$$name"; \
+	         $(MAKE) -C $$dir $$tgt > /tmp/ecosystem-down-$$name.log 2>&1 & pid=$$!; \
+	         sp='⣾⣽⣻⢿⡿⣟⣯⣷'; start=$$(date +%s); i=0; elapsed=0; \
+	         while kill -0 $$pid 2>/dev/null; do \
+	             now=$$(date +%s); elapsed=$$((now - start)); \
+	             frame="$${sp:$$((i % 8)):1}"; \
+	             printf "\r\033[K  $(C_DIM)...%s$(C_RESET)  %s  %02d:%02d" "$$name" "$$frame" "$$((elapsed/60))" "$$((elapsed%60))"; \
+	             sleep 0.15; \
+	             i=$$((i+1)); \
+	         done; \
+	         printf "\r\033[K"; \
+	         wait $$pid; \
+	         if [ $$? -eq 0 ]; then \
+	             printf "  $(C_GREEN)ok$(C_RESET)            %-14s %02d:%02d\n" "$$name" "$$((elapsed/60))" "$$((elapsed%60))"; \
+	         else \
+	             printf "  $(C_RED)fail$(C_RESET)          %-14s %02d:%02d\n" "$$name" "$$((elapsed/60))" "$$((elapsed%60))"; \
+	             while IFS= read -r line; do echo "         $$line"; done < /tmp/ecosystem-down-$$name.log; \
+	         fi; \
+	         rm -f /tmp/ecosystem-down-$$name.log; \
 	     else \
-	         printf "  $(C_RED)fail$(C_RESET)          %-14s %02d:%02d\n" "$$name" "$$((elapsed/60))" "$$((elapsed%60))"; \
-	         while IFS= read -r line; do echo "         $$line"; done < /tmp/ecosystem-down-$$name.log; \
+	         printf "  $(C_DIM)skip$(C_RESET)          %s\n" "$$name"; \
 	     fi; \
-	     rm -f /tmp/ecosystem-down-$$name.log; \
 	 done
 	@echo -e "  $(C_DIM)------------------------------------------$(C_RESET)"
 	@echo ""
@@ -289,8 +297,10 @@ ecosystem-deploy:
 	                 while IFS= read -r line; do echo "         $$line"; done < /tmp/ecosystem-pull-$$name.log; \
 	             fi; \
 	             rm -f /tmp/ecosystem-pull-$$name.log; \
-	         else \
+	         elif [ -d "$$dir" ]; then \
 	             printf "  $(C_DIM)n/a$(C_RESET)           %s\n" "$$name"; \
+	         else \
+	             printf "  $(C_DIM)skip$(C_RESET)          %s\n" "$$name"; \
 	         fi; \
 	     fi; \
 	 done; \
