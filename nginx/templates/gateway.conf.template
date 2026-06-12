@@ -147,6 +147,18 @@ server {
         proxy_intercept_errors on;
     }
 
+    location ^~ /api/administrador/acervo {
+        limit_req zone=api burst=20 nodelay;
+        client_max_body_size 1G;
+        proxy_request_buffering off;
+        set $portal_upstream "${PORTAL_HOST}";
+        proxy_pass http://$portal_upstream;
+        include /etc/nginx/includes/proxy-params.inc;
+        add_header Cache-Control "no-store" always;
+        proxy_read_timeout 600s;
+        proxy_send_timeout 600s;
+    }
+
     location /api/ {
         limit_req zone=api burst=20 nodelay;
         include /etc/nginx/includes/bot-protection.inc;
