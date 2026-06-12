@@ -228,7 +228,7 @@ server {
     }
 
     location ^~ /acervo/ {
-        limit_req zone=api burst=100 nodelay;
+        limit_req zone=static burst=200 nodelay;
         client_max_body_size 1G;
         proxy_buffering off;
         proxy_request_buffering off;
