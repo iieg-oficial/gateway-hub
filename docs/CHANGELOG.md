@@ -12,6 +12,24 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.27.1] - 2026-06-15
+
+### Fix: rate-limit dedicado para los assets del admin de mariachi (429 en chunks lazy)
+
+La primera carga del CMS pedía la ráfaga de chunks `lazy()` del bundle por `^~ /mariachi/`,
+que usa la zona `general` (10 r/s, burst 20). Al superar el burst, Nginx devolvía `429` y el
+navegador fallaba con `Failed to fetch dynamically imported module`.
+
+#### Agregado
+
+- **`location ^~ /mariachi/assets/`** nueva, antes de `^~ /mariachi/`: usa la zona `static`
+  (50 r/s, burst 200) — el mismo trato que `^~ /mapalab/assets/`. Los assets de Vite llevan hash
+  de contenido en el nombre, así que además se sirven con `Cache-Control: public, max-age=31536000,
+  immutable` (`proxy_hide_header Cache-Control` para sobreescribir el `no-cache` del upstream). El
+  `index.html` queda fuera de `/assets/` y conserva su `no-cache`.
+
+Acompaña al lote de hardening de routing de mariachi (`api 1.39.0 / admin 1.39.0`).
+
 ## [1.27.0] - 2026-06-08
 
 ### Refactor del Makefile: salida compacta, spinner con cronometro y totales acumulados

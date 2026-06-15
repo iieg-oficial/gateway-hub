@@ -256,6 +256,15 @@ server {
         chunked_transfer_encoding off;
     }
 
+    location ^~ /mariachi/assets/ {
+        limit_req zone=static burst=200 nodelay;
+        set $mariachi_upstream "${MARIACHI_HOST}";
+        proxy_pass http://$mariachi_upstream;
+        include /etc/nginx/includes/proxy-params.inc;
+        proxy_hide_header Cache-Control;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+
     location ^~ /mariachi/ {
         limit_req zone=general burst=20 nodelay;
         set $mariachi_upstream "${MARIACHI_HOST}";
