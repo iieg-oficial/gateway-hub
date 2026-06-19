@@ -147,6 +147,19 @@ server {
         proxy_intercept_errors on;
     }
 
+    location ^~ /api/administrador/acervo/thumb {
+        # Miniaturas del Acervo: muchas peticiones GET por pagina pero cacheables.
+        # Zona/burst propios para no chocar con el limite general del API y, sobre
+        # todo, NO forzar no-store: se deja pasar el Cache-Control inmutable del
+        # thumbnail para que el navegador cachee y no repita la rafaga en cada render.
+        limit_req zone=acervo_thumb burst=120 nodelay;
+        set $portal_upstream "${PORTAL_HOST}";
+        proxy_pass http://$portal_upstream;
+        include /etc/nginx/includes/proxy-params.inc;
+        proxy_read_timeout 600s;
+        proxy_send_timeout 600s;
+    }
+
     location ^~ /api/administrador/acervo {
         limit_req zone=api burst=20 nodelay;
         client_max_body_size 1G;

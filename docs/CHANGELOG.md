@@ -12,6 +12,19 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.27.2] - 2026-06-19
+
+### Fix: rate-limit dedicado para las miniaturas del Acervo (429 en buckets con muchas imágenes)
+
+El endpoint de miniaturas on-the-fly de mariachi (`GET /api/administrador/acervo/thumb/...`, v1.42.0) se servía por `^~ /api/administrador/acervo`, que usa la zona `api` (10 r/s, burst 20) y además fuerza `add_header Cache-Control "no-store"`. Al abrir un bucket con muchas imágenes (p. ej. `portal`), el grid dispara una ráfaga de miniaturas que supera el burst → `429`; y el `no-store` impedía que el navegador cacheara, así que cada render repetía la ráfaga completa.
+
+- Nueva zona `limit_req_zone ... zone=acervo_thumb:10m rate=30r/s` en `nginx.conf.template`.
+- Nueva `location ^~ /api/administrador/acervo/thumb` (más específica, gana por prefijo) con `limit_req zone=acervo_thumb burst=120 nodelay` y **sin** `add_header Cache-Control "no-store"`: se deja pasar el `Cache-Control: immutable` que emite el thumbnail, de modo que el navegador lo cachee y no repita la ráfaga en cada render.
+
+Mismo patrón que el fix de los chunks lazy del admin en `[1.27.1]`. Validado con `nginx -t`.
+
+---
+
 ## [1.27.1] - 2026-06-15
 
 ### Fix: rate-limit dedicado para los assets del admin de mariachi (429 en chunks lazy)
