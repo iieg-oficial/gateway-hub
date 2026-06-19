@@ -28,7 +28,7 @@ ECOSYSTEM_STEPS := \
     dataengine:$(DATAENGINE_DIR):up:down \
     geoserver:$(GEOSERVER_DIR):up:down \
     sieej:$(SIEEJ_DIR):build:down \
-    mariachi:$(MARIACHI_DIR):deploy:down \
+    mariachi:$(MARIACHI_DIR):deploy:down:ENV=prod \
     mapalab:$(MAPALAB_DIR):deploy:down \
     gateway:.:deploy:down
 
@@ -190,9 +190,10 @@ ecosystem-up:
 	     name=$$(echo $$step | cut -d: -f1); \
 	     dir=$$(echo $$step | cut -d: -f2); \
 	     tgt=$$(echo $$step | cut -d: -f3); \
+	     extra=$$(echo $$step | cut -d: -f5); \
 	     if [ -d "$$dir" ]; then \
 	         printf "  $(C_DIM)...%s$(C_RESET) " "$$name"; \
-	         $(MAKE) -C $$dir $$tgt > /tmp/ecosystem-up-$$name.log 2>&1 & pid=$$!; \
+	         $(MAKE) -C $$dir $$tgt $$extra > /tmp/ecosystem-up-$$name.log 2>&1 & pid=$$!; \
 	         sp='⣾⣽⣻⢿⡿⣟⣯⣷'; start=$$(date +%s); i=0; elapsed=0; \
 	         while kill -0 $$pid 2>/dev/null; do \
 	             now=$$(date +%s); elapsed=$$((now - start)); \
@@ -237,9 +238,10 @@ ecosystem-down:
 	     name=$$(echo $$step | cut -d: -f1); \
 	     dir=$$(echo $$step | cut -d: -f2); \
 	     tgt=$$(echo $$step | cut -d: -f4); \
+	     extra=$$(echo $$step | cut -d: -f5); \
 	     if [ -d "$$dir" ]; then \
 	         printf "  $(C_DIM)...%s$(C_RESET) " "$$name"; \
-	         $(MAKE) -C $$dir $$tgt > /tmp/ecosystem-down-$$name.log 2>&1 & pid=$$!; \
+	         $(MAKE) -C $$dir $$tgt $$extra > /tmp/ecosystem-down-$$name.log 2>&1 & pid=$$!; \
 	         sp='⣾⣽⣻⢿⡿⣟⣯⣷'; start=$$(date +%s); i=0; elapsed=0; \
 	         while kill -0 $$pid 2>/dev/null; do \
 	             now=$$(date +%s); elapsed=$$((now - start)); \
