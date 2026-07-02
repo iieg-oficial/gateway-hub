@@ -12,6 +12,38 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.27.5] - 2026-07-02
+
+### Docs: recuperar entradas 1.27.3 y 1.27.4 del changelog
+
+Los bumps `1.27.3` y `1.27.4` se commitearon sin su entrada en este archivo, por lo que
+`gen-version-json.sh` emitía `WARN: no se encontro entrada ...` en cada deploy y
+`version.json` quedaba sin `released_at`.
+
+- Entradas `[1.27.3]` y `[1.27.4]` reconstruidas a partir de los commits `62a65fb` y `4fc0677`.
+
+---
+
+## [1.27.4] - 2026-07-02
+
+### Fix: verificar la red iieg-network en ecosystem-up y ecosystem-deploy
+
+`ecosystem-up` y `ecosystem-deploy` asumían que la red externa `iieg-network` ya existía; en una VM recién provisionada los stacks fallaban al arrancar porque el compose declara la red como `external`.
+
+- Ambos targets ahora verifican la red al inicio: si existe la reportan (`Red ya existe`), y si no, la crean (`Red creada`) antes de levantar los stacks.
+
+---
+
+## [1.27.3] - 2026-06-19
+
+### Fix: ecosystem-down baja mariachi forzando ENV=prod
+
+`mariachi down` respetaba su `ENV ?= dev` y apuntaba al proyecto compose `mariachi-dev`, dejando arriba los contenedores de producción (proyecto `mariachi`) que había levantado `deploy`.
+
+- Campo extra opcional (5º) en `ECOSYSTEM_STEPS` para argumentos de make; mariachi recibe `ENV=prod`, propagado en los loops de `ecosystem-up` y `ecosystem-down`.
+
+---
+
 ## [1.27.2] - 2026-06-19
 
 ### Fix: rate-limit dedicado para las miniaturas del Acervo (429 en buckets con muchas imágenes)
