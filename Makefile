@@ -177,6 +177,11 @@ ecosystem-up:
 	@echo ""
 	@echo -e "  $(C_BOLD)ECOSISTEMA — UP + BUILD$(C_RESET)"
 	@echo -e "  $(C_DIM)------------------------------------------$(C_RESET)"
+	@if docker network inspect $(NETWORK_NAME) >/dev/null 2>&1; then \
+	     echo -e "  Red           $(C_GREEN)ya existe$(C_RESET)    ($(NETWORK_NAME))"; \
+	 else \
+	     docker network create $(NETWORK_NAME) >/dev/null 2>&1 && echo -e "  Red           $(C_GREEN)creada$(C_RESET)      ($(NETWORK_NAME))"; \
+	 fi
 	@STEPS="$(ECOSYSTEM_STEPS)"; \
 	 FILTER="$(STACKS)"; \
 	 SELECTED=""; \
