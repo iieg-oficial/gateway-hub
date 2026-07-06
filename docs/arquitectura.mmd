@@ -55,7 +55,7 @@ graph TB
     subgraph S_MARIACHI["MARIACHI (VM dedicada)"]
         direction TB
         MARI["mariachi-nginx + API<br/>CMS + portal público<br/>(/ · /api · /administrador · /mariachi)"]
-        MARI_DB[("PostgreSQL iieg_portal + Redis")]
+        MARI_DB[("PostgreSQL mariachi + Redis")]
         MARI --> MARI_DB
     end
 

@@ -244,7 +244,7 @@ docker exec mariachi-api python -c "import httpx; print([l for l in httpx.get('h
 Intencional segun `mariachi/docs/context.md`. Resumen:
 
 - **Cambiado**: carpeta, container names, docker networks, archivos compose.
-- **No cambiado**: URL `/api/portal`, DB `iieg_portal`, branding UI, upstream `portal` en gateway.
+- **No cambiado**: URL `/api/portal`, DB `mariachi`, branding UI, upstream `portal` en gateway.
 
 Por que no cambio todo: conflicto de nombres con otro upstream ya existente en el gateway. Mantener `PORTAL_HOST` apuntando a `mariachi-nginx-*` es el compromiso. Para el lector desprevenido del `.env` del gateway, esto parece inconsistente.
 

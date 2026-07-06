@@ -162,7 +162,7 @@ los `docker-compose.yml` y `.env.example` de los 7 repos del orquestador.
 
 | # | Origen | Destino | Puerto | Servicio | Razon |
 |---|---|---|---|---|---|
-| 1 | S1 | S4 | 5432 | PostgreSQL | mariachi-api → iieg_portal DB |
+| 1 | S1 | S4 | 5432 | PostgreSQL | mariachi-api → mariachi DB |
 | 2 | S2 | S4 | 5432 | PostgreSQL | mapalab-backend → schema mapalab |
 | 3 | S3 | S4 | 5432 | PostgreSQL | geoserver datastore PostGIS |
 | 4 | S1 | S2 | 3006 | HTTP | gateway → mapalab-nginx (proxy_pass /mapalab/) |

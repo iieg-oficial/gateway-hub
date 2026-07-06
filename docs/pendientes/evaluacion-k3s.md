@@ -169,7 +169,7 @@ flexibilidad operativa.**
 
 - StatefulSet `replicas: 1` + PVC local-path anclado a un nodo via `nodeSelector`.
 - Custom entrypoint SSL (`entrypoint-ssl.sh`) → initContainer que genera/copia certs.
-- Multi-DB (iieg_portal + mapalab schemas) → no cambia, sigue siendo un postgres
+- Multi-DB (mariachi + mapalab schemas) → no cambia, sigue siendo un postgres
   con multiples databases.
 - Backup: el container `pg-backup` actual sigue corriendo como CronJob k8s o
   Deployment, sin cambios mayores.

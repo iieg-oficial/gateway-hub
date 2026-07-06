@@ -341,7 +341,7 @@ Todos los proyectos viven en `/IIEG/` y comparten la red Docker externa `iieg-ne
 - **Rutas:** `location /`, `/api/`, `/administrador/` (como upstream `portal`) y `/mariachi/`.
 - **Que es:** nucleo del ecosistema — CMS del portal publico + panel de administracion +
   API central que administra Portal, MapaLab y SIEEJ. Emite la autenticacion compartida.
-- **Stack:** admin React + Ant Design, API FastAPI, PostgreSQL (`iieg_portal`), Redis, cron.
+- **Stack:** admin React + Ant Design, API FastAPI, PostgreSQL (`mariachi`), Redis, cron.
 - **Containers:** `mariachi-nginx`, `mariachi-api`, `mariachi-postgres`, `mariachi-redis`,
   `mariachi-cron-sieej`.
 

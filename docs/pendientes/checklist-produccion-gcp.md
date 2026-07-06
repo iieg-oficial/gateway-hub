@@ -134,14 +134,14 @@ cd ~/mariachi && make build ENV=prod
 
 ### Postgres compartido entre mariachi y dataengine
 
-Hoy `mariachi-postgres` tiene una BD `iieg_portal` con tablas mariachi
+Hoy `mariachi-postgres` tiene una BD `mariachi` con tablas mariachi
 (`media_buckets`, `projects`, `usuarios`, etc.) y `dataengine-primary` tiene
 `iieg_gis` con tablas GIS (mismo cluster fisico, distinta DB).
 
 Esto es legacy y confunde al diagnosticar (ej. `psql -d iieg_gis` no es
 deterministico sin saber a que cluster apuntas). Cuando haya tiempo, separar:
 
-- mariachi → BD propia `iieg_portal` en `mariachi-postgres` (estado actual)
+- mariachi → BD propia `mariachi` en `mariachi-postgres` (estado actual)
 - dataengine → BD `iieg_gis` en `dataengine-primary` (no cambia)
 
 Implica rename + actualizar `DATABASE_URL` en `mariachi/.env.production` +
@@ -241,7 +241,7 @@ docker exec mariachi-api env | grep -E "^ACERVO" | sort
 
 # 3. La BD tiene los rows correctos?
 docker exec -e PGPASSWORD='<password>' mariachi-postgres \
-    psql -U gengine_test -d iieg_portal \
+    psql -U gengine_test -d mariachi \
     -c "SELECT mb.id, p.slug, mb.acervo_bucket, mb.is_public, mb.is_active FROM media_buckets mb JOIN projects p ON p.id=mb.project_id ORDER BY mb.id;"
 # Debe mostrar 6 rows; iieg activo, dataengine inactivo.
 ```
