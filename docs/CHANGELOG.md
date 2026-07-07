@@ -12,6 +12,19 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.27.6] - 2026-07-07
+
+### Docs: diagrama de conectividad por puertos entre los 4 servidores de produccion
+
+Nuevo `docs/puertos-produccion.mmd` (Mermaid) con el mapa real de puertos inter-servidor en produccion, levantado con sondeos `nc` desde los cuatro hosts.
+
+- **Servidores:** S1 Gateway-hub/Acervo `192.168.13.122`, S2 MapaLab `192.168.13.121`, S3 GeoServer `192.168.13.58` (LAN `192.168.13.0/24`); S4 DataEngine `10.13.201.117` (LAN `10.13.201.0/24`).
+- **Hallazgo:** el flujo saliente `S4 -> S1:8333` (backup DataEngine -> Acervo S3) esta BLOQUEADO por firewall asimetrico: la red `192.168.13.x` entra a `S4:5432` pero S4 no puede salir hacia `192.168.13.x`. Mismo caso para `S4 -> S1:3101` (logs a Loki).
+- **Notas:** en produccion `mapalab-nginx` expone `:8081`; en S1 coexisten `acervo-minio` y `acervo-seaweedfs`; el puerto de metricas `:12345` no escucha en ningun host.
+- Referenciado en el README.
+
+---
+
 ## [1.27.5] - 2026-07-02
 
 ### Docs: recuperar entradas 1.27.3 y 1.27.4 del changelog
