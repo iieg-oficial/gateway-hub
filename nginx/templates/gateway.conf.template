@@ -252,6 +252,19 @@ server {
         add_header X-Robots-Tag $seo_robots;
     }
 
+    location ^~ /acervo/thumb/ {
+        # Miniaturas publicas on-the-fly del Acervo: las sirve mariachi-api (WebP
+        # escalado), no SeaweedFS. Prefijo mas largo que /acervo/ => gana el matcheo
+        # ^~ y NO se reescribe el path (mariachi-api espera /acervo/thumb/...).
+        # Solo responde para buckets publicos; privados devuelven 404.
+        limit_req zone=acervo_thumb burst=120 nodelay;
+        set $portal_upstream "${PORTAL_HOST}";
+        proxy_pass http://$portal_upstream;
+        include /etc/nginx/includes/proxy-params.inc;
+        proxy_read_timeout 120s;
+        proxy_send_timeout 120s;
+    }
+
     location ^~ /acervo/ {
         limit_req zone=static burst=200 nodelay;
         client_max_body_size 1G;

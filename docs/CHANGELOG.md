@@ -12,6 +12,18 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.27.7] - 2026-07-10
+
+### Feat: miniaturas del Acervo servidas por mariachi (no SeaweedFS)
+
+Nueva `location ^~ /acervo/thumb/` que enruta las miniaturas WebP on-the-fly del Acervo a `mariachi-nginx` en lugar de a SeaweedFS.
+
+- **Problema:** `location ^~ /acervo/` reescribe y proxya todo `/acervo/*` a `acervo-seaweedfs`, así que la ruta pública de miniaturas `/acervo/thumb/{bucket}/{path}?w=` caía en SeaweedFS (bucket inexistente `thumb`) y devolvía `403`.
+- **Fix:** `location ^~ /acervo/thumb/` (prefijo más largo → gana el matcheo `^~`) hacia `${PORTAL_HOST}` sin reescribir el path; reusa la zona `acervo_thumb` (burst 120).
+- Depende de que mariachi-api sirva el endpoint público anónimo (mariachi api 1.51.0+).
+
+---
+
 ## [1.27.6] - 2026-07-07
 
 ### Docs: diagrama de conectividad por puertos entre los 4 servidores de produccion
