@@ -12,6 +12,21 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.27.8] - 2026-07-16
+
+### Perf: reutilizar conexiones a backends con upstreams keepalive
+
+Los backends internos de mayor tráfico (`mariachi-nginx` y `mapalab-nginx-1`) pasan de resolución dinámica por request (`set $var` + `resolver`, que abre una conexión TCP nueva por petición) a bloques `upstream` con `keepalive`, replicando el patrón que ya usaba GeoServer.
+
+- **Nuevo** `nginx/conf.d/internal-upstreams.conf.template` con `portal_backend` y `mapalab_backend` (`keepalive 32`, `keepalive_requests 1000`).
+- Las 10 `location` de portal/mariachi y mapalab pasan a `proxy_pass http://portal_backend|mapalab_backend`; acervo/mariachi-assets/huachicol conservan resolución dinámica por resiliencia.
+- El `Dockerfile` extiende el `envsubst` de `conf.d` con `${PORTAL_HOST} ${MAPALAB_HOST}`.
+- **Nota operativa:** como GeoServer, el gateway ahora resuelve esos hosts al arrancar; si se recrean con IP nueva fuera de `ecosystem-deploy` hay que recargar el gateway.
+- `docker-compose.yml`: `nginx-exporter` fijado a `1.5.1` (antes `latest`).
+- Validado con `nginx -t` sobre la imagen construida.
+
+---
+
 ## [1.27.7] - 2026-07-10
 
 ### Feat: miniaturas del Acervo servidas por mariachi (no SeaweedFS)

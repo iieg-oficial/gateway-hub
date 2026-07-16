@@ -140,8 +140,7 @@ server {
     location / {
         limit_req zone=general burst=20 nodelay;
         include /etc/nginx/includes/bot-protection.inc;
-        set $portal_upstream "${PORTAL_HOST}";
-        proxy_pass http://$portal_upstream;
+        proxy_pass http://portal_backend;
         include /etc/nginx/includes/proxy-params.inc;
         proxy_set_header Accept-Encoding "";
         proxy_intercept_errors on;
@@ -153,8 +152,7 @@ server {
         # todo, NO forzar no-store: se deja pasar el Cache-Control inmutable del
         # thumbnail para que el navegador cachee y no repita la rafaga en cada render.
         limit_req zone=acervo_thumb burst=120 nodelay;
-        set $portal_upstream "${PORTAL_HOST}";
-        proxy_pass http://$portal_upstream;
+        proxy_pass http://portal_backend;
         include /etc/nginx/includes/proxy-params.inc;
         proxy_read_timeout 600s;
         proxy_send_timeout 600s;
@@ -164,8 +162,7 @@ server {
         limit_req zone=api burst=20 nodelay;
         client_max_body_size 1G;
         proxy_request_buffering off;
-        set $portal_upstream "${PORTAL_HOST}";
-        proxy_pass http://$portal_upstream;
+        proxy_pass http://portal_backend;
         include /etc/nginx/includes/proxy-params.inc;
         add_header Cache-Control "no-store" always;
         proxy_read_timeout 600s;
@@ -175,8 +172,7 @@ server {
     location /api/ {
         limit_req zone=api burst=20 nodelay;
         include /etc/nginx/includes/bot-protection.inc;
-        set $portal_upstream "${PORTAL_HOST}";
-        proxy_pass http://$portal_upstream;
+        proxy_pass http://portal_backend;
         include /etc/nginx/includes/proxy-params.inc;
         add_header Cache-Control "no-store" always;
     }
@@ -184,8 +180,7 @@ server {
     location /administrador/ {
         limit_req zone=general burst=20 nodelay;
         include /etc/nginx/includes/bot-protection.inc;
-        set $portal_upstream "${PORTAL_HOST}";
-        proxy_pass http://$portal_upstream;
+        proxy_pass http://portal_backend;
         include /etc/nginx/includes/proxy-params.inc;
         proxy_set_header Accept-Encoding "";
         proxy_intercept_errors on;
@@ -208,18 +203,16 @@ server {
         proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
         add_header X-Cache-Status $upstream_cache_status;
         add_header Cache-Control "public, max-age=31536000, immutable";
-        set $mapalab_upstream "${MAPALAB_HOST}";
         rewrite ^/mapalab/(.*) /$1 break;
-        proxy_pass http://$mapalab_upstream;
+        proxy_pass http://mapalab_backend;
         include /etc/nginx/includes/proxy-params.inc;
     }
 
     location ^~ /mapalab/api/download/ {
         limit_req zone=api burst=5 nodelay;
         include /etc/nginx/includes/bot-protection.inc;
-        set $mapalab_upstream "${MAPALAB_HOST}";
         rewrite ^/mapalab/(.*) /$1 break;
-        proxy_pass http://$mapalab_upstream;
+        proxy_pass http://mapalab_backend;
         include /etc/nginx/includes/proxy-params.inc;
         proxy_read_timeout 600s;
         proxy_send_timeout 600s;
@@ -228,9 +221,8 @@ server {
 
     location ^~ /mapalab/mcp {
         limit_req zone=general burst=20 nodelay;
-        set $mapalab_upstream "${MAPALAB_HOST}";
         rewrite ^/mapalab/(.*) /$1 break;
-        proxy_pass http://$mapalab_upstream;
+        proxy_pass http://mapalab_backend;
         include /etc/nginx/includes/proxy-params.inc;
         proxy_read_timeout 600s;
         proxy_send_timeout 600s;
@@ -241,9 +233,8 @@ server {
     location ^~ /mapalab/ {
         limit_req zone=general burst=150 nodelay;
         include /etc/nginx/includes/bot-protection.inc;
-        set $mapalab_upstream "${MAPALAB_HOST}";
         rewrite ^/mapalab/(.*) /$1 break;
-        proxy_pass http://$mapalab_upstream;
+        proxy_pass http://mapalab_backend;
         include /etc/nginx/includes/proxy-params.inc;
         proxy_set_header Accept-Encoding "";
         proxy_intercept_errors on;
@@ -258,8 +249,7 @@ server {
         # ^~ y NO se reescribe el path (mariachi-api espera /acervo/thumb/...).
         # Solo responde para buckets publicos; privados devuelven 404.
         limit_req zone=acervo_thumb burst=120 nodelay;
-        set $portal_upstream "${PORTAL_HOST}";
-        proxy_pass http://$portal_upstream;
+        proxy_pass http://portal_backend;
         include /etc/nginx/includes/proxy-params.inc;
         proxy_read_timeout 120s;
         proxy_send_timeout 120s;

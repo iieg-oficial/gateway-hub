@@ -1,0 +1,13 @@
+upstream portal_backend {
+    server ${PORTAL_HOST};
+    keepalive 32;
+    keepalive_requests 1000;
+    keepalive_timeout 60s;
+}
+
+upstream mapalab_backend {
+    server ${MAPALAB_HOST};
+    keepalive 32;
+    keepalive_requests 1000;
+    keepalive_timeout 60s;
+}
