@@ -34,7 +34,7 @@ Archivos de raíz que conserva el gateway con match exacto: `/robots.txt`,
 
 | Prefijo | Estado |
 |---|---|
-| `/administrador/` | URL antigua del panel admin (renombrado a `/mariachi` en mariachi v0.21.0; queda un 301). Tráfico en 14 días: 0. **Liberable** al ceder la raíz: basta retirar la location del gateway y el rewrite de `mariachi-nginx`. |
+| `/administrador/` | URL antigua del panel admin (renombrado a `/mariachi` en mariachi v0.21.0). Tráfico en 14 días: 0. **Liberada en gateway 1.28.1**: sin location propia, cae al catch-all. El rewrite 301 interno de `mariachi-nginx` quedó retirado en el working tree de mariachi y desaparece con su siguiente release. No confundir con `/api/administrador/`, que sigue reservado bajo `/api` (lo usan el panel admin y el frontend público de SIEEJ). |
 | `/assets/`, `/site.webmanifest`, `/favicon-96x96.png`, `/favicon.svg` | Tráfico residual de un build viejo de SIEEJ con base en raíz (hoy 404). Se extingue solo; no reservar. |
 
 ## 3. Fuera de este gateway

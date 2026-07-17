@@ -12,6 +12,14 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.28.1] - 2026-07-17
+
+### Chore: liberar el namespace `/administrador/`
+
+Se retira la `location /administrador/` (URL antigua del panel admin, renombrado a `/mariachi` en mariachi v0.21.0; tráfico 0 en 14 días de Loki). Mientras la raíz siga en `portal_backend` el 301 interno de `mariachi-nginx` mantiene el comportamiento; ese rewrite también quedó retirado en el repo de mariachi y saldrá con su siguiente release. Al ceder `location /` a la app de terceros, `/administrador/*` pasará a ella. Actualizado `docs/rutas-reservadas.md`.
+
+---
+
 ## [1.28.0] - 2026-07-17
 
 ### Feat: reservar `/colibri/` en el gateway y documentar los namespaces de raíz

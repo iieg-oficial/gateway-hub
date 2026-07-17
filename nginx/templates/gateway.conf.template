@@ -177,15 +177,6 @@ server {
         add_header Cache-Control "no-store" always;
     }
 
-    location /administrador/ {
-        limit_req zone=general burst=20 nodelay;
-        include /etc/nginx/includes/bot-protection.inc;
-        proxy_pass http://portal_backend;
-        include /etc/nginx/includes/proxy-params.inc;
-        proxy_set_header Accept-Encoding "";
-        proxy_intercept_errors on;
-    }
-
     # Admin-only: mariachi los invoca via iieg-network directo al backend,
     # no deben ser alcanzables desde internet.
     location = /mapalab/api/layers/refresh-cache {
