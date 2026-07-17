@@ -1,12 +1,18 @@
 upstream portal_backend {
-    server ${PORTAL_HOST};
+    zone portal_backend 64k;
+    resolver 127.0.0.11 valid=10s ipv6=off;
+    resolver_timeout 5s;
+    server ${PORTAL_HOST} resolve;
     keepalive 32;
     keepalive_requests 1000;
     keepalive_timeout 60s;
 }
 
 upstream mapalab_backend {
-    server ${MAPALAB_HOST};
+    zone mapalab_backend 64k;
+    resolver 127.0.0.11 valid=10s ipv6=off;
+    resolver_timeout 5s;
+    server ${MAPALAB_HOST} resolve;
     keepalive 32;
     keepalive_requests 1000;
     keepalive_timeout 60s;

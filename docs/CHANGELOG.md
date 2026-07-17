@@ -12,6 +12,19 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.27.9] - 2026-07-17
+
+### Fix: re-resolución DNS en upstreams keepalive (elimina IPs obsoletas tras recrear backends)
+
+Los upstreams estáticos introducidos en 1.27.8 resolvían el DNS de los backends una sola vez al arrancar; si `mariachi-nginx`, `mapalab-nginx-1` o `geoserver` se recreaban con IP nueva fuera de `ecosystem-deploy`, el gateway seguía proxyando a la IP muerta y respondía `502` (mostrado como página 500) hasta recargarlo a mano. Evidencia en Loki: 502 continuos hacia `172.18.0.7` el 2026-07-16 (16:29 y 19:59–20:13 UTC) resueltos solo al reiniciar el gateway.
+
+- `portal_backend` y `mapalab_backend` agregan `zone` + `server ... resolve` + `resolver 127.0.0.11 valid=10s` en el bloque `upstream` (soportado en nginx OSS ≥ 1.27.3; la imagen usa 1.28.2). Se conserva el `keepalive` de 1.27.8.
+- `geoserver` permanece estático: `GEOSERVER_HOST` es `host.docker.internal` (entrada de `extra_hosts` en `/etc/hosts`, invisible para el resolver 127.0.0.11 que usa `resolve`) y su IP de host-gateway no cambia entre recreaciones.
+- Nginx re-resuelve los hosts respetando el TTL (`valid=10s`) sin reiniciar workers: ya no aplica la nota operativa de 1.27.8 sobre recargar el gateway tras recrear backends.
+- Validado con `nginx -t` sobre la imagen construida y prueba de recreación de `mariachi-nginx` con cambio de IP.
+
+---
+
 ## [1.27.8] - 2026-07-16
 
 ### Perf: reutilizar conexiones a backends con upstreams keepalive
