@@ -12,6 +12,18 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.28.0] - 2026-07-17
+
+### Feat: reservar `/colibri/` en el gateway y documentar los namespaces de raíz
+
+Preparación para ceder `location /` a una aplicación de terceros: auditoría de todas las rutas de primer nivel del dominio (locations del gateway + 44,511 requests de 14 días en Loki + fuentes de los frontends).
+
+- **Nueva `location ^~ /colibri/`** → `portal_backend` (zona `static`). El widget embebible de Colibri (`/colibri/widget/colibri-widget.v1.js`, cargado por SIEEJ, mapalab y sitios externos) dependía del catch-all `location /`; al ceder la raíz habría dejado de servirse.
+- **Nuevo `docs/rutas-reservadas.md`**: inventario de namespaces reservados, legados (`/administrador` con tráfico 0 en 14 días, liberable) y reglas de integración para la app raíz (assets/API bajo prefijo propio, sub-delegación de `/api/<scope>/`, cookies con prefijo).
+- Pendiente decidido aparte: acotar `Path` de la cookie de sesión de mariachi antes de ceder la raíz.
+
+---
+
 ## [1.27.9] - 2026-07-17
 
 ### Fix: re-resolución DNS en upstreams keepalive (elimina IPs obsoletas tras recrear backends)

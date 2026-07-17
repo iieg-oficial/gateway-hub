@@ -289,6 +289,12 @@ server {
         proxy_intercept_errors on;
     }
 
+    location ^~ /colibri/ {
+        limit_req zone=static burst=200 nodelay;
+        proxy_pass http://portal_backend;
+        include /etc/nginx/includes/proxy-params.inc;
+    }
+
     location = /sieej {
         return 301 /sieej/;
     }
@@ -299,11 +305,18 @@ server {
         alias /usr/share/nginx/html/sieej/ontoy.json;
     }
 
+    location ^~ /sieej/assets/ {
+        limit_req zone=static burst=200 nodelay;
+        alias /usr/share/nginx/html/sieej/assets/;
+        try_files $uri =404;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+    }
+
     location ^~ /sieej/ {
         limit_req zone=static burst=200 nodelay;
         alias /usr/share/nginx/html/sieej/;
         try_files $uri $uri/ /sieej/index.html;
-        add_header Cache-Control "no-cache" always;
+        add_header Cache-Control "no-store" always;
     }
 
     location ^~ /huachicol/public/ {
