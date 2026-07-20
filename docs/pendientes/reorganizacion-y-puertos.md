@@ -1,9 +1,13 @@
 # Reorganizacion de servidores + checklist de puertos firewall
 
-> **Estado:** propuesta de evaluacion + referencia exhaustiva para aperturas FortiGate.
+> **Estado (2026-07-20):** la **reorganizacion de servidores quedo descartada** — no
+> se apagara S4 ni se rebalanceara. Se mantiene el status quo (Opcion C). Este
+> documento se conserva **solo como referencia del inventario de puertos** para
+> solicitar aperturas FortiGate; las secciones 1-3 (opciones y pasos de migracion)
+> quedan como registro historico de la evaluacion, no como plan a ejecutar.
 > **Critico:** cada apertura firewall tarda ~2 semanas en aprobarse. Validar TODOS
 > los puertos antes de enviar la solicitud. Un puerto omitido = 2 semanas mas de
-> espera.
+> espera. La solicitud vigente es la de la **seccion 7.2 (Opcion C)**.
 
 ---
 

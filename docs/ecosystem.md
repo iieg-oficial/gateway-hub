@@ -48,7 +48,8 @@ gateway-hub (Nginx, S1)
    |
    +-- /                   --> portal (congelado; redirige a /mapalab/)
    +-- /api/               --> backend mariachi (portal publico)
-   +-- /administrador/     --> admin mariachi (CMS)
+   +-- /colibri/           --> widget embebible Colibri (mariachi)
+   +-- /acervo/thumb/      --> miniaturas WebP on-the-fly (mariachi-api)
    +-- /mapalab/           --> mapalab-nginx --> mapalab-backend
    +-- /mapalab/api/       --> mapalab-backend (via mapalab-nginx)
    +-- /acervo/            --> Acervo SeaweedFS (API S3)
@@ -76,7 +77,7 @@ GeoServer --(SQL)--> dataengine
 Flujo completo cuando un admin edita una capa del visor desde el CMS:
 
 ```
-1. Admin abre /administrador/mapalab/layers (mariachi CMS)
+1. Admin abre /mariachi/mapalab/layers (mariachi CMS)
 2. Mariachi valida cookie JWT + CSRF
    Cookie scope = COOKIE_DOMAIN (subdominio compartido)
 3. Mariachi escribe en DataEngine.mapalab.layers
@@ -195,7 +196,7 @@ Solo mariachi emite auth. El truco es el scope de cookie:
 
 - `COOKIE_DOMAIN=app.dominio.com` (subdominio compartido)
 - Cookie JWT es HttpOnly, Secure, SameSite=lax
-- Vale para `/administrador/*` (valida en mariachi con CSRF)
+- Vale para `/mariachi/*` y `/api/administrador/*` (valida en mariachi con CSRF)
 - Vale tambien para `/mapalab/*` **aunque mapalab no la usa** — todos los endpoints publicos de mapalab son anonimos.
 - El visor solo la aprovecha para futuras features de preview/admin.
 

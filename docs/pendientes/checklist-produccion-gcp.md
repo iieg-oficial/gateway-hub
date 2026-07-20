@@ -208,18 +208,22 @@ cd ~/mapalab && git pull && make deploy
 
 ---
 
-## F. Versiones live (snapshot 2026-05-15)
+## F. Versiones (snapshot del working tree local, 2026-07-20)
 
-| Repo | Version |
+Estos son los `VERSION` de los repos clonados en la workstation, **no** lo que
+corre en produccion. Para el estado live, consultar `/sistema/plataformas` en
+mariachi o los endpoints `/ontoy` de cada servicio.
+
+| Repo | Version local |
 |---|---|
-| acervo | 1.22.1 |
-| dataengine | 1.14.3 |
-| gateway-hub | 1.24.16 |
-| geoserver | 1.20.1 |
-| huachicol | 1.19.2 |
-| mariachi | 1.0.4 |
-| mapalab | 1.28.5 |
-| sieej | 1.11.0 |
+| acervo | 1.23.1 |
+| dataengine | 1.24.2 |
+| gateway-hub | 1.28.1 |
+| geoserver | 1.29.1 |
+| huachicol | 1.24.0 |
+| sieej | 1.28.0 |
+| mariachi | sin `VERSION`; admin `package.json` 1.59.0 |
+| mapalab | sin `VERSION`; frontend `package.json` 1.82.3 |
 
 Sincronizar `mariachi/api/app/core/platforms_config.py:static_version` cada vez
 que un repo del ecosistema bumpee.

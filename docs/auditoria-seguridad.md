@@ -101,7 +101,7 @@ son gestionados a nivel de `jalisco.gob.mx`.
 | Estado | Error (SSL roto) | Configurado |
 | User-agent | — | * (todos) |
 | Allow | — | / |
-| Disallow | — | /administrador/, /acervo/console/, /geoserver/web/, /geoserver/rest/, /mariachi/, /huachicol/ |
+| Disallow | — | /geoserver/web/, /geoserver/rest/, /mariachi/, /huachicol/ |
 | Sitemap | — | Incluido |
 
 ## Puertos

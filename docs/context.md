@@ -3,7 +3,7 @@
 > Documento de referencia para Claude Code. Leer este archivo proporciona contexto completo
 > del proyecto sin necesidad de explorar el codebase.
 >
-> Ultima actualizacion: 2026-05-14
+> Ultima actualizacion: 2026-07-20
 
 ---
 
@@ -45,10 +45,16 @@ gateway-hub/
 │   ├── minerva.md                  # Propuesta SSO/IAM centralizado (Authentik) — futuro
 │   ├── recursos-servidores.md      # Hardware y recursos por entorno (GCP y produccion)
 │   ├── rendimiento.md              # Rate limiting, cache, capacidades y limites
+│   ├── rutas-reservadas.md         # Namespaces del dominio y reglas para la app raiz de terceros
 │   ├── ssh-deploy-keys.md          # Guia de configuracion de llaves SSH
+│   ├── componentes.mmd             # Diagrama de componentes por repo (Mermaid)
+│   ├── puertos-produccion.mmd      # Diagrama de conectividad por puertos (Mermaid)
 │   └── pendientes/
 │       ├── checklist-produccion-gcp.md
-│       └── upgrade-mapalab-8cores.md
+│       ├── evaluacion-k3s.md
+│       ├── perfiles-tuning-multientorno.md
+│       ├── rename-api-mariachi.md
+│       └── reorganizacion-y-puertos.md
 ├── nginx/
 │   ├── version.json                # Payload JSON servido en /ontoy
 │   ├── templates/
@@ -138,16 +144,22 @@ los probes internos los alcancen sin redirect). Servidor `:443` hace el enrutami
 | `= /` | redirige 302 → `/mapalab/` | Publico | — | |
 | `location /` | portal (MARIACHI) | Publico | general (burst 20) | Portal publico, bot-protection |
 | `/api/` | portal (MARIACHI) | Publico | api (burst 20) | API del Portal, `Cache-Control: no-store` |
-| `/administrador/` | portal (MARIACHI) | Publico | general (burst 20) | Panel admin (auth propia de MARIACHI) |
+| `^~ /api/administrador/acervo/thumb` | portal (MARIACHI) | Publico | acervo_thumb (burst 120) | Miniaturas WebP; NO fuerza `no-store` para que el navegador cachee |
+| `^~ /api/administrador/acervo` | portal (MARIACHI) | Publico | api (burst 20) | Uploads al Acervo (max 1GB, sin request buffering, timeout 600s) |
 | `= /mapalab/api/layers/refresh-cache` | — | — | — | `return 403` (uso interno via iieg-network) |
 | `= /mapalab/api/layers/invalidate-cache` | — | — | — | `return 403` (uso interno via iieg-network) |
 | `/mapalab/assets/` | mapalab | Publico | static (burst 200) | Cache gateway 7d, immutable, stale serving |
 | `/mapalab/api/download/` | mapalab | Publico | api (burst 5) | Descargas CSV (timeout 600s, sin buffering) |
+| `^~ /mapalab/mcp` | mapalab | Publico | general (burst 20) | Servidor MCP: sin bot-protection, sin buffering ni cache (timeout 600s) |
 | `/mapalab/` | mapalab | Publico | general (burst 150) | Visor de mapas (timeout 120s, `X-Robots-Tag` segun SEO) |
-| `/acervo/` | acervo (SeaweedFS) | Publico | api (burst 100) | API S3 (max 1GB, timeout 300s, sin buffering). `Content-Disposition: attachment` para `.txt`/`.xlsx` |
+| `^~ /acervo/thumb/` | portal (MARIACHI) | Publico | acervo_thumb (burst 120) | Miniaturas WebP on-the-fly servidas por mariachi-api, no SeaweedFS. Solo buckets publicos |
+| `/acervo/` | acervo (SeaweedFS) | Publico | static (burst 200) | API S3 (max 1GB, timeout 300s, sin buffering). `Content-Disposition: attachment` para `.txt`/`.xlsx` |
+| `^~ /mariachi/assets/` | mariachi | Publico | static (burst 200) | Assets del admin, `immutable` 1 ano |
 | `/mariachi/` | mariachi | Auth propia | general (burst 20) | CMS / admin del ecosistema |
+| `^~ /colibri/` | portal (MARIACHI) | Publico | static (burst 200) | Widget embebible y docs de Colibri (reservado en 1.28.0) |
 | `= /sieej` | redirige 301 → `/sieej/` | Publico | — | |
-| `/sieej/` | estatico (`dist/` montado) | Publico | static (burst 200) | SPA: `try_files` con fallback a `index.html` |
+| `^~ /sieej/assets/` | estatico (`dist/` montado) | Publico | static (burst 200) | `immutable` 1 ano |
+| `/sieej/` | estatico (`dist/` montado) | Publico | static (burst 200) | SPA: `try_files` con fallback a `index.html`, `no-store` |
 | `/huachicol/public/` | huachicol | Publico | — | Dashboards publicos de Grafana, cache 7d immutable |
 | `/huachicol/` | huachicol | Auth propia | huachicol (burst 200) | Grafana (auth propia, soporta WebSocket) |
 | `/geoserver/web`, `/rest`, `/j_spring_security` | geoserver | Auth propia | general (burst 20) | Admin / REST / auth de GeoServer |
@@ -158,6 +170,7 @@ los probes internos los alcancen sin redirect). Servidor `:443` hace el enrutami
 | `/ontoy` | `version.json` | Publico | — | JSON `{slug,label,version}` del gateway |
 | `/geoserver/ontoy` | inline `return 200` | Publico | — | JSON de version de GeoServer (hardcoded) |
 | `/acervo/ontoy` | inline `return 200` | Publico | — | JSON de version de Acervo (hardcoded; bumpear al cambiar `static_version`) |
+| `/huachicol/ontoy` | inline `return 200` | Publico | — | JSON de version de Huachicol (hardcoded) |
 | `/sieej/ontoy` | `ontoy.json` del dist | Publico | — | JSON de version de SIEEJ |
 | `/robots.txt` | static | Publico | — | `SEO_ENABLED=true`: permite crawlers. `false`: `Disallow /` |
 | `/sitemap.xml` | static | Publico | — | `SEO_ENABLED=true`: sirve sitemap. `false`: 404 |
@@ -167,6 +180,17 @@ los probes internos los alcancen sin redirect). Servidor `:443` hace el enrutami
 \* *Publico con restricciones: validacion dinamica de Referer (mismo `$host`, `localhost` o
 Referer vacio), bloqueo de User-Agents (bots, scrapers, curl, wget, herramientas, IA),
 bloqueo de WFS-T (`request=Transaction` → 403).*
+
+> **`/administrador/` quedo liberada en `1.28.1`.** Era la URL antigua del panel admin
+> (renombrado a `/mariachi` en mariachi v0.21.0; trafico 0 en 14 dias de Loki). Ya no
+> tiene location propia: cae al catch-all, asi que al ceder `location /` a la app raiz
+> de terceros pasara a ella. **No confundir con `/api/administrador/`**, que sigue
+> reservado bajo `/api/` y lo consumen el panel admin, el frontend publico de SIEEJ, el
+> widget de Colibri y mapalab. Su renombrado a `/api/mariachi` esta planeado en
+> [`pendientes/rename-api-mariachi.md`](pendientes/rename-api-mariachi.md).
+>
+> El inventario completo de namespaces de primer nivel, con las reglas de integracion
+> para la app raiz de terceros, vive en [`rutas-reservadas.md`](rutas-reservadas.md).
 
 ---
 
@@ -225,8 +249,10 @@ Cuatro bloques `if` sobre `$http_user_agent` que retornan 403:
 3. Librerias HTTP CLI (`^curl`, `^wget`, python-requests, aiohttp)
 4. User-Agent vacio
 
-Se incluye en las rutas publicas (`/`, `/api/`, `/administrador/`, `/mapalab/`,
-`/mapalab/api/download/`). GeoServer tiene su propio filtrado mas estricto en
+Se incluye en las rutas publicas (`/`, `/api/`, `/mapalab/`,
+`/mapalab/api/download/`). Nota: `/mapalab/mcp` queda **fuera** a proposito — es un
+endpoint de servidor MCP y sus clientes son herramientas, no navegadores.
+GeoServer tiene su propio filtrado mas estricto en
 `geoserver-locations.inc`. Permite navegadores reales y bots SEO legitimos (Googlebot, Bingbot).
 
 ### Paths Denegados
@@ -240,10 +266,11 @@ Zonas definidas por `$binary_remote_addr` (IP del cliente). `limit_req_status 42
 
 | Zona | Definida en | Rate | Uso |
 |------|-------------|------|-----|
-| `general` | `nginx.conf` | 10 r/s | Portal, `/administrador/`, `/mapalab/`, `/mariachi/`, GeoServer admin |
-| `api` | `nginx.conf` | 10 r/s | `/api/`, `/acervo/`, `/mapalab/api/download/` |
-| `static` | `nginx.conf` | 50 r/s | `/mapalab/assets/`, `/sieej/` |
+| `general` | `nginx.conf` | 10 r/s | Portal, `/mapalab/`, `/mapalab/mcp`, `/mariachi/`, GeoServer admin |
+| `api` | `nginx.conf` | 10 r/s | `/api/`, `/api/administrador/acervo`, `/mapalab/api/download/` |
+| `static` | `nginx.conf` | 50 r/s | `/mapalab/assets/`, `/acervo/`, `/mariachi/assets/`, `/colibri/`, `/sieej/` |
 | `huachicol` | `nginx.conf` | 30 r/s | `/huachicol/` |
+| `acervo_thumb` | `nginx.conf` | 30 r/s | `/acervo/thumb/`, `/api/administrador/acervo/thumb` — zona propia para no ahogar el API con la rafaga de miniaturas por pagina |
 | `geoserver_download` | `conf.d/geoserver-upstream.conf.template` | 10 r/s | `/geoserver/ows`, `/wfs`, `/wcs` y por workspace |
 
 El `burst` se ajusta por ruta (ver tabla de enrutamiento). El exceso responde **HTTP 429**
@@ -338,7 +365,7 @@ las rutas de la consola MinIO (Acervo migro a SeaweedFS, sin consola web).
 Todos los proyectos viven en `/IIEG/` y comparten la red Docker externa `iieg-network`.
 
 ### MARIACHI (`/IIEG/mariachi/`)
-- **Rutas:** `location /`, `/api/`, `/administrador/` (como upstream `portal`) y `/mariachi/`.
+- **Rutas:** `location /`, `/api/`, `/colibri/` y `/acervo/thumb/` (como upstream `portal`) y `/mariachi/`.
 - **Que es:** nucleo del ecosistema — CMS del portal publico + panel de administracion +
   API central que administra Portal, MapaLab y SIEEJ. Emite la autenticacion compartida.
 - **Stack:** admin React + Ant Design, API FastAPI, PostgreSQL (`mariachi`), Redis, cron.

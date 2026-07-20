@@ -12,6 +12,22 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.28.2] - 2026-07-20
+
+### Docs: sincronizar documentación con las rutas vigentes
+
+Las tablas de enrutamiento del `README.md` y `docs/context.md` seguían listando `/administrador/` como ruta activa (liberada desde `1.28.1`) y omitían locations reales del gateway. Se agregan a la documentación `/colibri/`, `/acervo/thumb/`, `/api/administrador/acervo`, `/mapalab/mcp`, `/mariachi/assets/`, `/sieej/assets/`, `/huachicol/ontoy` y la zona de rate limit `acervo_thumb`. Se enlaza `docs/rutas-reservadas.md` desde el índice y se refresca la sección de versiones del checklist de producción.
+
+### Chore: limpiar `robots.txt`
+
+Se retiran las reglas `Disallow: /administrador/` y `Disallow: /acervo/console/`, ambas de rutas que ya no existen en el gateway. Actualizado `docs/auditoria-seguridad.md`.
+
+### Docs: pendientes
+
+Se elimina `docs/pendientes/upgrade-mapalab-8cores.md` (ejecutado). La reorganización de servidores queda descartada: `docs/pendientes/reorganizacion-y-puertos.md` se conserva solo como referencia del inventario de puertos FortiGate.
+
+---
+
 ## [1.28.1] - 2026-07-17
 
 ### Chore: liberar el namespace `/administrador/`

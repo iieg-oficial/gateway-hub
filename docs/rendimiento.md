@@ -71,7 +71,8 @@ diferenciadas. Cuatro se definen en `nginx.conf`; `geoserver_download` en
 | `/acervo/` | api | 100 | Uploads/downloads de archivos grandes |
 | `/huachicol/` | huachicol | 200 | Grafana (dashboards, websockets) |
 | `/geoserver/ows`, `/wfs`, `/wcs` | geoserver_download | 10 | Servicios WMS/WFS/WCS |
-| `/`, `/administrador/`, `/mariachi/`, GeoServer admin | general | 20 | Default |
+| `/`, `/mariachi/`, `/mapalab/mcp`, GeoServer admin | general | 20 | Default |
+| `/acervo/thumb/`, `/api/administrador/acervo/thumb` | acervo_thumb | 120 | Miniaturas WebP (rafaga alta por pagina, cacheables) |
 
 ### Respuesta al exceso (HTTP 429)
 
@@ -111,7 +112,6 @@ API, descargas). GeoServer tiene su propia proteccion en `geoserver-locations.in
 |------|---------------|
 | `/` (Portal) | Si |
 | `/api/` | Si |
-| `/administrador/` | Si |
 | `/mapalab/` | Si |
 | `/mapalab/api/download/` | Si |
 | `/mapalab/assets/` | No (assets estaticos cacheados, no importa quien los pida) |

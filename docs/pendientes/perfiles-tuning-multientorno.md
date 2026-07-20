@@ -585,7 +585,7 @@ Por ser el mas complejo, dividir en sub-fases:
 | D3 | ¿`admin.env` por repo apunta al servidor donde corre, o varios `admin-Sx.env`? | (a) un `admin.env` (geoserver→S3, dataengine→S4, etc.), (b) `admin-s1.env`, `admin-s2.env`, etc. — solo necesario si un servicio puede correr en >1 server. |
 | D4 | ¿Que hacer con sidecars (version-api, alertmanager-discord, etc.)? | Probablemente no necesitan perfil; defaults hardcoded en el compose. Confirmar. |
 | D5 | ¿`make boost` / `make unboost` como atajos en gateway-hub? | Atajo orquestador que sube perfil de los repos afectados al boost / lo baja a staging. Util si el boost se usa frecuente. |
-| D6 | ¿`gcp-boost` se borra cuando el boost se vuelva permanente? | Si se aprueba upgrade definitivo de mapalab a 8c/32GB (ver [upgrade-mapalab-8cores.md](upgrade-mapalab-8cores.md)), `gcp-boost` se convierte en el nuevo `gcp-staging` y se elimina el archivo viejo. |
+| D6 | ¿`gcp-boost` se borra cuando el boost se vuelva permanente? | Si se aprueba upgrade definitivo de mapalab a 8c/32GB, `gcp-boost` se convierte en el nuevo `gcp-staging` y se elimina el archivo viejo. |
 | D7 | ¿Como manejar perfiles intermedios futuros (4c/16GB)? | (a) crear `gcp-medium.env`, (b) interpolar valores en runtime via script que calcule desde RAM detectada. Por ahora no es necesario. |
 | D8 | ¿Anti-drift via script (`sync-tuning-from-doc.sh`) o solo via CI de validacion? | (a) sync automatico desde doc (mas robusto, requiere parser), (b) solo validacion (mas simple, drift posible). Empezar con (b). |
 | D9 | ¿Que pasa con `sitio2026/.env.production` que ya existe? ¿Se rompe el flujo actual? | Plan de migracion gradual: mantener `.env.production` cargando primero, `tuning/admin.env` cargando despues. Si todas las vars de tuning se eliminan de `.env.production`, no hay conflicto. |
@@ -640,8 +640,6 @@ mecanico. Si se implementa el sync script, son 0 minutos por cambio.
 
 - [docs/recursos-servidores.md](../recursos-servidores.md) — matriz oficial
   de hardware y tuning por entorno.
-- [docs/pendientes/upgrade-mapalab-8cores.md](upgrade-mapalab-8cores.md) —
-  pendiente del upgrade definitivo de mapalab (relacionado con D6).
 - [docs/pendientes/evaluacion-k3s.md](evaluacion-k3s.md) — si migra a K3s,
   este patron se vuelve `overlays/<env>/`.
 - [docs/pendientes/checklist-produccion-gcp.md](checklist-produccion-gcp.md)

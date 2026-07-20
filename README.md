@@ -87,26 +87,36 @@ Logs: nginx emite a `/dev/stdout` (JSON) y `/dev/stderr`; el `alloy` del stack `
 
 ## Enrutamiento
 
+Inventario completo de namespaces de primer nivel y reglas de integracion para la
+app raiz de terceros: [`docs/rutas-reservadas.md`](docs/rutas-reservadas.md).
+
 | Ruta | Upstream / Destino | Acceso |
 |------|--------------------|--------|
-| `/` | redirige (302) a `/mapalab/` | Publico |
+| `= /` | redirige (302) a `/mapalab/` | Publico |
 | `location /` | Portal (MARIACHI) | Publico |
 | `/api/` | Portal (MARIACHI) | Publico |
-| `/administrador/` | Portal (MARIACHI) | Publico |
+| `/api/administrador/acervo`, `/acervo/thumb/` | MARIACHI (miniaturas WebP) | Publico |
 | `/mapalab/` | MapaLab | Publico |
 | `/mapalab/assets/` | MapaLab | Publico (cache gateway) |
 | `/mapalab/api/download/` | MapaLab | Publico (streaming) |
+| `/mapalab/mcp` | MapaLab | Publico (sin bot-protection) |
 | `/mapalab/api/layers/refresh-cache` | — | Bloqueado (403) |
 | `/mapalab/api/layers/invalidate-cache` | — | Bloqueado (403) |
 | `/acervo/` | Acervo (SeaweedFS S3) | Publico |
-| `/mariachi/` | MARIACHI | Auth propia |
-| `/sieej/` | Estatico (`dist/` montado) | Publico |
+| `/mariachi/`, `/mariachi/assets/` | MARIACHI | Auth propia |
+| `/colibri/` | MARIACHI (widget embebible) | Publico |
+| `/sieej/`, `/sieej/assets/` | Estatico (`dist/` montado) | Publico |
 | `/huachicol/` | Grafana | Auth propia |
 | `/huachicol/public/` | Grafana | Publico (dashboards publicos) |
 | `/geoserver/ows`, `/wfs`, `/wcs`, `/{ws}/wfs`, `/{ws}/wcs` | GeoServer OGC | Publico (con restricciones) |
 | `/geoserver/web`, `/rest`, `/j_spring_security` | GeoServer Admin | Auth propia |
-| `/ontoy`, `/geoserver/ontoy`, `/acervo/ontoy`, `/sieej/ontoy` | JSON de version | Publico |
+| `/ontoy`, `/geoserver/ontoy`, `/acervo/ontoy`, `/huachicol/ontoy`, `/sieej/ontoy` | JSON de version | Publico |
 | `/robots.txt`, `/sitemap.xml`, `/.well-known/` | Estatico | Publico |
+
+> `/administrador/` quedo liberada en `1.28.1`: ya no tiene location propia y cae
+> al catch-all. No confundir con `/api/administrador/`, que sigue reservado bajo
+> `/api/` — su renombrado a `/api/mariachi` esta planeado en
+> [`docs/pendientes/rename-api-mariachi.md`](docs/pendientes/rename-api-mariachi.md).
 
 ## Estructura del proyecto
 
@@ -146,6 +156,7 @@ gateway-hub/
 |-----------|-------------|
 | [Contexto del proyecto](docs/context.md) | Referencia completa: arquitectura, enrutamiento, seguridad |
 | [Ecosistema IIEG](docs/ecosystem.md) | Vista transversal: flujos cruzados, acoplamientos, deuda coordinada |
+| [Rutas reservadas](docs/rutas-reservadas.md) | Namespaces del dominio y reglas para la app raiz de terceros |
 | [CHANGELOG](docs/CHANGELOG.md) | Historial de cambios del repo |
 | [Paginas de error](docs/error-pages.md) | Paginas de error personalizadas del gateway |
 | [Rendimiento](docs/rendimiento.md) | Rate limiting, cache, capacidades y limites |
@@ -156,10 +167,11 @@ gateway-hub/
 | [Puertos produccion](docs/puertos-produccion.mmd) | Diagrama de conectividad por puertos entre los 4 servidores de produccion (Mermaid) |
 | [SSH Deploy Keys](docs/ssh-deploy-keys.md) | Configuracion de llaves SSH para despliegue |
 | [Proyecto Minerva](docs/minerva.md) | Propuesta de SSO/IAM centralizado (Authentik) para el ecosistema |
-| [Pendiente: Upgrade MapaLab](docs/pendientes/upgrade-mapalab-8cores.md) | Pasos cuando S2 suba a 8 cores / 16 GB |
+| [Pendiente: Rename `/api/administrador`](docs/pendientes/rename-api-mariachi.md) | Plan por fases para renombrar el prefijo a `/api/mariachi` |
 | [Pendiente: Checklist produccion GCP](docs/pendientes/checklist-produccion-gcp.md) | Validacion y pendientes del despliegue en GCP |
+| [Pendiente: Perfiles de tuning](docs/pendientes/perfiles-tuning-multientorno.md) | Propuesta de perfiles de recursos por entorno para los 10 repos |
 | [Evaluacion: migrar a k3s/k8s](docs/pendientes/evaluacion-k3s.md) | Analisis de costo, esfuerzo, riesgos y plan por fases. Decision pendiente |
-| [Reorganizacion y puertos firewall](docs/pendientes/reorganizacion-y-puertos.md) | Plan de consolidacion de servidores (apagar S4) + checklist exhaustivo de aperturas FortiGate (caso reorganizado y caso actual) |
+| [Inventario de puertos del ecosistema](docs/pendientes/reorganizacion-y-puertos.md) | Referencia de aperturas FortiGate. La reorganizacion de servidores quedo descartada |
 
 ## Licencia
 
