@@ -12,6 +12,17 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.29.0] - 2026-07-21
+
+### Retiro del proxy a Grafana (apagado del stack de observabilidad)
+
+Como parte del apagado del stack de observabilidad de huachicol, se eliminan las locations
+`/huachicol/` y `/huachicol/public/` que proxeaban a Grafana (`HUACHICOL_HOST`) y la zona de
+rate limit `huachicol` asociada. Se conserva `/huachicol/ontoy`, que el monitor sigue
+sondeando para reportar el estado del propio gateway y del ecosistema.
+
+---
+
 ## [1.28.2] - 2026-07-20
 
 ### Docs: sincronizar documentación con las rutas vigentes

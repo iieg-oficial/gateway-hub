@@ -308,24 +308,6 @@ server {
         add_header Cache-Control "no-store" always;
     }
 
-    location ^~ /huachicol/public/ {
-        set $huachicol_upstream "${HUACHICOL_HOST}";
-        proxy_pass http://$huachicol_upstream;
-        include /etc/nginx/includes/proxy-params.inc;
-        proxy_set_header Accept-Encoding "";
-        add_header Cache-Control "public, max-age=604800, immutable";
-    }
-
-    location ^~ /huachicol/ {
-        limit_req zone=huachicol burst=200 nodelay;
-        set $huachicol_upstream "${HUACHICOL_HOST}";
-        proxy_pass http://$huachicol_upstream;
-        include /etc/nginx/includes/proxy-params.inc;
-        proxy_set_header Accept-Encoding "";
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection $connection_upgrade;
-    }
-
     include /etc/nginx/includes/geoserver-locations.inc;
 
     location = /robots.txt {
