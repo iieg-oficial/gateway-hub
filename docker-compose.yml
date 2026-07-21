@@ -49,6 +49,30 @@ services:
       - nginx
     restart: unless-stopped
 
+  version-api:
+    build: ./version-api
+    container_name: gateway-version-api
+    restart: unless-stopped
+    environment:
+      ONTOY_SERVICE: gateway-hub
+      ONTOY_COMPOSE_PROJECT: gateway-hub
+      ONTOY_DISK_PATH: /host-root
+      ONTOY_PORT_CHECKS: "portal=${PORTAL_HOST},mapalab=${MAPALAB_HOST},acervo=${ACERVO_HOST},geoserver=${GEOSERVER_HOST},mariachi=${MARIACHI_HOST}"
+    volumes:
+      - ./VERSION:/app/VERSION:ro
+      - ./nginx/version.json:/app/version.json:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /:/host-root:ro
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1', 8088), timeout=3).close()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - iieg-network
+
 networks:
   iieg-network:
     external: true

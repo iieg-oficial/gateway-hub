@@ -20,9 +20,8 @@ server {
     resolver 127.0.0.11 valid=10s ipv6=off;
 
     location = /ontoy {
-        default_type application/json;
-        add_header Cache-Control "no-cache, no-store, must-revalidate" always;
-        alias /etc/nginx/version.json;
+        set $gateway_ontoy_upstream "gateway-version-api:8088";
+        proxy_pass http://$gateway_ontoy_upstream/ontoy;
     }
 
     location = /geoserver/ontoy {
@@ -104,9 +103,8 @@ server {
     }
 
     location = /ontoy {
-        default_type application/json;
-        add_header Cache-Control "no-cache, no-store, must-revalidate" always;
-        alias /etc/nginx/version.json;
+        set $gateway_ontoy_upstream "gateway-version-api:8088";
+        proxy_pass http://$gateway_ontoy_upstream/ontoy;
     }
 
     location = /geoserver/ontoy {
