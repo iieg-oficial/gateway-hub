@@ -17,7 +17,7 @@ Requisito:
     set_real_ip_from 172.16.0.0/12;   # Docker networks
     set_real_ip_from 127.0.0.0/8;     # localhost
 
-  O ejecutar desde una maquina en la subred 10.13.128.0/24 (ya confiada).
+  O ejecutar desde una maquina en la subred confiable (FortiGate estatal, ver REAL_IP_FROM).
   Despues de las pruebas, REMOVER las lineas agregadas.
 
 Como funciona:
