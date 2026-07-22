@@ -12,6 +12,19 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.30.0] - 2026-07-22
+
+### Subida interna al Acervo desde plataformas externas (`/api/internal/acervo/`)
+
+Nueva `location ^~ /api/internal/acervo/` (antes del catch-all `/api/`) para que una
+plataforma externa (el Portal) suba archivos al Acervo vía mariachi-api. La location omite
+`bot-protection.inc` a propósito (el cliente es server-to-server) y aplica settings de
+upload (`client_max_body_size 1G`, `proxy_request_buffering off`, timeouts 600s). La
+autenticación la hace mariachi-api con el header `X-Internal-Token`; el gateway no filtra
+por IP. Se documenta la ruta en `docs/context.md`.
+
+---
+
 ## [1.29.0] - 2026-07-21
 
 ### Retiro del proxy a Grafana (apagado del stack de observabilidad)

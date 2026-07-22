@@ -146,6 +146,7 @@ los probes internos los alcancen sin redirect). Servidor `:443` hace el enrutami
 | `/api/` | portal (MARIACHI) | Publico | api (burst 20) | API del Portal, `Cache-Control: no-store` |
 | `^~ /api/administrador/acervo/thumb` | portal (MARIACHI) | Publico | acervo_thumb (burst 120) | Miniaturas WebP; NO fuerza `no-store` para que el navegador cachee |
 | `^~ /api/administrador/acervo` | portal (MARIACHI) | Publico | api (burst 20) | Uploads al Acervo (max 1GB, sin request buffering, timeout 600s) |
+| `^~ /api/internal/acervo/` | portal (MARIACHI) | Token interno | api (burst 20) | Subida externa al Acervo (Portal). Sin bot-protection (cliente server-to-server), settings de upload. La autentica mariachi-api con `X-Internal-Token` |
 | `= /mapalab/api/layers/refresh-cache` | — | — | — | `return 403` (uso interno via iieg-network) |
 | `= /mapalab/api/layers/invalidate-cache` | — | — | — | `return 403` (uso interno via iieg-network) |
 | `/mapalab/assets/` | mapalab | Publico | static (burst 200) | Cache gateway 7d, immutable, stale serving |
