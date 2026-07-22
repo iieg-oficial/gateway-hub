@@ -12,6 +12,14 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.31.2] - 2026-07-22
+
+### Seguridad: ofuscar IPs reales en el repo
+
+Se removieron las IPs reales (hosts, rangos LAN y las IPs publicas de los registros A) de la documentacion y la config versionada, reemplazandolas por placeholders (`<S1>`…`<S4>`, `<LAN-interna>`, `<CIDR>`, `<IP-publica>`). Afecta `docs/CHANGELOG.md`, `README.md`, `docs/auditoria-seguridad.md`, `docs/context.md`, `docs/puertos-produccion.mmd`, `.env.example` y `scripts/stress_test_multi_ip.py`. Los valores reales quedan unicamente en el runbook no versionado.
+
+---
+
 ## [1.31.1] - 2026-07-22
 
 ### Fail-fast en la location `^~ /mapalab/` (timeout 120s → 30s)
