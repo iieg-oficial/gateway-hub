@@ -12,6 +12,14 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.32.0] - 2026-07-22
+
+### Rename `/api/administrador` → `/api/mariachi`: retiro del compat (Fase 3)
+
+Se eliminan las 2 locations viejas del Acervo (`^~ /api/administrador/acervo/thumb` y `^~ /api/administrador/acervo`); quedan solo las de `/api/mariachi/acervo*` (1.31.0). **No desplegar hasta el gate**: mariachi con el compat retirado (api 1.67.0), admin y SIEEJ ya sirviendo `/api/mariachi`, y sin tráfico a `/api/administrador/*` en los logs. Va coordinado con el retiro del rewrite compat de `mariachi-nginx`.
+
+---
+
 ## [1.31.0] - 2026-07-22
 
 ### Rename `/api/administrador` → `/api/mariachi`: locations de acervo (Fase 2)
