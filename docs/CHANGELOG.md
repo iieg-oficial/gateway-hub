@@ -12,6 +12,14 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.31.0] - 2026-07-22
+
+### Rename `/api/administrador` → `/api/mariachi`: locations de acervo (Fase 2)
+
+Se duplican las 2 locations especiales del Acervo para el prefijo nuevo: `^~ /api/mariachi/acervo/thumb` (zona `acervo_thumb`, sin `no-store`, para que el navegador cachee las miniaturas) y `^~ /api/mariachi/acervo` (upload: `client_max_body_size 1G`, `proxy_request_buffering off`, timeouts 600s). Son **aditivas**: las de `/api/administrador/acervo*` siguen vivas durante la transición, así que desplegar esto no rompe nada. Necesario **antes** de que el admin de mariachi y SIEEJ cambien su `VITE_*` a `/api/mariachi`, o las miniaturas caerían al catch-all `/api/` y perderían su rate-limit dedicado (429). Las locations viejas se retiran en una fase posterior, cuando ningún cliente use el prefijo anterior.
+
+---
+
 ## [1.30.0] - 2026-07-22
 
 ### Subida interna al Acervo desde plataformas externas (`/api/internal/acervo/`)

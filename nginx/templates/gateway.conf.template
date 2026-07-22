@@ -167,6 +167,25 @@ server {
         proxy_send_timeout 600s;
     }
 
+    location ^~ /api/mariachi/acervo/thumb {
+        limit_req zone=acervo_thumb burst=120 nodelay;
+        proxy_pass http://portal_backend;
+        include /etc/nginx/includes/proxy-params.inc;
+        proxy_read_timeout 600s;
+        proxy_send_timeout 600s;
+    }
+
+    location ^~ /api/mariachi/acervo {
+        limit_req zone=api burst=20 nodelay;
+        client_max_body_size 1G;
+        proxy_request_buffering off;
+        proxy_pass http://portal_backend;
+        include /etc/nginx/includes/proxy-params.inc;
+        add_header Cache-Control "no-store" always;
+        proxy_read_timeout 600s;
+        proxy_send_timeout 600s;
+    }
+
     # Subida interna al Acervo desde plataformas externas (Portal). La autentica
     # mariachi-api con X-Internal-Token; sin bot-protection porque el cliente es
     # server-to-server, y con settings de upload. Debe ir antes del catch-all /api/.
