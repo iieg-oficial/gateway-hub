@@ -65,7 +65,7 @@ valido emitido por una CA reconocida.
 
 | Aspecto | iieg.gob.mx | iieg.jalisco.gob.mx |
 |---------|-------------|---------------------|
-| Registro A | 201.131.6.124 | 201.131.6.122 |
+| Registro A | <IP-publica-1> | <IP-publica-2> |
 | IPv6 (AAAA) | No | No |
 | Registros MX | Google (5 servidores) | No (subdominio) |
 | Registros TXT | SPF, Facebook, Microsoft | No (subdominio) |

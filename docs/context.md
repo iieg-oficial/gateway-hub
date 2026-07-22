@@ -120,7 +120,7 @@ del frontend de SIEEJ se sirve directamente como estatico.
 | `GEOSERVER_HOST` | `host.docker.internal:8080` | Host de GeoServer |
 | `HUACHICOL_HOST` | `grafana:3000` | Host de Grafana (Huachicol) |
 | `SIEEJ_DIST_PATH` | `../sieej/frontend/dist` | Ruta host al `dist/` de SIEEJ montado como estatico |
-| `REAL_IP_FROM` | `10.13.128.0/24` | CIDR confiable para `set_real_ip_from` en `nginx.conf` (FortiGate estatal). Renderizado via envsubst en runtime |
+| `REAL_IP_FROM` | `<CIDR-interno>` | CIDR confiable para `set_real_ip_from` en `nginx.conf` (FortiGate estatal). Renderizado via envsubst en runtime |
 | `SEO_ENABLED` | `false` | `true`: robots.txt permite crawlers, sitemap activo. `false`: bloquea indexacion |
 
 **Nota sobre `PORTAL_HOST`:** el upstream se llama `portal` por motivos historicos, pero
@@ -224,7 +224,7 @@ Nueve headers aplicados en el server `:443`:
 ### Real IP
 `nginx.conf.template` define `set_real_ip_from ${REAL_IP_FROM}` con `real_ip_header X-Forwarded-For`
 y `real_ip_recursive on`. El CIDR se inyecta en runtime via envsubst desde `REAL_IP_FROM` en
-`.env` (default `10.13.128.0/24`, el rango del FortiGate estatal). En GCP/prod el FortiGate
+`.env` (default `<CIDR-interno>`, el rango del FortiGate estatal). En GCP/prod el FortiGate
 reenvia la IP real del cliente en `X-Forwarded-For`; esto la recupera para logs y rate limiting.
 
 ### Control de Acceso

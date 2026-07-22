@@ -1,13 +1,13 @@
 flowchart LR
   NET(("Internet / VPN"))
 
-  subgraph LANA["LAN 192.168.13.0/24"]
-    S1["Gateway-hub<br/>PORTAL-NVO · .122<br/>———<br/>nginx :80 / :443<br/>Acervo-SeaweedFS :8333<br/>Mariachi<br/>Loki :3101"]
-    S2["Mapalab<br/>MAPALAB · .121<br/>———<br/>mapalab-nginx :8081<br/>backend"]
-    S3["Geoserver<br/>GEOSERVER · .58<br/>———<br/>Tomcat :8080"]
+  subgraph LANA["LAN interna"]
+    S1["Gateway-hub<br/>PORTAL-NVO<br/>———<br/>nginx :80 / :443<br/>Acervo-SeaweedFS :8333<br/>Mariachi<br/>Loki :3101"]
+    S2["Mapalab<br/>MAPALAB<br/>———<br/>mapalab-nginx :8081<br/>backend"]
+    S3["Geoserver<br/>GEOSERVER<br/>———<br/>Tomcat :8080"]
   end
-  subgraph LANB["LAN 10.13.201.0/24 (aislada de salida)"]
-    S4["Dataengine<br/>PSQL17 · .117<br/>———<br/>Postgres :5432<br/>pgbouncer :6432<br/>pg-exporter :9187<br/>jobs · backup"]
+  subgraph LANB["LAN aislada (sin salida)"]
+    S4["Dataengine<br/>PSQL17<br/>———<br/>Postgres :5432<br/>pgbouncer :6432<br/>pg-exporter :9187<br/>jobs · backup"]
   end
 
   NET -->|"80 / 443 publico"| S1

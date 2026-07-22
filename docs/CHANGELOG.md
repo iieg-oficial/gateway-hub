@@ -140,7 +140,7 @@ Nueva `location ^~ /acervo/thumb/` que enruta las miniaturas WebP on-the-fly del
 
 Nuevo `docs/puertos-produccion.mmd` (Mermaid) con el mapa real de puertos inter-servidor en produccion, levantado con sondeos `nc` desde los cuatro hosts.
 
-- **Servidores:** S1 Gateway-hub/Acervo `192.168.13.122`, S2 MapaLab `192.168.13.121`, S3 GeoServer `192.168.13.58` (LAN `192.168.13.0/24`); S4 DataEngine `10.13.201.117` (LAN `10.13.201.0/24`).
+- **Servidores:** S1 Gateway-hub/Acervo `<S1>`, S2 MapaLab `<S2>`, S3 GeoServer `<S3>` (LAN `<LAN-interna>`); S4 DataEngine `<S4>` (LAN `<LAN-interna>`).
 - **Hallazgo:** el flujo saliente `S4 -> S1:8333` (backup DataEngine -> Acervo S3) esta BLOQUEADO por firewall asimetrico: la red `192.168.13.x` entra a `S4:5432` pero S4 no puede salir hacia `192.168.13.x`. Mismo caso para `S4 -> S1:3101` (logs a Loki).
 - **Notas:** en produccion `mapalab-nginx` expone `:8081`; en S1 coexisten `acervo-minio` y `acervo-seaweedfs`; el puerto de metricas `:12345` no escucha en ningun host.
 - Referenciado en el README.
@@ -526,13 +526,13 @@ Refinamiento del refactor anterior. En `1.24.19` agregue `--build` al `make up` 
 
 #### Cambiado
 
-- **`nginx/nginx.conf`** → **`nginx/templates/nginx.conf.template`** (renombrado + tratamiento via `envsubst`). La directiva `set_real_ip_from 10.13.128.0/24;` ahora es `set_real_ip_from ${REAL_IP_FROM};`. Antes el rango trusted estaba hardcoded; cualquier ajuste (segundo balanceador, IPv6, prod multi-LAN) requeria editar el archivo y rebuildear.
+- **`nginx/nginx.conf`** → **`nginx/templates/nginx.conf.template`** (renombrado + tratamiento via `envsubst`). La directiva `set_real_ip_from <CIDR-interno>;` ahora es `set_real_ip_from ${REAL_IP_FROM};`. Antes el rango trusted estaba hardcoded; cualquier ajuste (segundo balanceador, IPv6, prod multi-LAN) requeria editar el archivo y rebuildear.
 - **`Dockerfile`**: el `COPY nginx/nginx.conf` se reemplazo por el template; el CMD ahora corre `envsubst '${REAL_IP_FROM}'` antes de los otros templates para generar `/etc/nginx/nginx.conf`. La whitelist explicita evita que envsubst toque `$remote_addr`, `$binary_remote_addr`, etc.
-- **`.env`, `.env.example`** y **`docker-compose.yml`** (environment del servicio `nginx`): variable `REAL_IP_FROM` con default `10.13.128.0/24`. Si esta vacia, `set_real_ip_from` queda sin valor y nginx falla al arrancar — el default cubre el caso de `.env` heredado sin la variable.
+- **`.env`, `.env.example`** y **`docker-compose.yml`** (environment del servicio `nginx`): variable `REAL_IP_FROM` con default `<CIDR-interno>`. Si esta vacia, `set_real_ip_from` queda sin valor y nginx falla al arrancar — el default cubre el caso de `.env` heredado sin la variable.
 
 #### Notas
 
-- En local el real_ip queda inerte (no entra trafico via XFF desde 10.13.128.0/24), pero la directiva es valida y no rompe. En GCP prod sigue siendo el rango del FortiGate estatal.
+- En local el real_ip queda inerte (no entra trafico via XFF desde <CIDR-interno>), pero la directiva es valida y no rompe. En GCP prod sigue siendo el rango del FortiGate estatal.
 - Para mas de un CIDR (escenario futuro con multi-balanceador): la sintaxis nginx requiere multiples directivas `set_real_ip_from`. Si llega ese caso, evolucionar el template a un loop en el entrypoint sobre una variable separada por comas. Hoy no hace falta.
 
 ---
