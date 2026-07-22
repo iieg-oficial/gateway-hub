@@ -149,6 +149,21 @@ versiones desactualizadas.
 | Lock | 10s timeout (previene thundering herd) |
 | Bypass | GetFeatureInfo, GetCapabilities, DescribeFeatureType |
 
+## Timeouts del gateway hacia MapaLab
+
+El gateway separa los timeouts por tipo de ruta para hacer *fail-fast* en las APIs sin
+cortar operaciones legitimamente largas:
+
+| Location | Timeout | Motivo |
+|----------|---------|--------|
+| `^~ /mapalab/api/download/` | 600s | Descargas CSV en streaming |
+| `^~ /mapalab/mcp` | 600s | Transporte MCP (long-lived) |
+| `^~ /mapalab/` (APIs livianas + SPA) | 30s | Fail-fast: `layers/tree`, `initial-order`, etc. responden en ms |
+
+La location catch-all `^~ /mapalab/` estuvo en 120s; el 2026-07-22 se bajo a **30s** tras un
+incidente en que el backend se colgo y las peticiones a `/api/layers/*` se acumulaban 2 min
+cada una (ver CHANGELOG 1.31.1 y el fix de cache en mapalab 1.82.4).
+
 ## MapaLab Nginx (interno)
 
 Configuracion del Nginx que sirve el frontend y hace proxy al backend de FastAPI.

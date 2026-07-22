@@ -12,6 +12,20 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.31.1] - 2026-07-22
+
+### Fail-fast en la location `^~ /mapalab/` (timeout 120s → 30s)
+
+Tras un incidente en que el backend de MapaLab se colgo respondiendo `/api/layers/tree` e
+`/api/layers/initial-order` (la BD dejo de responder), cada peticion quedaba colgada hasta
+120s en el gateway y las conexiones se acumulaban. Se baja `proxy_read_timeout` y
+`proxy_send_timeout` de la location catch-all `^~ /mapalab/` de 120s a **30s** para liberar
+rapido las peticiones colgadas (las APIs de layers responden en ms). **No afecta** descargas
+ni MCP: tienen sus propias locations (`^~ /mapalab/api/download/` y `^~ /mapalab/mcp`) con
+600s. Complementa el fix de resiliencia del cache en el backend de mapalab (1.82.4).
+
+---
+
 ## [1.31.0] - 2026-07-22
 
 ### Rename `/api/administrador` → `/api/mariachi`: locations de acervo (Fase 2)
