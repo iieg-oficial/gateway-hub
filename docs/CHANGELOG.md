@@ -12,6 +12,24 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.32.0] - 2026-07-23
+
+### Cache de tiles WMS de GeoServer (`/geoserver/{workspace}/wms`)
+
+La zona `geoserver_cache` existía pero solo estaba aplicada a `location ~ ^/geoserver/ows`, un endpoint que **nadie usa**. Todo el tráfico real del visor va a `/geoserver/{workspace}/wms`, que no matchea ninguna de las locations anidadas (`ows`, `wfs|wcs`) y caía al bloque padre `^~ /geoserver/`, sin `proxy_cache`.
+
+Medido sobre 24 h de acceso: **11 560 peticiones** a `/geoserver/raster/wms`, **ninguna** cacheada (`upstream_cache_status` vacío en todas) y **86.6 % de URLs repetidas** — 10 010 de 11 560, con la misma URL pedida hasta 24 veces. Ese tráfico llegaba íntegro al renderizador y contribuía a los 429 de control-flow.
+
+Nueva location `~ ^/geoserver/([^/]+/)?wms` con `proxy_cache geoserver_cache`, `proxy_cache_lock` (colapsa las ráfagas concurrentes idénticas del zoom rápido en una sola petición al upstream) y `proxy_cache_background_update`. Reutiliza el map `$geoserver_no_cache` ya existente para no cachear `GetFeatureInfo`/`GetCapabilities`/`DescribeFeatureType`.
+
+Verificado: MISS → HIT, y una ráfaga de 200 peticiones sobre 40 tiles únicos con 30 en paralelo baja a 40 peticiones al upstream, sin errores.
+
+No se añadieron las restricciones de referer/user-agent que llevan `ows` y `wfs|wcs`: la location padre no las aplicaba a `wms` y agregarlas habría cambiado el comportamiento para clientes legítimos (QGIS y similares).
+
+> El include `nginx/includes/geoserver-locations.inc` va **dentro de la imagen** (`COPY nginx/includes/`), no montado: tras editarlo hay que `docker compose build nginx && up -d nginx` o el cambio se pierde al recrear el contenedor.
+
+---
+
 ## [1.31.2] - 2026-07-22
 
 ### Seguridad: ofuscar IPs reales en el repo

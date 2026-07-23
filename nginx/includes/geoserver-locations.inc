@@ -23,6 +23,33 @@ location ^~ /geoserver/j_spring_security {
 }
 
 location ^~ /geoserver/ {
+    location ~ ^/geoserver/([^/]+/)?wms {
+        limit_except GET HEAD OPTIONS {
+            deny all;
+        }
+
+        proxy_pass http://geoserver;
+        include /etc/nginx/includes/proxy-params.inc;
+        include /etc/nginx/includes/geoserver-hide-headers.inc;
+        proxy_set_header Accept-Encoding identity;
+        proxy_read_timeout 120s;
+
+        proxy_cache geoserver_cache;
+        proxy_cache_key "$request_uri";
+        proxy_cache_valid 200 6h;
+        proxy_cache_lock on;
+        proxy_cache_lock_timeout 30s;
+        proxy_cache_lock_age 30s;
+        proxy_cache_use_stale error timeout updating;
+        proxy_cache_background_update on;
+        proxy_ignore_headers "Set-Cookie" "Expires" "Cache-Control";
+        proxy_no_cache $geoserver_no_cache;
+        proxy_cache_bypass $geoserver_no_cache;
+        add_header X-Cache-Status $upstream_cache_status always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-Content-Type-Options "nosniff" always;
+    }
+
     location ~ ^/geoserver/ows {
         limit_except GET HEAD OPTIONS {
             deny all;
