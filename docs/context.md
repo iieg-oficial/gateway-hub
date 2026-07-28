@@ -61,7 +61,8 @@ gateway-hub/
 │   │   ├── nginx.conf.template     # Configuracion principal (envsubst para REAL_IP_FROM)
 │   │   └── gateway.conf.template   # Server block principal (envsubst para hosts/SSL/GTM/SEO)
 │   ├── conf.d/
-│   │   └── geoserver-upstream.conf.template  # Upstream, zona y cache de GeoServer
+│   │   ├── geoserver-upstream.conf.template  # Upstream, zona y cache de GeoServer
+│   │   └── internal-upstreams.conf.template  # Upstreams portal_backend y mapalab_backend
 │   ├── includes/
 │   │   ├── proxy-params.inc        # Headers estandar de proxy
 │   │   ├── security-headers.inc    # 9 headers de seguridad (HSTS, CSP, etc.)
@@ -147,6 +148,8 @@ los probes internos los alcancen sin redirect). Servidor `:443` hace el enrutami
 | `^~ /api/administrador/acervo/thumb` | portal (MARIACHI) | Publico | acervo_thumb (burst 120) | Miniaturas WebP; NO fuerza `no-store` para que el navegador cachee |
 | `^~ /api/administrador/acervo` | portal (MARIACHI) | Publico | api (burst 20) | Uploads al Acervo (max 1GB, sin request buffering, timeout 600s) |
 | `^~ /api/internal/acervo/` | portal (MARIACHI) | Token interno | api (burst 20) | Subida externa al Acervo (Portal). Sin bot-protection (cliente server-to-server), settings de upload. La autentica mariachi-api con `X-Internal-Token` |
+| `^~ /api/mariachi/geoserver/files` | portal (MARIACHI) | Publico | geoserver_files (burst 200) | Recursos de GeoServer (Sextante). Sin tope de tamano (`client_max_body_size 0`), sin request buffering, timeouts 1800s. **No fuerza `no-store`**: deja pasar el cache del API para que el navegador no repita la rafaga de miniaturas |
+| `^~ /api/administrador/geoserver/files` | portal (MARIACHI) | Publico | geoserver_files (burst 200) | Igual que la anterior, prefijo legacy |
 | `= /mapalab/api/layers/refresh-cache` | — | — | — | `return 403` (uso interno via iieg-network) |
 | `= /mapalab/api/layers/invalidate-cache` | — | — | — | `return 403` (uso interno via iieg-network) |
 | `/mapalab/assets/` | mapalab | Publico | static (burst 200) | Cache gateway 7d, immutable, stale serving |
@@ -169,9 +172,9 @@ los probes internos los alcancen sin redirect). Servidor `:443` hace el enrutami
 | `/geoserver/{ws}/(wfs\|wcs)` | geoserver | Publico* | geoserver_download (burst 10) | WFS/WCS por workspace (timeout 600s, sin cache, validacion) |
 | `/geoserver/` (catch-all) | geoserver | — | — | Resto de paths GeoServer (timeout 120s) |
 | `/ontoy` | `version.json` | Publico | — | JSON `{slug,label,version}` del gateway |
-| `/geoserver/ontoy` | inline `return 200` | Publico | — | JSON de version de GeoServer (hardcoded) |
-| `/acervo/ontoy` | inline `return 200` | Publico | — | JSON de version de Acervo (hardcoded; bumpear al cambiar `static_version`) |
-| `/huachicol/ontoy` | inline `return 200` | Publico | — | JSON de version de Huachicol (hardcoded) |
+| `/geoserver/ontoy` | `geoserver-version-api:8088` | Publico | — | Proxy al sidecar del repo geoserver |
+| `/acervo/ontoy` | `acervo-version-api:8088` | Publico | — | Proxy al sidecar del repo acervo |
+| `/huachicol/ontoy` | `huachicol-version-api:8088` | Publico | — | Proxy al sidecar del repo huachicol |
 | `/sieej/ontoy` | `ontoy.json` del dist | Publico | — | JSON de version de SIEEJ |
 | `/robots.txt` | static | Publico | — | `SEO_ENABLED=true`: permite crawlers. `false`: `Disallow /` |
 | `/sitemap.xml` | static | Publico | — | `SEO_ENABLED=true`: sirve sitemap. `false`: 404 |
@@ -272,6 +275,7 @@ Zonas definidas por `$binary_remote_addr` (IP del cliente). `limit_req_status 42
 | `static` | `nginx.conf` | 50 r/s | `/mapalab/assets/`, `/acervo/`, `/mariachi/assets/`, `/colibri/`, `/sieej/` |
 | `huachicol` | `nginx.conf` | 30 r/s | `/huachicol/` |
 | `acervo_thumb` | `nginx.conf` | 30 r/s | `/acervo/thumb/`, `/api/administrador/acervo/thumb` — zona propia para no ahogar el API con la rafaga de miniaturas por pagina |
+| `geoserver_files` | `nginx.conf` | 30 r/s | `/api/*/geoserver/files` — mismo motivo: navegar una carpeta de Recursos pide una miniatura por archivo, y una subida por partes son muchos POST seguidos |
 | `geoserver_download` | `conf.d/geoserver-upstream.conf.template` | 10 r/s | `/geoserver/ows`, `/wfs`, `/wcs` y por workspace |
 
 El `burst` se ajusta por ruta (ver tabla de enrutamiento). El exceso responde **HTTP 429**
@@ -349,8 +353,8 @@ ejecuta en orden:
 
 | Nombre | Variable de Host | Definido en | Keepalive | Notas |
 |--------|------------------|-------------|-----------|-------|
-| `portal` | `PORTAL_HOST` | `gateway.conf.template` | 32 | Apunta al nginx de MARIACHI (portal publico) |
-| `mapalab` | `MAPALAB_HOST` | `gateway.conf.template` | 32 | Visor de mapas (nginx interno) |
+| `portal_backend` | `PORTAL_HOST` | `conf.d/internal-upstreams.conf.template` | 32 | Apunta al nginx de MARIACHI (portal publico, `/api/`, `/mariachi/`) |
+| `mapalab_backend` | `MAPALAB_HOST` | `conf.d/internal-upstreams.conf.template` | 32 | Visor de mapas (nginx interno) |
 | `acervo` | `ACERVO_HOST` | `gateway.conf.template` | 32 | Storage S3 (SeaweedFS) |
 | `mariachi` | `MARIACHI_HOST` | `gateway.conf.template` | 32 | CMS / admin del ecosistema |
 | `huachicol` | `HUACHICOL_HOST` | `gateway.conf.template` | 32 | Grafana |
@@ -491,7 +495,8 @@ se procesan en runtime.
 - **`host.docker.internal`:** para alcanzar servicios en el host o en otro compose; se mapea
   via `extra_hosts` en `docker-compose.yml`.
 - **Endpoints `/ontoy`:** sirven JSON de version para que el dashboard de plataformas de
-  MARIACHI verifique el estado del ecosistema. Los de GeoServer y Acervo estan hardcodeados
-  inline en `gateway.conf.template` — al cambiar el `static_version` de esos repos hay que
-  actualizar el `return 200` y bumpear gateway-hub.
+  MARIACHI verifique el estado del ecosistema. Ya no son `return 200` inline: cada uno
+  proxea al sidecar `*-version-api:8088` de su repo, asi que la version la reporta el
+  propio servicio y no hay que tocar el gateway al bumpear otro repo. Si un `/ontoy`
+  responde 502/503, revisar que el sidecar de ese repo exista y este sano.
 - **Despliegue:** en la VM de produccion solo se ejecuta (`git pull`, `make deploy`);

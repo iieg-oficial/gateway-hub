@@ -200,6 +200,26 @@ server {
         proxy_send_timeout 600s;
     }
 
+    location ^~ /api/mariachi/geoserver/files {
+        limit_req zone=geoserver_files burst=200 nodelay;
+        client_max_body_size 0;
+        proxy_request_buffering off;
+        proxy_pass http://portal_backend;
+        include /etc/nginx/includes/proxy-params.inc;
+        proxy_read_timeout 1800s;
+        proxy_send_timeout 1800s;
+    }
+
+    location ^~ /api/administrador/geoserver/files {
+        limit_req zone=geoserver_files burst=200 nodelay;
+        client_max_body_size 0;
+        proxy_request_buffering off;
+        proxy_pass http://portal_backend;
+        include /etc/nginx/includes/proxy-params.inc;
+        proxy_read_timeout 1800s;
+        proxy_send_timeout 1800s;
+    }
+
     location /api/ {
         limit_req zone=api burst=20 nodelay;
         include /etc/nginx/includes/bot-protection.inc;

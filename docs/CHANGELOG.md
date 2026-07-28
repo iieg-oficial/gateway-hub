@@ -12,6 +12,45 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.33.1] - 2026-07-28
+
+### Navegar una carpeta de Recursos devolvia 429 y nunca cacheaba
+
+Las dos `location` de `/api/*/geoserver/files` que agrego la 1.33.0 heredaron dos
+cosas del patron equivocado: la zona `api` (10 r/s, compartida con todo el API) y
+un `add_header Cache-Control "no-store" always`.
+
+El grid de Recursos pide una miniatura por archivo, asi que abrir una carpeta de
+simbologia —cientos de SVGs— agotaba el burst y devolvia **429**. Peor: el
+`no-store` pisaba el `public, max-age=86400, immutable` que manda el API, de modo
+que el navegador no guardaba nada y **cada** regreso a la carpeta repetia la
+rafaga entera.
+
+- Zona propia `geoserver_files` (30 r/s, `burst=200`), como ya se hizo con
+  `acervo_thumb`. Tambien absorbe los POST seguidos de una subida por partes.
+- Se retira el `no-store`: el API decide el cacheo por respuesta, igual que en
+  `location ^~ /api/administrador/acervo/thumb`.
+
+Requiere mariachi >= 1.97.1 (responde 304 ante `If-None-Match` y sube el limite
+del scope de descarga).
+
+## [1.33.0] - 2026-07-28
+
+### Subidas sin tope a los recursos de GeoServer (`/api/*/geoserver/files`)
+
+La pagina Recursos de Sextante (mariachi) sube archivos a `styles/` de GeoServer. Hasta
+ahora topaba en 200 MB del lado del API; con el tope removido para publicar rasters de
+varios GB, esas rutas caian al catch-all `location /api/`, que hereda el
+`client_max_body_size 100M` del server y los timeouts por defecto: el PUT final a
+GeoServer de un archivo grande tarda minutos y se cortaba.
+
+Se agregan dos `location` propias (prefijo nuevo y el legacy `/api/administrador/`) con
+`client_max_body_size 0`, `proxy_request_buffering off` y `proxy_read_timeout` /
+`proxy_send_timeout` de 1800s. El `burst` del rate limit sube a 40 porque una subida por
+partes son muchos requests seguidos del mismo cliente.
+
+Requiere mariachi >= 1.96.0.
+
 ## [1.32.0] - 2026-07-23
 
 ### Cache de tiles WMS de GeoServer (`/geoserver/{workspace}/wms`)
