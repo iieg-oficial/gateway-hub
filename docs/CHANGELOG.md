@@ -12,6 +12,36 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.33.2] - 2026-07-29
+
+### El contexto se movio al repo central y `HUACHICOL_HOST` se retiro
+
+Documentacion y limpieza; sin cambios en el ruteo ni en los certificados.
+
+#### Eliminado
+
+- **Variable `HUACHICOL_HOST`** de `.env.example`, `docker-compose.yml` y la allowlist de
+  `envsubst` del `Dockerfile`. Ninguna plantilla la usaba desde que se retiraron las `location`
+  de Grafana: como el ecosistema prohibe defaults inline, el compose la exigia y quien levantara
+  un entorno nuevo tenia que inventar un valor para un Grafana que ya no existe.
+- `docs/context.md`, `ecosystem.md`, `rutas-reservadas.md`, `rendimiento.md`,
+  `recursos-servidores.md`, `auditoria-seguridad.md`, `minerva.md` y `docs/pendientes/`
+  completo. Su contenido vive ahora en el repositorio central de contexto
+  (`iieg-oficial/context-ame-esta`): el contexto y el rendimiento en `repos/gateway-hub/`, las
+  rutas reservadas en `ecosistema/contratos.md`, los recursos y el tuning por entorno en
+  `ecosistema/topologia.md`, y la auditoria, el rename del prefijo y la evaluacion de IdP en
+  `historial/`.
+
+#### Corregido
+
+- **README:** se retiraron las filas de `/huachicol/` hacia Grafana y las menciones a Alloy y
+  Loki, que describian el stack apagado el 2026-07-21. El `nginx-exporter` queda anotado como
+  **sin consumidor**: sigue en el compose pero ya nadie lo scrapea.
+- Indice de documentacion del README: apuntaba a los ocho documentos migrados con enlaces
+  rotos.
+
+---
+
 ## [1.33.1] - 2026-07-28
 
 ### Navegar una carpeta de Recursos devolvia 429 y nunca cacheaba

@@ -67,7 +67,6 @@ Ver `.env.example` para la referencia completa. Las variables principales:
 | `ACERVO_HOST` | Host de Acervo (API S3 de SeaweedFS) |
 | `MARIACHI_HOST` | Host de MARIACHI |
 | `GEOSERVER_HOST` | Host de GeoServer |
-| `HUACHICOL_HOST` | Host de Grafana |
 | `SIEEJ_DIST_PATH` | Ruta host al `dist/` de SIEEJ que se monta como estatico (default `../sieej/frontend/dist`) |
 | `REAL_IP_FROM` | CIDR confiable para `set_real_ip_from` (X-Forwarded-For). Default `<CIDR-interno>` (FortiGate estatal) |
 | `SEO_ENABLED` | `true` en produccion (robots.txt, sitemap, sin noindex). `false` en staging/dev (bloquea indexacion) |
@@ -81,14 +80,16 @@ Ver `.env.example` para la referencia completa. Las variables principales:
 | Servicio | Funcion |
 |----------|---------|
 | `nginx` | Proxy inverso principal (puertos 80, 443) |
-| `nginx-exporter` | Metricas Prometheus via `/stub_status` |
+| `nginx-exporter` | Metricas Prometheus via `/stub_status`. **Sin consumidor** desde que se retiro el stack de observabilidad (2026-07-21); sigue en el compose |
 
-Logs: nginx emite a `/dev/stdout` (JSON) y `/dev/stderr`; el `alloy` del stack `huachicol` los recolecta automaticamente via socket Docker. No requiere promtail propio (eliminado en `1.24.15`).
+Logs: nginx emite a `/dev/stdout` (JSON) y `/dev/stderr`, sin archivo en disco. La recoleccion hacia
+Loki via Alloy quedo sin consumidor al apagarse el stack de observabilidad de huachicol el
+2026-07-21; hoy la unica retencion es la del driver de logs de Docker.
 
 ## Enrutamiento
 
 Inventario completo de namespaces de primer nivel y reglas de integracion para la
-app raiz de terceros: [`docs/rutas-reservadas.md`](docs/rutas-reservadas.md).
+app raiz de terceros: `ecosistema/contratos.md` en el repositorio central de contexto.
 
 | Ruta | Upstream / Destino | Acceso |
 |------|--------------------|--------|
@@ -106,8 +107,6 @@ app raiz de terceros: [`docs/rutas-reservadas.md`](docs/rutas-reservadas.md).
 | `/mariachi/`, `/mariachi/assets/` | MARIACHI | Auth propia |
 | `/colibri/` | MARIACHI (widget embebible) | Publico |
 | `/sieej/`, `/sieej/assets/` | Estatico (`dist/` montado) | Publico |
-| `/huachicol/` | Grafana | Auth propia |
-| `/huachicol/public/` | Grafana | Publico (dashboards publicos) |
 | `/geoserver/ows`, `/wfs`, `/wcs`, `/{ws}/wfs`, `/{ws}/wcs` | GeoServer OGC | Publico (con restricciones) |
 | `/geoserver/web`, `/rest`, `/j_spring_security` | GeoServer Admin | Auth propia |
 | `/ontoy`, `/geoserver/ontoy`, `/acervo/ontoy`, `/huachicol/ontoy`, `/sieej/ontoy` | JSON de version | Publico |
@@ -116,7 +115,7 @@ app raiz de terceros: [`docs/rutas-reservadas.md`](docs/rutas-reservadas.md).
 > `/administrador/` quedo liberada en `1.28.1`: ya no tiene location propia y cae
 > al catch-all. No confundir con `/api/administrador/`, que sigue reservado bajo
 > `/api/` — su renombrado a `/api/mariachi` esta planeado en
-> [`docs/pendientes/rename-api-mariachi.md`](docs/pendientes/rename-api-mariachi.md).
+> `historial/2026-07-gateway-rename-api-mariachi.md` del repositorio central.
 
 ## Estructura del proyecto
 
@@ -145,7 +144,8 @@ gateway-hub/
 ## Stack
 
 - **Proxy:** Nginx 1.28.2 (Alpine)
-- **Monitoreo:** Prometheus (nginx-exporter) + Alloy (huachicol) → Loki
+- **Monitoreo:** sondeo de `/ontoy` desde el monitor de huachicol. El `nginx-exporter` sigue
+  levantado pero ya nadie lo scrapea
 - **SSL:** TLSv1.2/1.3, HSTS, OCSP Stapling
 - **Seguridad:** CSP, 9 headers de seguridad, bot protection (scrapers, crawlers IA, herramientas CLI)
 - **Red:** `iieg-network` (externa, compartida con todos los servicios IIEG)
@@ -154,24 +154,24 @@ gateway-hub/
 
 | Documento | Descripcion |
 |-----------|-------------|
-| [Contexto del proyecto](docs/context.md) | Referencia completa: arquitectura, enrutamiento, seguridad |
-| [Ecosistema IIEG](docs/ecosystem.md) | Vista transversal: flujos cruzados, acoplamientos, deuda coordinada |
-| [Rutas reservadas](docs/rutas-reservadas.md) | Namespaces del dominio y reglas para la app raiz de terceros |
 | [CHANGELOG](docs/CHANGELOG.md) | Historial de cambios del repo |
 | [Paginas de error](docs/error-pages.md) | Paginas de error personalizadas del gateway |
-| [Rendimiento](docs/rendimiento.md) | Rate limiting, cache, capacidades y limites |
-| [Recursos de servidores](docs/recursos-servidores.md) | Hardware, memoria y configuracion por entorno |
-| [Auditoria de seguridad](docs/auditoria-seguridad.md) | Comparativa de seguridad web: sitio anterior vs actual |
+| [SSH Deploy Keys](docs/ssh-deploy-keys.md) | Configuracion de llaves SSH para despliegue |
 | [Arquitectura](docs/arquitectura.mmd) | Diagrama de arquitectura (Mermaid) |
 | [Componentes](docs/componentes.mmd) | Diagrama de componentes: containers por repo, sidecars version-api, flujos /ontoy (Mermaid) |
 | [Puertos produccion](docs/puertos-produccion.mmd) | Diagrama de conectividad por puertos entre los 4 servidores de produccion (Mermaid) |
-| [SSH Deploy Keys](docs/ssh-deploy-keys.md) | Configuracion de llaves SSH para despliegue |
-| [Proyecto Minerva](docs/minerva.md) | Propuesta de SSO/IAM centralizado (Authentik) para el ecosistema |
-| [Pendiente: Rename `/api/administrador`](docs/pendientes/rename-api-mariachi.md) | Plan por fases para renombrar el prefijo a `/api/mariachi` |
-| [Pendiente: Checklist produccion GCP](docs/pendientes/checklist-produccion-gcp.md) | Validacion y pendientes del despliegue en GCP |
-| [Pendiente: Perfiles de tuning](docs/pendientes/perfiles-tuning-multientorno.md) | Propuesta de perfiles de recursos por entorno para los 10 repos |
-| [Evaluacion: migrar a k3s/k8s](docs/pendientes/evaluacion-k3s.md) | Analisis de costo, esfuerzo, riesgos y plan por fases. Decision pendiente |
-| [Inventario de puertos del ecosistema](docs/pendientes/reorganizacion-y-puertos.md) | Referencia de aperturas FortiGate. La reorganizacion de servidores quedo descartada |
+
+El contexto, los contratos y el trabajo pendiente viven en el repositorio central de contexto
+(`iieg-oficial/context-ame-esta`):
+
+| Tema | Donde |
+|------|-------|
+| Contexto del proyecto: que hace el proxy, servicios, variables, cache | `repos/gateway-hub/contexto.md` |
+| Rutas reservadas del dominio y prefijos | `ecosistema/contratos.md` |
+| Rendimiento: capacidades, limites y stress tests | `repos/gateway-hub/rendimiento.md` |
+| Recursos por nodo y tuning por entorno | `ecosistema/topologia.md` |
+| Pendientes: tuning multientorno, puertos, evaluacion de k3s, checklist GCP | `repos/gateway-hub/pendientes/` |
+| Auditoria de seguridad, rename de `/api/administrador`, evaluacion de IdP | `historial/` |
 
 ## Licencia
 
