@@ -48,6 +48,7 @@ El `Makefile` ofrece dos niveles:
 | `make ecosystem-down` | Detener el ecosistema en orden inverso (filtrable con `STACKS=`) |
 | `make ecosystem-deploy` | Pull + down + deploy de todo el ecosistema |
 | `make ecosystem-status` | Git, Docker y errores recientes en logs del ecosistema |
+| `make ecosystem-push` | Push de la rama actual de cada repo, incluido context-ame-esta (filtrable con `STACKS=`) |
 
 Los servicios `sitio2026` y `minerva` quedan fuera del orquestador y se levantan manualmente (`cd ../sitio2026 && make up ENV=gcp` y `cd ../minerva && make up` respectivamente).
 
