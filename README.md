@@ -46,7 +46,7 @@ El `Makefile` ofrece dos niveles:
 | `make down` | Gateway-hub: detener |
 | `make ecosystem-up` | Levantar el ecosistema en orden topologico (filtrable con `STACKS=`) |
 | `make ecosystem-down` | Detener el ecosistema en orden inverso (filtrable con `STACKS=`) |
-| `make ecosystem-deploy` | Pull + down + deploy de todo el ecosistema |
+| `make ecosystem-deploy` | Pull + down + deploy de todo el ecosistema (filtrable con `STACKS=`) |
 | `make ecosystem-status` | Git, Docker y errores recientes en logs del ecosistema |
 | `make ecosystem-push` | Push de la rama actual de cada repo, incluido context-ame-esta (filtrable con `STACKS=`) |
 
@@ -128,7 +128,6 @@ gateway-hub/
 ├── .env.example
 ├── certs/                        # Certificados SSL (self-signed en dev)
 ├── nginx/
-│   ├── version.json              # Payload de /ontoy
 │   ├── templates/
 │   │   ├── nginx.conf.template   # Configuracion principal (envsubst REAL_IP_FROM)
 │   │   └── gateway.conf.template # Server block principal (envsubst hosts/SSL/GTM/SEO)

@@ -10,6 +10,53 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ## [No publicado]
 
+## [1.38.0] - 2026-07-30
+
+### Cambiado: Makefile homologado con el resto del ecosistema
+
+La interfaz de comandos es ahora la misma en los nueve repos: `up` levanta desarrollo sin
+reconstruir y `deploy` hace produccion completa (`git pull` + `down` + `build` + `up`). Se
+retiraron todas las banderas: el entorno se detecta por el nombre de proyecto de Compose y lo que
+antes era un argumento ahora es un selector interactivo. Lo transversal vive en `make/common.mk` y
+`make/lib.sh`, copiados en cada repo. Convencion completa en `ecosistema/makefiles.md` del repo de
+contexto.
+
+Las reglas se partieron en `make/`: `common.mk` para el ciclo de vida y `ecosystem.mk` para la
+orquestacion. `ECOSYSTEM_STEPS` deja de ser una tabla de cuatro campos con excepciones por repo
+(`huachicol:start:stop`, `sieej:build:down`, `mariachi:deploy:down:ENV=prod`) y se reduce a la
+lista ordenada de repos, porque todos responden a los mismos verbos.
+
+### Eliminado: `version.json` y el `COPY` que lo sostenia
+
+El sidecar ya montaba `VERSION` y `ontoy_server.py` lo lee en caliente, asi que el JSON no
+aportaba el dato: sobrevivia porque el bind mount exigia que el archivo existiera. Se retiraron el
+mount, `scripts/gen-version-json.sh` y `COPY nginx/version.json` del Dockerfile, **que hacia
+fallar el build en un clon limpio** porque el archivo estaba en `.gitignore` y ninguna
+configuracion de nginx lo leia. `deployed_at` pasa a ser la hora de arranque del proceso y
+`released_at` desaparece del payload, que el contrato `/ontoy` v2 marca como opcional.
+
+### Eliminado: `ECOSYSTEM_REPOS`
+
+Estaba declarada y no se usaba en ninguna receta.
+
+---
+
+## [1.37.0] - 2026-07-30
+
+### Agregado: `/mapalab/ontoy` tambien devuelve 403
+
+mapalab 1.102.0 estrena un sidecar `version-api` y su nginx lo expone en `= /ontoy`. Como el
+rewrite de aqui convierte `/mapalab/<x>` en `/<x>`, esa ruta quedaria alcanzable desde internet
+como `https://<dominio>/mapalab/ontoy` — la misma via por la que en 1.35.1 se colo
+`/mapalab/api/ontoy`.
+
+El sidecar de mapalab **no es un sidecar plano**: fusiona los checks del backend, asi que su
+payload lleva `client_errors` y `embeds`, justo lo que se cerro. Por eso va con `return 403` y no
+publicado, a diferencia de los `/ontoy` de gateway-hub, geoserver, acervo, huachicol y sieej.
+
+`huachicol-monitor` no se ve afectado: entra por el puerto del nginx de mapalab, sin pasar por el
+gateway.
+
 ---
 
 ## [1.36.0] - 2026-07-30

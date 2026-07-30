@@ -3,7 +3,6 @@
 *.pem
 *.key
 *.crt
-nginx/version.json
 
 secrets/*
 !secrets/.gitkeep

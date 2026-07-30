@@ -60,7 +60,6 @@ services:
       ONTOY_PORT_CHECKS: "portal=${PORTAL_HOST:?},mapalab=${MAPALAB_HOST:?},acervo=${ACERVO_HOST:?},geoserver=${GEOSERVER_HOST:?},mariachi=${MARIACHI_HOST:?}"
     volumes:
       - ./VERSION:/app/VERSION:ro
-      - ./nginx/version.json:/app/version.json:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
     extra_hosts: *host-gateway
     healthcheck:
