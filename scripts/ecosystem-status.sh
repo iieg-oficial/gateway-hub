@@ -72,13 +72,19 @@ dashes() {
 
 get_docker_str() {
   local dir="$1"
-  local compose_file=""
-  [ -f "$dir/docker-compose.yml" ] && compose_file="$dir/docker-compose.yml"
-  [ -f "$dir/docker-compose.yaml" ] && compose_file="$dir/docker-compose.yaml"
-  [ -f "$dir/compose.yml" ] && compose_file="$dir/compose.yml"
-  [ -f "$dir/compose.yaml" ] && compose_file="$dir/compose.yaml"
+  local compose_args=""
+  [ -f "$dir/docker-compose.yml" ] && compose_args="-f $dir/docker-compose.yml"
+  [ -f "$dir/docker-compose.yaml" ] && compose_args="-f $dir/docker-compose.yaml"
+  [ -f "$dir/compose.yml" ] && compose_args="-f $dir/compose.yml"
+  [ -f "$dir/compose.yaml" ] && compose_args="-f $dir/compose.yaml"
+  [ -f "$dir/compose.yaml" ] && [ -f "$dir/compose.prod.yaml" ] \
+    && compose_args="-f $dir/compose.yaml -f $dir/compose.prod.yaml"
+  local env_file=""
+  [ -f "$dir/.env" ] && env_file="--env-file $dir/.env"
+  [ -f "$dir/.env.production" ] && env_file="--env-file $dir/.env.production"
+  compose_args="--project-directory $dir $env_file $compose_args"
 
-  if [ -z "$compose_file" ]; then
+  if [ -z "$compose_args" ]; then
     printf "${DIM}n/a${RESET}"
     return
   fi
@@ -86,7 +92,7 @@ get_docker_str() {
   local running=0 stopped=0 total=0
   if command -v docker &>/dev/null; then
     local containers
-    containers=$(docker compose -f "$compose_file" ps --format '{{.State}}' 2>/dev/null || true)
+    containers=$(docker compose $compose_args ps --format '{{.State}}' 2>/dev/null || true)
     if [ -n "$containers" ]; then
       while IFS= read -r state; do
         total=$((total + 1))
@@ -219,16 +225,22 @@ dashes
 has_errors=false
 
 for dir in "${REPO_ORDER[@]}"; do
-    compose_file=""
-    [ -f "$dir/docker-compose.yml" ] && compose_file="$dir/docker-compose.yml"
-    [ -f "$dir/docker-compose.yaml" ] && compose_file="$dir/docker-compose.yaml"
-    [ -f "$dir/compose.yml" ] && compose_file="$dir/compose.yml"
-    [ -f "$dir/compose.yaml" ] && compose_file="$dir/compose.yaml"
+    compose_args=""
+    [ -f "$dir/docker-compose.yml" ] && compose_args="-f $dir/docker-compose.yml"
+    [ -f "$dir/docker-compose.yaml" ] && compose_args="-f $dir/docker-compose.yaml"
+    [ -f "$dir/compose.yml" ] && compose_args="-f $dir/compose.yml"
+    [ -f "$dir/compose.yaml" ] && compose_args="-f $dir/compose.yaml"
+    [ -f "$dir/compose.yaml" ] && [ -f "$dir/compose.prod.yaml" ] \
+      && compose_args="-f $dir/compose.yaml -f $dir/compose.prod.yaml"
+    env_file=""
+    [ -f "$dir/.env" ] && env_file="--env-file $dir/.env"
+    [ -f "$dir/.env.production" ] && env_file="--env-file $dir/.env.production"
+    compose_args="--project-directory $dir $env_file $compose_args"
 
-    [ -z "$compose_file" ] && continue
+    [ -z "$compose_args" ] && continue
     command -v docker &>/dev/null || continue
 
-    containers=$(docker compose -f "$compose_file" ps -q 2>/dev/null || true)
+    containers=$(docker compose $compose_args ps -q 2>/dev/null || true)
     [ -z "$containers" ] && continue
 
     for container_id in $containers; do
