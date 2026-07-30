@@ -10,6 +10,18 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ## [No publicado]
 
+## [1.39.0] - 2026-07-30
+
+### Corregido: `/mapalab/ontoy` también devuelve 403
+
+El bloqueo de 1.35.1 cubría `/mapalab/api/ontoy`, el handler del backend. Desde mapalab 1.102.0
+existe además el sidecar `version-api`, que publica los mismos checks fusionados en
+`/mapalab/ontoy` — una segunda puerta al mismo dato, abierta al público.
+
+Como el resto, se cierra **antes del rewrite**: el de abajo convierte `/mapalab/<x>` en `/<x>`, así
+que un `deny` puesto en el nginx de mapalab nunca llega a ver el prefijo. huachicol no se ve
+afectado: sondea el puerto del nginx de mapalab directo, sin pasar por el gateway.
+
 ## [1.38.0] - 2026-07-30
 
 ### Cambiado: Makefile homologado con el resto del ecosistema

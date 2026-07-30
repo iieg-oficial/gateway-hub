@@ -237,11 +237,17 @@ server {
         return 403;
     }
 
-    # El deny de mapalab (1.99.1) no alcanza: el rewrite de abajo convierte
-    # /mapalab/api/ontoy en /api/ontoy, que su nginx no bloquea. Hay que
-    # cerrarlo aqui, antes del rewrite. huachicol no se ve afectado: sondea
+    # Las dos rutas del /ontoy de mapalab se cierran aqui, antes del rewrite:
+    # el de abajo convierte /mapalab/<x> en /<x>, asi que un deny puesto en el
+    # nginx de mapalab nunca ve el prefijo. /mapalab/api/ontoy es el handler del
+    # backend y /mapalab/ontoy el sidecar version-api, que desde mapalab 1.102.0
+    # publica los mismos checks fusionados. huachicol no se ve afectado: sondea
     # el puerto del nginx de mapalab directo, sin pasar por el gateway.
     location = /mapalab/api/ontoy {
+        return 403;
+    }
+
+    location = /mapalab/ontoy {
         return 403;
     }
 
