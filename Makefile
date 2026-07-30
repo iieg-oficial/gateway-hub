@@ -1,5 +1,5 @@
 .PHONY: help up deploy down \
-        ecosystem-up ecosystem-down ecosystem-deploy ecosystem-status
+        ecosystem-up ecosystem-down ecosystem-deploy ecosystem-status ecosystem-push
 
 .DEFAULT_GOAL := help
 
@@ -57,6 +57,7 @@ help:
 	@echo "  ecosystem-down        Detener todo el ecosistema en orden inverso"
 	@echo "  ecosystem-deploy      Pull + down + deploy de todo el ecosistema"
 	@echo "  ecosystem-status      Estado del ecosistema: git, docker y errores en logs"
+	@echo "  ecosystem-push        Push de la rama actual de cada repo (incluye context-ame-esta)"
 	@echo ""
 	@echo "  Filtro: STACKS=mariachi,mapalab make ecosystem-up"
 	@echo ""
@@ -343,3 +344,6 @@ ecosystem-deploy:
 
 ecosystem-status:
 	@./scripts/ecosystem-status.sh "$(REPOS_DIR)" "$(GATEWAY_DIR)"
+
+ecosystem-push:
+	@./scripts/ecosystem-push.sh "$(REPOS_DIR)" "$(GATEWAY_DIR)" "$(STACKS)"

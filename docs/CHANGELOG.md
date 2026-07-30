@@ -12,6 +12,27 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.35.0] - 2026-07-30
+
+### Agregado: `make ecosystem-push`
+
+Cierra el ciclo de los targets `ecosystem-*`: ya se podia levantar, bajar, desplegar y ver el
+estatus de todo el ecosistema desde aqui, pero para subir el trabajo habia que entrar repo por
+repo. Cada uno vive en una rama distinta (`production`, `develop`, `main`), asi que el error
+facil era pushear desde la rama equivocada.
+
+`./scripts/ecosystem-push.sh` recorre los ocho repos del ecosistema mas `context-ame-esta` y
+sube **la rama en la que cada uno esta parado**, con `push -u origin <rama>`. Reporta una tabla
+con repo, rama y resultado.
+
+- **Nunca `--force` ni `--all`.** Solo la rama actual de cada repo.
+- **Omite** los repos al dia, los que no son repo git y los que estan en `HEAD` detached.
+- **Avisa** al final si algun repo tiene cambios sin commitear, porque esos se quedan en local.
+- Acepta el mismo filtro que el resto: `STACKS=mariachi,mapalab make ecosystem-push`.
+- Sale con codigo distinto de cero si algun push falla.
+
+---
+
 ## [1.34.1] - 2026-07-30
 
 ### Eliminado: el perfil staging de las pruebas de carga
