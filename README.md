@@ -69,7 +69,7 @@ Ver `.env.example` para la referencia completa. Las variables principales:
 | `GEOSERVER_HOST` | Host de GeoServer |
 | `SIEEJ_DIST_PATH` | Ruta host al `dist/` de SIEEJ que se monta como estatico (default `../sieej/frontend/dist`) |
 | `REAL_IP_FROM` | CIDR confiable para `set_real_ip_from` (X-Forwarded-For). Default `<CIDR-interno>` (FortiGate estatal) |
-| `SEO_ENABLED` | `true` en produccion (robots.txt, sitemap, sin noindex). `false` en staging/dev (bloquea indexacion) |
+| `SEO_ENABLED` | `true` en produccion (robots.txt, sitemap, sin noindex). `false` en dev (bloquea indexacion) |
 
 > Acervo migro de MinIO a SeaweedFS, que no expone consola web: el `upstream
 > acervo_console`, las rutas `/acervo/console/` y la variable `ACERVO_CONSOLE_HOST`

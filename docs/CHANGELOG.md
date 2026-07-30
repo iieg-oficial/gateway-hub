@@ -12,6 +12,27 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.34.1] - 2026-07-30
+
+### Eliminado: el perfil staging de las pruebas de carga
+
+El entorno staging se retiro de todo el ecosistema. En este repo no habia infraestructura de
+staging que quitar —ningun `.conf`, ningun profile de compose, ningun target de `make`— pero si
+quedaban dos rastros.
+
+#### Eliminado
+
+- El perfil `--env staging` y la variable `STRESS_TEST_STAGING_URL` de `scripts/stress_test.py` y
+  `scripts/stress_test_multi_ip.py`. Quedan `local` y `production`.
+- Permisos residuales de `.claude/settings.local.json` para `make staging`, `make down-staging` y
+  `COMPOSE_PROFILES=staging`, que nunca correspondieron a targets ni profiles de este repo.
+
+#### Cambiado
+
+- La descripcion de `SEO_ENABLED` en el README ya no menciona staging.
+
+---
+
 ## [1.34.0] - 2026-07-30
 
 ### Eliminado: `nginx-exporter`

@@ -7,7 +7,6 @@ sin que el rate limiting por IP sea el cuello de botella.
 
 Uso:
   python stress_test_multi_ip.py --env local --ips 10 --users 200
-  python stress_test_multi_ip.py --env staging --ips 20 --users 300 --ramp-steps 6
   python stress_test_multi_ip.py --env production --ips 50 --users 500
 
 Requisito:
@@ -48,10 +47,6 @@ ENVS = {
     "local": {
         "url": "https://localhost/mapalab/mapa",
         "ssl": False,
-    },
-    "staging": {
-        "url": os.environ.get("STRESS_TEST_STAGING_URL", ""),
-        "ssl": True,
     },
     "production": {
         "url": os.environ.get("STRESS_TEST_PRODUCTION_URL", ""),
@@ -488,7 +483,7 @@ def main():
         description="Stress test multi-IP para medir capacidad real del servidor"
     )
     parser.add_argument(
-        "--env", choices=["local", "staging", "production"], default="local",
+        "--env", choices=["local", "production"], default="local",
         help="Entorno objetivo (default: local)",
     )
     parser.add_argument("--url", type=str, default="", help="URL custom (sobreescribe --env)")
