@@ -121,7 +121,7 @@ app raiz de terceros: `ecosistema/contratos.md` en el repositorio central de con
 
 ```
 gateway-hub/
-├── docker-compose.yml
+├── compose.yaml
 ├── Dockerfile                    # nginx:1.28.2-alpine + entrypoint con envsubst
 ├── Makefile                      # gateway + orquestacion del ecosistema
 ├── VERSION
