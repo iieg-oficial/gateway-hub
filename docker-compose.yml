@@ -44,13 +44,12 @@ services:
     environment:
       ONTOY_SERVICE: gateway-hub
       ONTOY_COMPOSE_PROJECT: gateway-hub
-      ONTOY_DISK_PATH: /host-root
+      ONTOY_DISK_PATH: ${ONTOY_DISK_PATH:?}
       ONTOY_PORT_CHECKS: "portal=${PORTAL_HOST},mapalab=${MAPALAB_HOST},acervo=${ACERVO_HOST},geoserver=${GEOSERVER_HOST},mariachi=${MARIACHI_HOST}"
     volumes:
       - ./VERSION:/app/VERSION:ro
       - ./nginx/version.json:/app/version.json:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /:/host-root:ro
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     healthcheck:
