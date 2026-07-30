@@ -12,6 +12,30 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.34.0] - 2026-07-30
+
+### Eliminado: `nginx-exporter`
+
+El contenedor exponia las metricas de `stub_status` para que Prometheus las scrapeara. huachicol
+retiro su stack de observabilidad en la 2.0.0 (2026-07-21) y desde entonces el exporter corria sin
+un solo consumidor —el propio README lo documentaba asi—. Se retiran el servicio del compose y el
+`server` de `stub_status` en el puerto 8080 de `nginx.conf.template`, que existia solo para
+alimentarlo.
+
+### Cambiado: nginx a 1.30.4-alpine
+
+De `nginx:1.28.2-alpine`, vulnerable a **CVE-2026-42533** (CVSS 9.2, desbordamiento de heap con
+posible ejecucion remota de codigo, parchado el 15 de julio de 2026), **CVE-2026-60005** (lectura de
+memoria no inicializada en `ngx_http_slice_module`) y **CVE-2026-56434** (use-after-free en
+`ngx_http_ssi_module`). La imagen se reconstruyo y las plantillas siguen resolviendo sin cambios.
+
+### Nota de despliegue
+
+`docker compose up -d --build` reconstruye nginx y elimina el contenedor `nginx-exporter`. Si queda
+huerfano, `docker compose down --remove-orphans` lo limpia.
+
+---
+
 ## [1.33.2] - 2026-07-29
 
 ### El contexto se movio al repo central y `HUACHICOL_HOST` se retiro

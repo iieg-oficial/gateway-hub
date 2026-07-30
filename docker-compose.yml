@@ -37,17 +37,6 @@ services:
       - iieg-network
     restart: unless-stopped
 
-  nginx-exporter:
-    image: nginx/nginx-prometheus-exporter:1.5.1
-    container_name: nginx-exporter
-    command:
-      - '--nginx.scrape-uri=http://nginx:8080/stub_status'
-    networks:
-      - iieg-network
-    depends_on:
-      - nginx
-    restart: unless-stopped
-
   version-api:
     build: ./version-api
     container_name: gateway-version-api

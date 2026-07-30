@@ -80,7 +80,6 @@ Ver `.env.example` para la referencia completa. Las variables principales:
 | Servicio | Funcion |
 |----------|---------|
 | `nginx` | Proxy inverso principal (puertos 80, 443) |
-| `nginx-exporter` | Metricas Prometheus via `/stub_status`. **Sin consumidor** desde que se retiro el stack de observabilidad (2026-07-21); sigue en el compose |
 
 Logs: nginx emite a `/dev/stdout` (JSON) y `/dev/stderr`, sin archivo en disco. La recoleccion hacia
 Loki via Alloy quedo sin consumidor al apagarse el stack de observabilidad de huachicol el

@@ -13,8 +13,7 @@ graph TB
 
         subgraph GATEWAY["gateway-hub 1.25.0"]
             direction TB
-            GW["gateway-hub-nginx-1<br/>nginx 1.28.2"]
-            GW_EXP["nginx-exporter<br/>(stub_status)"]
+            GW["gateway-hub-nginx-1<br/>nginx 1.30.4"]
             GW_ONTOY[/"/etc/nginx/version.json<br/>(GET /ontoy)"/]
             GW --> GW_ONTOY
         end
@@ -146,7 +145,6 @@ graph TB
     DE_BK ==>|Respaldos| B_DE
 
     %% --- Observabilidad ---
-    HU_PROM -.->|scrape| GW_EXP
     HU_AGENT -.->|Docker socket| S_CORE
     HU_LOKI -.->|Alertas| DISCORD
 
