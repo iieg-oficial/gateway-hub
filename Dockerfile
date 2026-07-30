@@ -22,4 +22,10 @@ CMD ["/bin/sh", "-c", \
     envsubst '${PORTAL_HOST} ${MAPALAB_HOST} ${ACERVO_HOST} ${MARIACHI_HOST} ${GEOSERVER_HOST} ${APP_DOMAIN} ${SSL_CERTIFICATE} ${SSL_CERTIFICATE_KEY} ${GTM_ID} ${SEO_ENABLED}' \
         < /etc/nginx/templates/gateway.conf.template > /etc/nginx/conf.d/gateway.conf && \
     if [ -n \"$GTM_ID\" ]; then envsubst '${GTM_ID}' < /etc/nginx/includes/gtm.inc.template > /etc/nginx/includes/gtm.inc; else : > /etc/nginx/includes/gtm.inc; fi && \
+    if [ -n \"$SSL_TRUSTED_CERTIFICATE\" ] && [ -r \"$SSL_TRUSTED_CERTIFICATE\" ]; then \
+        envsubst '${SSL_TRUSTED_CERTIFICATE}' < /etc/nginx/includes/ssl-stapling.inc.template > /etc/nginx/includes/ssl-stapling.inc; \
+    else \
+        echo \"OCSP stapling desactivado: SSL_TRUSTED_CERTIFICATE vacia o ilegible ('$SSL_TRUSTED_CERTIFICATE')\" >&2; \
+        : > /etc/nginx/includes/ssl-stapling.inc; \
+    fi && \
     nginx -g 'daemon off;'"]

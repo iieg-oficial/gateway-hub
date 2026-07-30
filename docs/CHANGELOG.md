@@ -12,6 +12,47 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.36.0] - 2026-07-30
+
+### Corregido: el OCSP stapling nunca estuvo activo
+
+El bloque TLS declaraba `ssl_stapling on` y `ssl_stapling_verify on`, y asi quedo documentado,
+pero nginx lo descartaba en cada arranque y cada recarga:
+
+```
+[warn] "ssl_stapling" ignored, issuer certificate not found for certificate
+       "/etc/nginx/certs/<certificado>.crt"
+```
+
+La causa es el archivo del certificado: contiene **solo la hoja**, sin la intermedia de la CA.
+Sin el emisor, nginx no puede construir la peticion OCSP, y `ssl_stapling_verify on` ademas
+necesita la cadena de confianza para validar la respuesta —para eso existe
+`ssl_trusted_certificate`, que no estaba configurada.
+
+El mismo hueco tiene una segunda consecuencia, independiente del stapling: al servir solo la
+hoja, la cadena queda incompleta para los clientes que no resuelven el emisor por AIA.
+
+### Agregado: `SSL_TRUSTED_CERTIFICATE`
+
+Nueva variable con la ruta **dentro del contenedor** a la cadena de CA (intermedia + raiz). El
+entrypoint decide con ella, igual que ya hacia con `GTM_ID`:
+
+- con la variable apuntando a un archivo legible, renderiza
+  `includes/ssl-stapling.inc.template` con las tres directivas y el stapling queda activo;
+- vacia o ilegible, deja el include vacio y **anuncia en el log** que el stapling quedo
+  desactivado.
+
+Asi el arranque no falla si la cadena no esta —lo que ocurre en local con los self-signed de
+`certs/`— y deja de haber una directiva que aparenta funcionar. Las directivas salieron de
+`gateway.conf.template`, que ahora solo hace `include`.
+
+**Requiere un paso en el host antes de desplegar:** dejar la cadena de la CA junto al
+certificado en `SSL_HOST_PATH` y apuntar `SSL_TRUSTED_CERTIFICATE` a ella. Conviene aprovechar
+para reemplazar el `.crt` por el fullchain (hoja + intermedia) y cerrar tambien la cadena
+incompleta.
+
+---
+
 ## [1.35.1] - 2026-07-30
 
 ### Corregido: `/mapalab/api/ontoy` seguia alcanzable desde internet

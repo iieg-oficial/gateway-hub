@@ -1,0 +1,75 @@
+name: gateway-hub
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-healthcheck: &healthcheck
+  interval: 30s
+  timeout: 5s
+  retries: 3
+
+x-host-gateway: &host-gateway
+  - 'host.docker.internal:host-gateway'
+
+services:
+  nginx:
+    build:
+      context: .
+    env_file:
+      - .env
+    ports:
+      - '${GATEWAY_BIND_ADDR:?}:80:80'
+      - '${GATEWAY_BIND_ADDR:?}:443:443'
+    volumes:
+      - ${SSL_HOST_PATH:?}:/etc/nginx/certs:ro
+      - ${SIEEJ_DIST_PATH:?}:/usr/share/nginx/html/sieej:ro
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?}
+      SSL_CERTIFICATE: ${SSL_CERTIFICATE:?}
+      SSL_CERTIFICATE_KEY: ${SSL_CERTIFICATE_KEY:?}
+      SSL_TRUSTED_CERTIFICATE: ${SSL_TRUSTED_CERTIFICATE?}
+      PORTAL_HOST: ${PORTAL_HOST:?}
+      MAPALAB_HOST: ${MAPALAB_HOST:?}
+      ACERVO_HOST: ${ACERVO_HOST:?}
+      MARIACHI_HOST: ${MARIACHI_HOST:?}
+      GEOSERVER_HOST: ${GEOSERVER_HOST:?}
+      GTM_ID: ${GTM_ID?}
+      SEO_ENABLED: ${SEO_ENABLED:?}
+      REAL_IP_FROM: ${REAL_IP_FROM?}
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD-SHELL", "curl -fsk https://localhost/ || exit 1"]
+      start_period: 10s
+    extra_hosts: *host-gateway
+    networks:
+      - iieg-network
+    restart: unless-stopped
+    logging: *logging
+
+  version-api:
+    build: ./version-api
+    container_name: gateway-version-api
+    restart: unless-stopped
+    environment:
+      ONTOY_SERVICE: gateway-hub
+      ONTOY_COMPOSE_PROJECT: gateway-hub
+      ONTOY_DISK_PATH: ${ONTOY_DISK_PATH:?}
+      ONTOY_PORT_CHECKS: "portal=${PORTAL_HOST:?},mapalab=${MAPALAB_HOST:?},acervo=${ACERVO_HOST:?},geoserver=${GEOSERVER_HOST:?},mariachi=${MARIACHI_HOST:?}"
+    volumes:
+      - ./VERSION:/app/VERSION:ro
+      - ./nginx/version.json:/app/version.json:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    extra_hosts: *host-gateway
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1', 8088), timeout=3).close()"]
+    networks:
+      - iieg-network
+    logging: *logging
+
+networks:
+  iieg-network:
+    external: true

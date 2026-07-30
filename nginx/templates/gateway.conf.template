@@ -74,8 +74,7 @@ server {
     ssl_session_timeout 1d;
     ssl_session_tickets off;
 
-    ssl_stapling on;
-    ssl_stapling_verify on;
+    include /etc/nginx/includes/ssl-stapling.inc;
     resolver 127.0.0.11 valid=10s ipv6=off;
     resolver_timeout 5s;
 

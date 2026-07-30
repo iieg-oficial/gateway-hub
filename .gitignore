@@ -4,3 +4,8 @@
 *.key
 *.crt
 nginx/version.json
+
+secrets/*
+!secrets/.gitkeep
+!secrets/*.example
+compose.local.yaml

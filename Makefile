@@ -32,7 +32,7 @@ ECOSYSTEM_STEPS := \
     mapalab:$(MAPALAB_DIR):deploy:down \
     gateway:.:deploy:down
 
-GATEWAY_FILES := -f docker-compose.yml
+GATEWAY_FILES := -f compose.yaml
 STACKS ?=
 
 C_BOLD := \033[1m
