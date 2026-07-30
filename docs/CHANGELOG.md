@@ -12,6 +12,44 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ---
 
+## [1.35.1] - 2026-07-30
+
+### Corregido: `/mapalab/api/ontoy` seguia alcanzable desde internet
+
+mapalab 1.99.1 agrego un `deny all` sobre `= /mapalab/api/ontoy` en su propio nginx para cerrar
+una exposicion a internet. **En produccion no surtia efecto.** El gateway reescribe el prefijo
+antes de hacer proxy:
+
+```nginx
+rewrite ^/mapalab/(.*) /$1 break;
+proxy_pass http://mapalab_backend;
+```
+
+La peticion llega al nginx de mapalab como `/api/ontoy`, que matchea su `location /api/` —sin
+bloqueo— y el `deny` nunca se evalua. Verificado en produccion el 2026-07-30 tras desplegar
+mapalab 1.100.0: `https://<dominio>/mapalab/api/ontoy` respondia **200**, exponiendo version,
+`deployed_at` y los contadores de `client_errors` y `embeds`.
+
+El bloqueo tiene que vivir aqui, donde se evalua **antes** del rewrite. Mismo patron que ya usaban
+`refresh-cache` e `invalidate-cache`:
+
+```nginx
+location = /mapalab/api/ontoy {
+    return 403;
+}
+```
+
+**No sirve bloquearlo del lado de mapalab con `allow` por IP:** el gateway y `huachicol-monitor`
+corren en el mismo nodo y llegan con la misma IP de origen. Solo el gateway distingue los dos
+caminos.
+
+#### Corregido
+
+- `location = /mapalab/api/ontoy` devuelve **403**. El monitor no se ve afectado: sondea el puerto
+  del nginx de mapalab directo, sin pasar por el gateway.
+
+---
+
 ## [1.35.0] - 2026-07-30
 
 ### Agregado: `make ecosystem-push`
