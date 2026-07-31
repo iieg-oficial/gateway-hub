@@ -1,4 +1,4 @@
-ECOSYSTEM_STEPS := acervo huachicol dataengine geoserver sieej mariachi mapalab gateway
+ECOSYSTEM_STEPS := acervo huachicol dataengine sextante sieej mariachi mapalab gateway
 
 REPOS_DIR := ..
 GATEWAY_DIR := .

@@ -10,6 +10,29 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ## [No publicado]
 
+## [1.40.0] - 2026-07-31
+
+### Corregido: los tiles del relieve salian con `no-store` y se repedian en cada zoom
+
+`/sextante/gwc/service/` no tenia location propia, asi que caia al bloque padre y heredaba
+`Cache-Control: no-cache, no-store, must-revalidate` con `Expires: 0`. El navegador tenia
+**prohibido** guardarlos: cada zoom volvia a pedir todos los tiles del hillshade aunque GWC
+respondiera HIT al instante. Medido sobre 10 minutos de navegacion real: 1 184 peticiones de
+relieve contra 1 287 de la capa de datos — casi 1:1, duplicando el costo de cada rafaga.
+
+Ahora tienen location propia con `proxy_cache` de 30 dias y responden
+`Cache-Control: public, max-age=2592000, immutable`. Son tiles de un COG que no cambia nunca.
+
+**Si se regenera el hillshade** hay que purgar las dos capas de cache, porque `immutable` impide
+que el navegador revalide:
+
+```
+curl -u "$USER:$PASS" -X POST -H "Content-Type: text/xml" \
+  -d "<truncateLayer><layerName>raster:hillshade_iieg_cog</layerName></truncateLayer>" \
+  http://<host>:8080/sextante/gwc/rest/masstruncate
+docker exec gateway-hub-nginx-1 sh -c 'rm -rf /var/cache/nginx/sextante/*; nginx -s reload'
+```
+
 ## [1.39.0] - 2026-07-30
 
 ### Corregido: `/mapalab/ontoy` también devuelve 403

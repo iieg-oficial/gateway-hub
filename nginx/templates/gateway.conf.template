@@ -24,9 +24,9 @@ server {
         proxy_pass http://$gateway_ontoy_upstream/ontoy;
     }
 
-    location = /geoserver/ontoy {
-        set $geoserver_ontoy_upstream "geoserver-version-api:8088";
-        proxy_pass http://$geoserver_ontoy_upstream/ontoy;
+    location = /sextante/ontoy {
+        set $sextante_ontoy_upstream "sextante-version-api:8088";
+        proxy_pass http://$sextante_ontoy_upstream/ontoy;
         proxy_http_version 1.1;
         proxy_set_header Connection "";
         add_header Cache-Control "no-cache, no-store, must-revalidate" always;
@@ -106,9 +106,9 @@ server {
         proxy_pass http://$gateway_ontoy_upstream/ontoy;
     }
 
-    location = /geoserver/ontoy {
-        set $geoserver_ontoy_upstream "geoserver-version-api:8088";
-        proxy_pass http://$geoserver_ontoy_upstream/ontoy;
+    location = /sextante/ontoy {
+        set $sextante_ontoy_upstream "sextante-version-api:8088";
+        proxy_pass http://$sextante_ontoy_upstream/ontoy;
         proxy_http_version 1.1;
         proxy_set_header Connection "";
         add_header Cache-Control "no-cache, no-store, must-revalidate" always;
@@ -374,7 +374,8 @@ server {
         add_header Cache-Control "no-store" always;
     }
 
-    include /etc/nginx/includes/geoserver-locations.inc;
+    include /etc/nginx/includes/sextante-locations.inc;
+    include /etc/nginx/includes/sextante-compat-geoserver.inc;
 
     location = /robots.txt {
         if ($seo_block) {

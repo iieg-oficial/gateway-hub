@@ -35,7 +35,7 @@ services:
       MAPALAB_HOST: ${MAPALAB_HOST:?}
       ACERVO_HOST: ${ACERVO_HOST:?}
       MARIACHI_HOST: ${MARIACHI_HOST:?}
-      GEOSERVER_HOST: ${GEOSERVER_HOST:?}
+      SEXTANTE_HOST: ${SEXTANTE_HOST:?}
       GTM_ID: ${GTM_ID?}
       SEO_ENABLED: ${SEO_ENABLED:?}
       REAL_IP_FROM: ${REAL_IP_FROM?}
@@ -57,7 +57,7 @@ services:
       ONTOY_SERVICE: gateway-hub
       ONTOY_COMPOSE_PROJECT: gateway-hub
       ONTOY_DISK_PATH: ${ONTOY_DISK_PATH:?}
-      ONTOY_PORT_CHECKS: "portal=${PORTAL_HOST:?},mapalab=${MAPALAB_HOST:?},acervo=${ACERVO_HOST:?},geoserver=${GEOSERVER_HOST:?},mariachi=${MARIACHI_HOST:?}"
+      ONTOY_PORT_CHECKS: "portal=${PORTAL_HOST:?},mapalab=${MAPALAB_HOST:?},acervo=${ACERVO_HOST:?},sextante=${SEXTANTE_HOST:?},mariachi=${MARIACHI_HOST:?}"
     volumes:
       - ./VERSION:/app/VERSION:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro

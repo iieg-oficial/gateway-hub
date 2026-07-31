@@ -63,9 +63,9 @@ http {
     proxy_buffers          16 32k;
     proxy_busy_buffers_size 64k;
 
-    proxy_cache_path /var/cache/nginx/geoserver
+    proxy_cache_path /var/cache/nginx/sextante
         levels=1:2
-        keys_zone=geoserver_cache:20m
+        keys_zone=sextante_cache:20m
         max_size=2g
         inactive=12h
         use_temp_path=off;

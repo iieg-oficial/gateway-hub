@@ -19,7 +19,7 @@ REPO_ORDER=(
   "acervo:$REPOS_DIR/acervo"
   "huachicol:$REPOS_DIR/huachicol"
   "dataengine:$REPOS_DIR/dataengine"
-  "geoserver:$REPOS_DIR/geoserver"
+  "sextante:$REPOS_DIR/sextante"
   "mariachi:$REPOS_DIR/mariachi"
   "mapalab:$REPOS_DIR/mapalab"
   "sieej:$REPOS_DIR/sieej"

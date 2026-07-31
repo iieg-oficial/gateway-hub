@@ -1,40 +1,67 @@
-location ^~ /geoserver/web {
+location ^~ /sextante/web {
     limit_req zone=general burst=20 nodelay;
-    proxy_pass http://geoserver/geoserver/web;
+    proxy_pass http://sextante/sextante/web;
     include /etc/nginx/includes/proxy-params.inc;
-    include /etc/nginx/includes/geoserver-hide-headers.inc;
+    include /etc/nginx/includes/sextante-hide-headers.inc;
     proxy_set_header Accept-Encoding identity;
 }
 
-location ^~ /geoserver/rest {
+location ^~ /sextante/rest {
     limit_req zone=general burst=20 nodelay;
-    proxy_pass http://geoserver/geoserver/rest;
+    proxy_pass http://sextante/sextante/rest;
     include /etc/nginx/includes/proxy-params.inc;
-    include /etc/nginx/includes/geoserver-hide-headers.inc;
+    include /etc/nginx/includes/sextante-hide-headers.inc;
     proxy_set_header Accept-Encoding identity;
 }
 
-location ^~ /geoserver/j_spring_security {
+location ^~ /sextante/j_spring_security {
     limit_req zone=general burst=20 nodelay;
-    proxy_pass http://geoserver/geoserver/j_spring_security;
+    proxy_pass http://sextante/sextante/j_spring_security;
     include /etc/nginx/includes/proxy-params.inc;
-    include /etc/nginx/includes/geoserver-hide-headers.inc;
+    include /etc/nginx/includes/sextante-hide-headers.inc;
     proxy_set_header Accept-Encoding identity;
 }
 
-location ^~ /geoserver/ {
-    location ~ ^/geoserver/([^/]+/)?wms {
+location ^~ /sextante/ {
+    location ~ ^/sextante/gwc/service/ {
         limit_except GET HEAD OPTIONS {
             deny all;
         }
 
-        proxy_pass http://geoserver;
+        proxy_pass http://sextante;
         include /etc/nginx/includes/proxy-params.inc;
-        include /etc/nginx/includes/geoserver-hide-headers.inc;
+        include /etc/nginx/includes/sextante-hide-headers.inc;
+        proxy_set_header Accept-Encoding identity;
+
+        proxy_cache sextante_cache;
+        proxy_cache_key "$request_uri";
+        proxy_cache_valid 200 30d;
+        proxy_cache_lock on;
+        proxy_cache_lock_timeout 30s;
+        proxy_cache_use_stale error timeout updating;
+        proxy_cache_background_update on;
+        proxy_ignore_headers "Set-Cookie" "Expires" "Cache-Control";
+
+        proxy_hide_header Cache-Control;
+        proxy_hide_header Expires;
+        proxy_hide_header Pragma;
+        add_header Cache-Control "public, max-age=2592000, immutable" always;
+        add_header X-Cache-Status $upstream_cache_status always;
+        add_header X-Content-Type-Options "nosniff" always;
+    }
+
+    location ~ ^/sextante/([^/]+/)?wms {
+        limit_except GET HEAD OPTIONS {
+            deny all;
+        }
+
+        proxy_pass http://sextante;
+        include /etc/nginx/includes/proxy-params.inc;
+        include /etc/nginx/includes/sextante-hide-headers.inc;
         proxy_set_header Accept-Encoding identity;
         proxy_read_timeout 120s;
 
-        proxy_cache geoserver_cache;
+        proxy_cache sextante_cache;
         proxy_cache_key "$request_uri";
         proxy_cache_valid 200 6h;
         proxy_cache_lock on;
@@ -43,14 +70,14 @@ location ^~ /geoserver/ {
         proxy_cache_use_stale error timeout updating;
         proxy_cache_background_update on;
         proxy_ignore_headers "Set-Cookie" "Expires" "Cache-Control";
-        proxy_no_cache $geoserver_no_cache;
-        proxy_cache_bypass $geoserver_no_cache;
+        proxy_no_cache $sextante_no_cache;
+        proxy_cache_bypass $sextante_no_cache;
         add_header X-Cache-Status $upstream_cache_status always;
         add_header X-Frame-Options "SAMEORIGIN" always;
         add_header X-Content-Type-Options "nosniff" always;
     }
 
-    location ~ ^/geoserver/ows {
+    location ~ ^/sextante/ows {
         limit_except GET HEAD OPTIONS {
             deny all;
         }
@@ -69,12 +96,12 @@ location ^~ /geoserver/ {
             return 403;
         }
 
-        proxy_pass http://geoserver;
+        proxy_pass http://sextante;
         include /etc/nginx/includes/proxy-params.inc;
-        include /etc/nginx/includes/geoserver-hide-headers.inc;
+        include /etc/nginx/includes/sextante-hide-headers.inc;
         proxy_set_header Accept-Encoding identity;
 
-        proxy_cache geoserver_cache;
+        proxy_cache sextante_cache;
         proxy_cache_key "$request_uri";
         proxy_cache_valid 200 6h;
         proxy_cache_lock on;
@@ -82,8 +109,8 @@ location ^~ /geoserver/ {
         proxy_cache_lock_age 30s;
         proxy_cache_use_stale error timeout updating;
         proxy_ignore_headers "Set-Cookie" "Expires" "Cache-Control";
-        proxy_no_cache $geoserver_no_cache;
-        proxy_cache_bypass $geoserver_no_cache;
+        proxy_no_cache $sextante_no_cache;
+        proxy_cache_bypass $sextante_no_cache;
         add_header X-Cache-Status $upstream_cache_status always;
         add_header X-Frame-Options "SAMEORIGIN" always;
         add_header X-Content-Type-Options "nosniff" always;
@@ -95,7 +122,7 @@ location ^~ /geoserver/ {
         proxy_intercept_errors on;
     }
 
-    location ~ ^/geoserver/(wfs|wcs) {
+    location ~ ^/sextante/(wfs|wcs) {
         limit_except GET HEAD OPTIONS {
             deny all;
         }
@@ -114,10 +141,10 @@ location ^~ /geoserver/ {
             return 403;
         }
 
-        limit_req zone=geoserver_download burst=10 nodelay;
-        proxy_pass http://geoserver;
+        limit_req zone=sextante_download burst=10 nodelay;
+        proxy_pass http://sextante;
         include /etc/nginx/includes/proxy-params.inc;
-        include /etc/nginx/includes/geoserver-hide-headers.inc;
+        include /etc/nginx/includes/sextante-hide-headers.inc;
         proxy_set_header Accept-Encoding identity;
         proxy_read_timeout 600s;
         proxy_send_timeout 600s;
@@ -133,7 +160,7 @@ location ^~ /geoserver/ {
         proxy_intercept_errors on;
     }
 
-    location ~ ^/geoserver/[^/]+/(wfs|wcs) {
+    location ~ ^/sextante/[^/]+/(wfs|wcs) {
         limit_except GET HEAD OPTIONS {
             deny all;
         }
@@ -152,10 +179,10 @@ location ^~ /geoserver/ {
             return 403;
         }
 
-        limit_req zone=geoserver_download burst=10 nodelay;
-        proxy_pass http://geoserver;
+        limit_req zone=sextante_download burst=10 nodelay;
+        proxy_pass http://sextante;
         include /etc/nginx/includes/proxy-params.inc;
-        include /etc/nginx/includes/geoserver-hide-headers.inc;
+        include /etc/nginx/includes/sextante-hide-headers.inc;
         proxy_set_header Accept-Encoding identity;
         proxy_read_timeout 600s;
         proxy_send_timeout 600s;
@@ -168,9 +195,9 @@ location ^~ /geoserver/ {
         proxy_intercept_errors on;
     }
 
-    proxy_pass http://geoserver/geoserver/;
+    proxy_pass http://sextante/sextante/;
     include /etc/nginx/includes/proxy-params.inc;
-    include /etc/nginx/includes/geoserver-hide-headers.inc;
+    include /etc/nginx/includes/sextante-hide-headers.inc;
     proxy_set_header Accept-Encoding identity;
     proxy_read_timeout 120s;
 }

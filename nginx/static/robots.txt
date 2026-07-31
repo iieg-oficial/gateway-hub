@@ -1,7 +1,7 @@
 User-agent: *
 Allow: /
-Disallow: /geoserver/web/
-Disallow: /geoserver/rest/
+Disallow: /sextante/web/
+Disallow: /sextante/rest/
 Disallow: /mariachi/
 Disallow: /huachicol/
 
