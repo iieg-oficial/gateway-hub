@@ -16,7 +16,7 @@ EXPOSE 80 443
 CMD ["/bin/sh", "-c", \
     "envsubst '${REAL_IP_FROM}' < /etc/nginx/templates/nginx.conf.template > /etc/nginx/nginx.conf && \
     for f in /etc/nginx/templates/conf.d/*; do \
-        envsubst '${SEXTANTE_HOST} ${PORTAL_HOST} ${MAPALAB_HOST}' < \"$f\" > /etc/nginx/conf.d/$(basename \"${f%.template}\"); \
+        envsubst '${SEXTANTE_HOST} ${PORTAL_HOST} ${SITIO_HOST} ${MAPALAB_HOST}' < \"$f\" > /etc/nginx/conf.d/$(basename \"${f%.template}\"); \
     done && \
     envsubst '${PORTAL_HOST} ${MAPALAB_HOST} ${ACERVO_HOST} ${MARIACHI_HOST} ${SEXTANTE_HOST} ${APP_DOMAIN} ${SSL_CERTIFICATE} ${SSL_CERTIFICATE_KEY} ${GTM_ID} ${SEO_ENABLED}' \
         < /etc/nginx/templates/gateway.conf.template > /etc/nginx/conf.d/gateway.conf && \

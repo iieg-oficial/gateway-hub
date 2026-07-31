@@ -130,17 +130,80 @@ server {
         add_header Cache-Control "no-cache, no-store, must-revalidate" always;
     }
 
+    # La raiz la sirve sitio2026 (Portalito). Sin bot-protection: es la ruta del
+    # healthcheck y la puerta de entrada de los crawlers legitimos.
     location = / {
-        return 302 /mapalab/;
+        limit_req zone=general burst=150 nodelay;
+        proxy_pass http://sitio_backend;
+        include /etc/nginx/includes/proxy-params.inc;
+        proxy_set_header Accept-Encoding "";
     }
 
     location / {
-        limit_req zone=general burst=20 nodelay;
+        limit_req zone=general burst=150 nodelay;
         include /etc/nginx/includes/bot-protection.inc;
-        proxy_pass http://portal_backend;
+        proxy_pass http://sitio_backend;
         include /etc/nginx/includes/proxy-params.inc;
         proxy_set_header Accept-Encoding "";
         proxy_intercept_errors on;
+    }
+
+    location ^~ /assets/ {
+        limit_req zone=static burst=200 nodelay;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        proxy_pass http://sitio_backend;
+        include /etc/nginx/includes/proxy-params.inc;
+    }
+
+    location ^~ /portal-admin {
+        limit_req zone=general burst=150 nodelay;
+        include /etc/nginx/includes/bot-protection.inc;
+        proxy_pass http://sitio_backend;
+        include /etc/nginx/includes/proxy-params.inc;
+    }
+
+    location ^~ /api/sitio-admin {
+        limit_req zone=api burst=20 nodelay;
+        include /etc/nginx/includes/bot-protection.inc;
+        client_max_body_size 1G;
+        proxy_request_buffering off;
+        proxy_pass http://sitio_backend;
+        include /etc/nginx/includes/proxy-params.inc;
+        add_header Cache-Control "no-store" always;
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+    }
+
+    location ^~ /api/sitio {
+        limit_req zone=api burst=20 nodelay;
+        include /etc/nginx/includes/bot-protection.inc;
+        proxy_pass http://sitio_backend;
+        include /etc/nginx/includes/proxy-params.inc;
+        add_header Cache-Control "no-store" always;
+    }
+
+    # CKAN. Sin bot-protection a proposito: su API es consumo programatico y el
+    # include rechaza curl, wget, python-requests y demas clientes sin navegador.
+    location ^~ /datos-abiertos {
+        limit_req zone=general burst=150 nodelay;
+        client_max_body_size 1G;
+        proxy_request_buffering off;
+        proxy_pass http://sitio_backend;
+        include /etc/nginx/includes/proxy-params.inc;
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+    }
+
+    location ^~ /base/ {
+        limit_req zone=static burst=200 nodelay;
+        proxy_pass http://sitio_backend;
+        include /etc/nginx/includes/proxy-params.inc;
+    }
+
+    location ^~ /webassets/ {
+        limit_req zone=static burst=200 nodelay;
+        proxy_pass http://sitio_backend;
+        include /etc/nginx/includes/proxy-params.inc;
     }
 
     location ^~ /api/administrador/acervo/thumb {

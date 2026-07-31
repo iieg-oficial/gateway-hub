@@ -32,6 +32,7 @@ services:
       SSL_CERTIFICATE_KEY: ${SSL_CERTIFICATE_KEY:?}
       SSL_TRUSTED_CERTIFICATE: ${SSL_TRUSTED_CERTIFICATE?}
       PORTAL_HOST: ${PORTAL_HOST:?}
+      SITIO_HOST: ${SITIO_HOST:?}
       MAPALAB_HOST: ${MAPALAB_HOST:?}
       ACERVO_HOST: ${ACERVO_HOST:?}
       MARIACHI_HOST: ${MARIACHI_HOST:?}
@@ -41,7 +42,7 @@ services:
       REAL_IP_FROM: ${REAL_IP_FROM?}
     healthcheck:
       <<: *healthcheck
-      test: ["CMD-SHELL", "curl -fsk https://localhost/ || exit 1"]
+      test: ["CMD-SHELL", "curl -fsk https://localhost/robots.txt || exit 1"]
       start_period: 10s
     extra_hosts: *host-gateway
     networks:
@@ -57,7 +58,7 @@ services:
       ONTOY_SERVICE: gateway-hub
       ONTOY_COMPOSE_PROJECT: gateway-hub
       ONTOY_DISK_PATH: ${ONTOY_DISK_PATH:?}
-      ONTOY_PORT_CHECKS: "portal=${PORTAL_HOST:?},mapalab=${MAPALAB_HOST:?},acervo=${ACERVO_HOST:?},sextante=${SEXTANTE_HOST:?},mariachi=${MARIACHI_HOST:?}"
+      ONTOY_PORT_CHECKS: "portal=${PORTAL_HOST:?},sitio=${SITIO_HOST:?},mapalab=${MAPALAB_HOST:?},acervo=${ACERVO_HOST:?},sextante=${SEXTANTE_HOST:?},mariachi=${MARIACHI_HOST:?}"
     volumes:
       - ./VERSION:/app/VERSION:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro

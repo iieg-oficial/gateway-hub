@@ -10,6 +10,36 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ## [No publicado]
 
+## [1.41.0] - 2026-07-31
+
+### Agregado: la raiz del dominio la sirve sitio2026 (Portalito)
+
+`location /` y `location = /` pasan del upstream `portal_backend` (que apunta a **mariachi**, el
+nombre es historico) a un upstream nuevo `sitio_backend`, alimentado por la variable `SITIO_HOST`.
+El `= /` dejo de redirigir a `/mapalab/`.
+
+Se introduce un upstream separado en vez de reapuntar `PORTAL_HOST` porque esa variable la usan
+otras once locations que deben seguir llegando a mariachi: el catch-all `/api/`, los seis endpoints
+de acervo y geoserver, `/acervo/thumb/` y `/colibri/`. Moverla las habria roto todas.
+
+Locations nuevas hacia `sitio_backend`: `/assets/`, `/base/` y `/webassets/` (zona `static`),
+`/portal-admin`, `/api/sitio` y `/api/sitio-admin` (zona `api`, con `no-store`), y `/datos-abiertos`.
+
+Dos decisiones que parecen omisiones y no lo son. `/datos-abiertos` **no** incluye
+`bot-protection.inc`: la API de CKAN es consumo programatico y el include rechaza curl, wget y
+python-requests. `location = /` tampoco lo incluye: es la ruta por la que entran los crawlers
+legitimos. Ambas siguen el precedente de `/mapalab/mcp` y `/api/internal/acervo/`.
+
+El catch-all subio de `burst=20` a `burst=150`. La home del portal pide una veintena de estaticos
+mas los chunks del bundle; con el burst anterior la primera carga en frio devolvia 429.
+
+### Cambiado: el healthcheck del gateway ya no depende del portal
+
+Pasa de `https://localhost/` a `https://localhost/robots.txt`. Con la raiz cedida, el healthcheck
+media la salud de **otro** servicio: portal caido o lento habria marcado `unhealthy` al gateway.
+Ademas `curl` recibia 403 de `bot-protection` en cuanto esa location lo incluyera. `/robots.txt` lo
+resuelve el gateway solo, sin salir a ningun upstream.
+
 ## [1.40.0] - 2026-07-31
 
 ### Corregido: los tiles del relieve salian con `no-store` y se repedian en cada zoom

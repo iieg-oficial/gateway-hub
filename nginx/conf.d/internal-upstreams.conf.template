@@ -8,6 +8,16 @@ upstream portal_backend {
     keepalive_timeout 60s;
 }
 
+upstream sitio_backend {
+    zone sitio_backend 64k;
+    resolver 127.0.0.11 valid=10s ipv6=off;
+    resolver_timeout 5s;
+    server ${SITIO_HOST} resolve;
+    keepalive 32;
+    keepalive_requests 1000;
+    keepalive_timeout 60s;
+}
+
 upstream mapalab_backend {
     zone mapalab_backend 64k;
     resolver 127.0.0.11 valid=10s ipv6=off;
