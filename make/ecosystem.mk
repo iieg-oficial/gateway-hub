@@ -28,7 +28,7 @@ ecosystem-down: ## Detener todo el ecosistema en orden inverso
 	rule
 	printf '\n'
 
-ecosystem-deploy: ## Actualizar, reconstruir y levantar todo el ecosistema
+ecosystem-deploy: ## Actualizar, reconstruir y levantar todo el ecosistema (VERBOSE=1 para ver el build)
 	@$(LIB)
 	start=$$(date +%s)
 	banner 'ECOSISTEMA' 'deploy'

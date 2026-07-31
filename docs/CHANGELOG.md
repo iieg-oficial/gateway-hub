@@ -10,6 +10,37 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ## [No publicado]
 
+## [1.42.0] - 2026-07-31
+
+### Agregado: `VERBOSE=1` para ver la salida de cada paso
+
+`run_step` ejecuta en segundo plano con la salida redirigida a un temporal y sólo la muestra —
+las últimas 40 líneas— si el paso falla. En un `ecosystem-deploy` eso deja nueve líneas
+`mapalab   ok   03:12` y nada más: un `docker build` que rehace el bundle y uno que sale entero de
+caché se ven idénticos salvo por el cronómetro, y no hay forma de comprobar desde fuera que el
+frontend se reconstruyó.
+
+`VERBOSE=1` hace caer `run_step` en `run_step_verbose`, que ejecuta en primer plano e indenta la
+salida bajo el paso conservando el `ok`/`fail` y el cronómetro. `common.mk` exporta la variable,
+así que también viaja a los `make` hijos que lanza `ecosystem_run` y se ve el build de cada repo
+anidado bajo su paso:
+
+```bash
+VERBOSE=1 make -C /IIEG/gateway-hub ecosystem-deploy STACKS=mapalab
+```
+
+El modo por defecto no cambia. El `tail -40` de un paso fallido ahora cierra con la sugerencia de
+repetirlo con `VERBOSE=1`.
+
+Es la segunda variable que aceptan los targets, junto a `STACKS=`, y como aquélla es de
+diagnóstico: no elige qué se despliega, sólo cuánto se ve. La regla de «sin banderas» sigue
+aplicando al entorno, que se detecta.
+
+### Cambiado: `step_result` sale de `run_step`
+
+La línea `ok`/`fail` con el cronómetro estaba escrita dos veces dentro de `run_step`; pasa a
+`step_result <label> <rc> <segundos>`, que comparten los dos modos.
+
 ## [1.41.0] - 2026-07-31
 
 ### Agregado: la raiz del dominio la sirve sitio2026 (Portalito)
