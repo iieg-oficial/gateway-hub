@@ -249,7 +249,7 @@ for dir in "${REPO_ORDER[@]}"; do
     for container_id in $containers; do
         errors=$(docker logs --since "$ERROR_WINDOW" --tail 200 "$container_id" 2>&1 \
             | grep -iE '\b(error|fatal|critical|panic)\b' \
-            | grep -viE 'error[-_](rate|log|page|recovery)|0 errors|"(GET|POST|PUT|DELETE|HEAD) |request_uri|^I[0-9]{4} ' \
+            | grep -viE 'error[-_](rate|log|page|recovery)|0 errors|"(GET|POST|PUT|DELETE|HEAD) |request_uri|^I[0-9]{4} |sqlalche\.me/e/|^[[:space:]]' \
             | tail -3 || true)
         if [ -n "$errors" ]; then
             has_errors=true
