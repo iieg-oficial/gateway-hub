@@ -33,6 +33,22 @@ legitimos. Ambas siguen el precedente de `/mapalab/mcp` y `/api/internal/acervo/
 El catch-all subio de `burst=20` a `burst=150`. La home del portal pide una veintena de estaticos
 mas los chunks del bundle; con el burst anterior la primera carga en frio devolvia 429.
 
+### Corregido: los "errores recientes" de `ecosystem-status` no eran recientes
+
+El reporte leia `docker logs --tail 15` **sin ventana de tiempo**. En un contenedor que no escribe
+nada nuevo, esas 15 lineas quedan congeladas: un error de hace dias se seguia reportando identico
+en cada ejecucion, sin forma de distinguirlo de uno que acaba de pasar. Y al reves, en un
+contenedor con trafico, un error real de hace dos minutos ya no cabia en 15 lineas.
+
+Ahora lee `--since 1h --tail 200` (ventana configurable con `ERROR_WINDOW`) y el encabezado dice
+cual es la ventana.
+
+Ampliarla destapo falsos positivos que el `--tail 15` ocultaba, asi que el filtro tambien excluye:
+peticiones HTTP cuyo *path* contiene la palabra (`/mapalab/error-recovery.js` es la mas comun),
+claves de configuracion tipo `bf-error-rate` que Redis imprime al arrancar, y las lineas
+informativas de glog que usa SeaweedFS. Antes bastaba con que la palabra apareciera en cualquier
+parte de la linea.
+
 ### Agregado: sitio2026 entra al orquestador del ecosistema
 
 `ECOSYSTEM_STEPS` incluye `sitio2026` entre mapalab y gateway: tiene que estar arriba antes de que

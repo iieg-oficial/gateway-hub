@@ -13,6 +13,7 @@ RESET='\033[0m'
 
 REPOS_DIR="${1:-..}"
 GATEWAY_DIR="${2:-.}"
+ERROR_WINDOW="${ERROR_WINDOW:-1h}"
 
 declare -A REPO_NAMES=(
   ["$GATEWAY_DIR"]="gateway-hub"
@@ -222,7 +223,7 @@ if [ "$total_dirty" -eq 0 ] && [ "$total_ahead" -eq 0 ] && [ "$total_behind" -eq
 fi
 
 echo ""
-printf "  ${BOLD}${WHITE}ERRORES RECIENTES${RESET}  ${DIM}(ultimas 15 lineas por contenedor)${RESET}\n"
+printf "  ${BOLD}${WHITE}ERRORES RECIENTES${RESET}  ${DIM}(ultimas $ERROR_WINDOW, hasta 3 por contenedor)${RESET}\n"
 dashes
 has_errors=false
 
@@ -246,7 +247,10 @@ for dir in "${REPO_ORDER[@]}"; do
     [ -z "$containers" ] && continue
 
     for container_id in $containers; do
-        errors=$(docker logs --tail 15 "$container_id" 2>&1 | grep -iE '\b(error|fatal|critical|panic)\b' | tail -3 || true)
+        errors=$(docker logs --since "$ERROR_WINDOW" --tail 200 "$container_id" 2>&1 \
+            | grep -iE '\b(error|fatal|critical|panic)\b' \
+            | grep -viE 'error[-_](rate|log|page|recovery)|0 errors|"(GET|POST|PUT|DELETE|HEAD) |request_uri|^I[0-9]{4} ' \
+            | tail -3 || true)
         if [ -n "$errors" ]; then
             has_errors=true
             cname=$(docker inspect --format '{{.Name}}' "$container_id" 2>/dev/null | sed 's|^/||')
