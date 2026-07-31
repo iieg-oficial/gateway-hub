@@ -23,6 +23,7 @@ declare -A REPO_NAMES=(
   ["$REPOS_DIR/mariachi"]="mariachi"
   ["$REPOS_DIR/mapalab"]="mapalab"
   ["$REPOS_DIR/sieej"]="sieej"
+  ["$REPOS_DIR/sitio2026"]="sitio2026"
 )
 
 REPO_ORDER=(
@@ -34,6 +35,7 @@ REPO_ORDER=(
   "$REPOS_DIR/mariachi"
   "$REPOS_DIR/mapalab"
   "$REPOS_DIR/sieej"
+  "$REPOS_DIR/sitio2026"
 )
 
 total_repos=0

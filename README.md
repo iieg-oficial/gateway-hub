@@ -50,7 +50,9 @@ El `Makefile` ofrece dos niveles:
 | `make ecosystem-status` | Git, Docker y errores recientes en logs del ecosistema |
 | `make ecosystem-push` | Push de la rama actual de cada repo, incluido context-ame-esta (filtrable con `STACKS=`) |
 
-Los servicios `sitio2026` y `minerva` quedan fuera del orquestador y se levantan manualmente (`cd ../sitio2026 && make up ENV=gcp` y `cd ../minerva && make up` respectivamente).
+`sitio2026` entra al orquestador desde 1.41.0: va justo antes del gateway, porque ocupa `location /` y si no esta arriba la raiz responde 502. Su `make deploy` reconstruye en modo `gcp` — los prefijos del API viajan como build args del bundle, asi que levantarlo sin rebuild no basta.
+
+`minerva` queda fuera y se levanta manualmente (`cd ../minerva && make up`).
 
 ## Variables de entorno
 

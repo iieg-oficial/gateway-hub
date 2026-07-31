@@ -23,6 +23,7 @@ REPO_ORDER=(
   "mariachi:$REPOS_DIR/mariachi"
   "mapalab:$REPOS_DIR/mapalab"
   "sieej:$REPOS_DIR/sieej"
+  "sitio2026:$REPOS_DIR/sitio2026"
   "context-ame-esta:$REPOS_DIR/context-ame-esta"
 )
 

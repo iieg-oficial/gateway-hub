@@ -33,6 +33,15 @@ legitimos. Ambas siguen el precedente de `/mapalab/mcp` y `/api/internal/acervo/
 El catch-all subio de `burst=20` a `burst=150`. La home del portal pide una veintena de estaticos
 mas los chunks del bundle; con el burst anterior la primera carga en frio devolvia 429.
 
+### Agregado: sitio2026 entra al orquestador del ecosistema
+
+`ECOSYSTEM_STEPS` incluye `sitio2026` entre mapalab y gateway: tiene que estar arriba antes de que
+el gateway se reconstruya, o `location /` responde 502 hasta que exista. Tambien aparece en
+`ecosystem-status` y en el script de sincronizacion de ramas.
+
+Requiere los targets `deploy` y `_up-prod` en el Makefile del portal, que se agregaron alla
+(iieg-oficial/sitio2026#13). Su `deploy` reconstruye en modo `gcp`, no solo levanta.
+
 ### Corregido: la CSP bloqueaba el mapa embebido del portal
 
 `frame-src 'self'` rechazaba el iframe de Google Maps del bloque de contacto
