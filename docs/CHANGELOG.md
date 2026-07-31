@@ -33,6 +33,14 @@ legitimos. Ambas siguen el precedente de `/mapalab/mcp` y `/api/internal/acervo/
 El catch-all subio de `burst=20` a `burst=150`. La home del portal pide una veintena de estaticos
 mas los chunks del bundle; con el burst anterior la primera carga en frio devolvia 429.
 
+### Corregido: la CSP bloqueaba el mapa embebido del portal
+
+`frame-src 'self'` rechazaba el iframe de Google Maps del bloque de contacto
+(`Framing 'https://www.google.com/' violates ... frame-src 'self'`). La directiva ahora admite
+`https://www.google.com`, `https://www.youtube-nocookie.com` y `https://www.youtube.com`, que son
+los tres origenes que el portal embebe. La CSP es global al dominio: el permiso aplica a todos los
+servicios detras del gateway.
+
 ### Cambiado: el healthcheck del gateway ya no depende del portal
 
 Pasa de `https://localhost/` a `https://localhost/robots.txt`. Con la raiz cedida, el healthcheck
