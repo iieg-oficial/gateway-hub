@@ -10,6 +10,17 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ## [No publicado]
 
+### Eliminado: `https://www.google.com` de `frame-src`
+
+Estaba en la CSP por un único consumidor: el iframe de Google Maps de la página de contacto del
+portal. Desde sitio2026 ese mapa lo sirve el embed de mapalab, que vive en el mismo dominio y por
+tanto entra por `'self'`, así que el permiso ya no tiene a quién servir. `www.youtube.com` y
+`www.youtube-nocookie.com` se quedan: los usa el reproductor de video del portal.
+
+**El orden importa.** Este cambio va *después* de desplegar el portal con el mapa nuevo. Si el
+gateway se reconstruye primero, el portal todavía en producción pide el iframe de Google contra
+una CSP que ya no lo permite y la página de contacto se queda con un hueco.
+
 ## [1.42.0] - 2026-07-31
 
 ### Agregado: `VERBOSE=1` para ver la salida de cada paso
