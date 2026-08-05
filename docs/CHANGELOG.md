@@ -10,6 +10,41 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ## [No publicado]
 
+### Agregado: `/aviso-de-privacidad` y `/aviso-de-privacidad-simplificado`
+
+Dos `location` de match exacto que sirven los PDF del bucket `iieg` de acervo. Pasan a ser la liga
+canónica del aviso para todo el ecosistema: mapalab, mariachi, minerva, sieej y sitio2026 dejan de
+enlazar al PDF del sitio anterior y apuntan aquí.
+
+**El problema que resuelven es la fecha en la URL.** Cada frontend guardaba la ruta del PDF con su
+fecha de publicación (`.../2025/06/Aviso_de_Privacidad_Integral_IIEG_06_2025.pdf`). Cuando el IIEG
+publicó la versión de junio de 2025 y retiró la de enero, cinco frontends se actualizaron y sieej
+no: su enlace llevaba meses respondiendo 404, y lo mostraba en la pantalla donde se piden aceptar
+los términos. Con una ruta que no contiene ni la versión ni la ubicación del objeto, publicar un
+aviso nuevo es reemplazar el archivo en el bucket — sin tocar ningún repo y sin desplegar.
+
+El `Content-Disposition` se fija aquí, no en el objeto: `inline`, así que el PDF abre en el
+navegador, con `filename` para que al guardarlo no quede un nombre genérico. `proxy_hide_header`
+descarta el del backend para que no salgan dos.
+
+También se fija `Cache-Control: public, max-age=300, must-revalidate`. Acervo no emitía ninguno
+—solo `ETag` y `Last-Modified`—, así que los navegadores aplicaban su heurística de frescura y
+podían servir el PDF anterior durante horas después de publicar uno nuevo. Cinco minutos acota esa
+ventana sin pedir el archivo en cada visita.
+
+**Publicar una versión nueva es borrar el objeto y subir el reemplazo con el mismo nombre.** El
+explorador de acervo no sobrescribe: ante un nombre repetido `on_conflict` rechaza con 409 o
+renombra a `avisos-de-privacidad-2.pdf`. Si renombra, la ruta sigue sirviendo el PDF viejo sin que
+nadie se entere — un fallo silencioso, peor que un 404.
+
+La ruta del simplificado **responde 404 a propósito** hasta que exista
+`iieg/aviso-de-privacidad-simplificado.pdf`. Se deja creada para que publicarlo sea subir el objeto,
+sin otro deploy del gateway. Ese aviso es el que la LGPDPPSO exige en el punto de recolección y hoy
+el Instituto no tiene.
+
+Ambas quedan registradas como rutas reservadas del dominio: sitio2026 ocupa `location /` y no puede
+reclamar esos slugs desde el CMS.
+
 ### Eliminado: `https://www.google.com` de `frame-src`
 
 Estaba en la CSP por un único consumidor: el iframe de Google Maps de la página de contacto del

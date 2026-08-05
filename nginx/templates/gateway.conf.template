@@ -361,6 +361,36 @@ server {
         add_header X-Robots-Tag $seo_robots;
     }
 
+    location = /aviso-de-privacidad {
+        # Rutas reservadas del dominio. Match exacto => ganan sobre el location / de
+        # sitio2026. Sirven los PDF de acervo sin exponer su ruta en el bucket: si el
+        # archivo se mueve o se publica una version nueva, se reemplaza el objeto y
+        # ningun frontend se entera.
+        limit_req zone=static burst=200 nodelay;
+        set $acervo_upstream "${ACERVO_HOST}";
+        rewrite ^ /iieg/avisos-de-privacidad.pdf break;
+        proxy_pass http://$acervo_upstream;
+        include /etc/nginx/includes/proxy-params.inc;
+        proxy_intercept_errors on;
+        proxy_hide_header Content-Disposition;
+        add_header Cache-Control "public, max-age=300, must-revalidate" always;
+        add_header Content-Disposition 'inline; filename="Aviso_de_Privacidad_Integral_IIEG_2025-06.pdf"' always;
+    }
+
+    location = /aviso-de-privacidad-simplificado {
+        # Responde 404 hasta que se suba el objeto; la ruta ya existe para que
+        # publicarlo no requiera otro deploy del gateway.
+        limit_req zone=static burst=200 nodelay;
+        set $acervo_upstream "${ACERVO_HOST}";
+        rewrite ^ /iieg/aviso-de-privacidad-simplificado.pdf break;
+        proxy_pass http://$acervo_upstream;
+        include /etc/nginx/includes/proxy-params.inc;
+        proxy_intercept_errors on;
+        proxy_hide_header Content-Disposition;
+        add_header Cache-Control "public, max-age=300, must-revalidate" always;
+        add_header Content-Disposition 'inline; filename="Aviso_de_Privacidad_Simplificado_IIEG.pdf"' always;
+    }
+
     location ^~ /acervo/thumb/ {
         # Miniaturas publicas on-the-fly del Acervo: las sirve mariachi-api (WebP
         # escalado), no SeaweedFS. Prefijo mas largo que /acervo/ => gana el matcheo
