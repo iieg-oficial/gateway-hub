@@ -6,7 +6,7 @@ STACKS ?=
 
 export ECOSYSTEM_STEPS STACKS
 
-.PHONY: ecosystem-up ecosystem-down ecosystem-deploy ecosystem-status ecosystem-push
+.PHONY: ecosystem-up ecosystem-down ecosystem-deploy ecosystem-status ecosystem-pull ecosystem-push
 
 ##@ Ecosistema
 
@@ -43,6 +43,9 @@ ecosystem-deploy: ## Actualizar, reconstruir y levantar todo el ecosistema (VERB
 
 ecosystem-status: ## Estado del ecosistema: git, docker y errores en logs
 	@./scripts/ecosystem-status.sh "$(REPOS_DIR)" "$(GATEWAY_DIR)"
+
+ecosystem-pull: ## Traer la rama actual de cada repo, sin tocar los que tengan cambios
+	@./scripts/ecosystem-pull.sh "$(REPOS_DIR)" "$(GATEWAY_DIR)" "$(STACKS)"
 
 ecosystem-push: ## Push de la rama actual de cada repo, lo corre el usuario
 	@./scripts/ecosystem-push.sh "$(REPOS_DIR)" "$(GATEWAY_DIR)" "$(STACKS)"
