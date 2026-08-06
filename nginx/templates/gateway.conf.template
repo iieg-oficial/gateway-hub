@@ -361,21 +361,10 @@ server {
         add_header X-Robots-Tag $seo_robots;
     }
 
-    location = /aviso-de-privacidad {
-        # Rutas reservadas del dominio. Match exacto => ganan sobre el location / de
-        # sitio2026. Sirven los PDF de acervo sin exponer su ruta en el bucket: si el
-        # archivo se mueve o se publica una version nueva, se reemplaza el objeto y
-        # ningun frontend se entera.
-        limit_req zone=static burst=200 nodelay;
-        set $acervo_upstream "${ACERVO_HOST}";
-        rewrite ^ /iieg/avisos-de-privacidad.pdf break;
-        proxy_pass http://$acervo_upstream;
-        include /etc/nginx/includes/proxy-params.inc;
-        proxy_intercept_errors on;
-        proxy_hide_header Content-Disposition;
-        add_header Cache-Control "public, max-age=300, must-revalidate" always;
-        add_header Content-Disposition 'inline; filename="Aviso_de_Privacidad_Integral_IIEG_2025-06.pdf"' always;
-    }
+    # /aviso-de-privacidad lo sirve sitio2026 desde su CMS, no esta ruta: la pagina
+    # se edita en el portal en vez de reemplazar un PDF en acervo. Como el match
+    # exacto gana sobre el location / de sitio2026, la ruta tiene que no existir
+    # aqui para que el portal la reciba. Ver sitio2026#60.
 
     location = /aviso-de-privacidad-simplificado {
         # Responde 404 hasta que se suba el objeto; la ruta ya existe para que
