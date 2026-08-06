@@ -10,13 +10,14 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ## [No publicado]
 
-### Agregado: `/aviso-de-privacidad` y `/aviso-de-privacidad-simplificado`
+### Agregado: `/aviso-de-privacidad.pdf`
 
-Dos `location` de match exacto que sirven los PDF del bucket `iieg` de acervo. Pasan a ser la liga
-canónica del aviso para todo el ecosistema: mapalab, mariachi, minerva, sieej y sitio2026 dejan de
-enlazar al PDF del sitio anterior y apuntan aquí.
+`location` de match exacto que sirve `iieg/avisos-de-privacidad.pdf` del bucket de acervo. Es la
+versión imprimible del aviso integral; la liga canónica que enlazan los frontends del ecosistema
+—mapalab, mariachi, minerva, sieej— es la página `/aviso-de-privacidad`, que sirve sitio2026 desde
+su CMS y que enlaza este PDF.
 
-**El problema que resuelven es la fecha en la URL.** Cada frontend guardaba la ruta del PDF con su
+**El problema que resuelve es la fecha en la URL.** Cada frontend guardaba la ruta del PDF con su
 fecha de publicación (`.../2025/06/Aviso_de_Privacidad_Integral_IIEG_06_2025.pdf`). Cuando el IIEG
 publicó la versión de junio de 2025 y retiró la de enero, cinco frontends se actualizaron y sieej
 no: su enlace llevaba meses respondiendo 404, y lo mostraba en la pantalla donde se piden aceptar
@@ -25,7 +26,8 @@ aviso nuevo es reemplazar el archivo en el bucket — sin tocar ningún repo y s
 
 El `Content-Disposition` se fija aquí, no en el objeto: `inline`, así que el PDF abre en el
 navegador, con `filename` para que al guardarlo no quede un nombre genérico. `proxy_hide_header`
-descarta el del backend para que no salgan dos.
+descarta el del backend para que no salgan dos. El `filename` ya no lleva la fecha de la versión:
+con el objeto reemplazándose en su sitio, un `2025-06` incrustado aquí volvería a envejecer solo.
 
 También se fija `Cache-Control: public, max-age=300, must-revalidate`. Acervo no emitía ninguno
 —solo `ETag` y `Last-Modified`—, así que los navegadores aplicaban su heurística de frescura y
@@ -37,13 +39,25 @@ explorador de acervo no sobrescribe: ante un nombre repetido `on_conflict` recha
 renombra a `avisos-de-privacidad-2.pdf`. Si renombra, la ruta sigue sirviendo el PDF viejo sin que
 nadie se entere — un fallo silencioso, peor que un 404.
 
-La ruta del simplificado **responde 404 a propósito** hasta que exista
-`iieg/aviso-de-privacidad-simplificado.pdf`. Se deja creada para que publicarlo sea subir el objeto,
-sin otro deploy del gateway. Ese aviso es el que la LGPDPPSO exige en el punto de recolección y hoy
-el Instituto no tiene.
+### Cambiado: los dos avisos los sirve el CMS de sitio2026, no el gateway
 
-Ambas quedan registradas como rutas reservadas del dominio: sitio2026 ocupa `location /` y no puede
-reclamar esos slugs desde el CMS.
+`/aviso-de-privacidad` y `/aviso-de-privacidad-simplificado` se habían creado aquí como `location`
+de match exacto hacia sendos PDF de acervo. **Ambas se retiran**: los avisos se editan como páginas
+del portal, que es donde puede corregirse una redacción sin pedirle a nadie que regenere un PDF.
+
+El retiro no es opcional para que funcione. Nginx elige la `location` más específica y un match
+exacto gana siempre sobre el `location /` de sitio2026, sin importar el orden del archivo ni
+ninguna directiva: mientras la ruta exista aquí, la página del portal es inalcanzable. La única
+forma de cederla es que no esté.
+
+Queda **una sola ruta reservada** del par, `/aviso-de-privacidad.pdf`, y el objeto del simplificado
+—que nunca llegó a existir— ya no hace falta: esa página se redacta en el CMS.
+
+**Sí hay cambio en producción, y por eso esto corre.** 1.43.0 está desplegado, así que
+`/aviso-de-privacidad-simplificado` está interponiéndose hoy: responde el 404 de acervo en vez de
+dejar pasar al CMS. `/aviso-de-privacidad` ya se había cedido y sirve la página del portal, que es
+lo que reciben los cinco frontends que la enlazan. `/aviso-de-privacidad.pdf` todavía no existe
+aquí: hasta desplegar, cae en el `location /` y devuelve el `index.html` del portal, no el PDF.
 
 ### Eliminado: `https://www.google.com` de `frame-src`
 

@@ -361,23 +361,26 @@ server {
         add_header X-Robots-Tag $seo_robots;
     }
 
-    # /aviso-de-privacidad lo sirve sitio2026 desde su CMS, no esta ruta: la pagina
-    # se edita en el portal en vez de reemplazar un PDF en acervo. Como el match
-    # exacto gana sobre el location / de sitio2026, la ruta tiene que no existir
-    # aqui para que el portal la reciba. Ver sitio2026#60.
+    # /aviso-de-privacidad y /aviso-de-privacidad-simplificado los sirve sitio2026
+    # desde su CMS, no este archivo: los avisos se editan en el portal en vez de
+    # reemplazar un PDF en acervo. Como el match exacto gana siempre sobre el
+    # location / de sitio2026, las rutas tienen que no existir aqui para que el
+    # portal las reciba. Ver sitio2026#60.
 
-    location = /aviso-de-privacidad-simplificado {
-        # Responde 404 hasta que se suba el objeto; la ruta ya existe para que
-        # publicarlo no requiera otro deploy del gateway.
+    location = /aviso-de-privacidad.pdf {
+        # El integral en PDF conserva ruta propia: es la version imprimible que
+        # enlaza la pagina del CMS. La URL no lleva version ni ubicacion del
+        # objeto, asi que publicar uno nuevo es reemplazarlo en el bucket, sin
+        # tocar ningun repo ni desplegar.
         limit_req zone=static burst=200 nodelay;
         set $acervo_upstream "${ACERVO_HOST}";
-        rewrite ^ /iieg/aviso-de-privacidad-simplificado.pdf break;
+        rewrite ^ /iieg/avisos-de-privacidad.pdf break;
         proxy_pass http://$acervo_upstream;
         include /etc/nginx/includes/proxy-params.inc;
         proxy_intercept_errors on;
         proxy_hide_header Content-Disposition;
         add_header Cache-Control "public, max-age=300, must-revalidate" always;
-        add_header Content-Disposition 'inline; filename="Aviso_de_Privacidad_Simplificado_IIEG.pdf"' always;
+        add_header Content-Disposition 'inline; filename="Aviso_de_Privacidad_Integral_IIEG.pdf"' always;
     }
 
     location ^~ /acervo/thumb/ {
