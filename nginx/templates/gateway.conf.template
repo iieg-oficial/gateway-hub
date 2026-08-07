@@ -135,6 +135,7 @@ server {
     location = / {
         limit_req zone=general burst=150 nodelay;
         proxy_pass http://sitio_backend;
+        include /etc/nginx/includes/sitio-hide-headers.inc;
         include /etc/nginx/includes/proxy-params.inc;
         proxy_set_header Accept-Encoding "";
     }
@@ -143,6 +144,7 @@ server {
         limit_req zone=general burst=150 nodelay;
         include /etc/nginx/includes/bot-protection.inc;
         proxy_pass http://sitio_backend;
+        include /etc/nginx/includes/sitio-hide-headers.inc;
         include /etc/nginx/includes/proxy-params.inc;
         proxy_set_header Accept-Encoding "";
         proxy_intercept_errors on;
@@ -152,6 +154,7 @@ server {
         limit_req zone=static burst=200 nodelay;
         add_header Cache-Control "public, max-age=31536000, immutable";
         proxy_pass http://sitio_backend;
+        include /etc/nginx/includes/sitio-hide-headers.inc;
         include /etc/nginx/includes/proxy-params.inc;
     }
 
@@ -159,6 +162,7 @@ server {
         limit_req zone=general burst=150 nodelay;
         include /etc/nginx/includes/bot-protection.inc;
         proxy_pass http://sitio_backend;
+        include /etc/nginx/includes/sitio-hide-headers.inc;
         include /etc/nginx/includes/proxy-params.inc;
     }
 
@@ -168,6 +172,7 @@ server {
         client_max_body_size 1G;
         proxy_request_buffering off;
         proxy_pass http://sitio_backend;
+        include /etc/nginx/includes/sitio-hide-headers.inc;
         include /etc/nginx/includes/proxy-params.inc;
         add_header Cache-Control "no-store" always;
         proxy_read_timeout 300s;
@@ -178,6 +183,7 @@ server {
         limit_req zone=api burst=20 nodelay;
         include /etc/nginx/includes/bot-protection.inc;
         proxy_pass http://sitio_backend;
+        include /etc/nginx/includes/sitio-hide-headers.inc;
         include /etc/nginx/includes/proxy-params.inc;
         add_header Cache-Control "no-store" always;
     }
@@ -189,6 +195,7 @@ server {
         client_max_body_size 1G;
         proxy_request_buffering off;
         proxy_pass http://sitio_backend;
+        include /etc/nginx/includes/sitio-hide-headers.inc;
         include /etc/nginx/includes/proxy-params.inc;
         proxy_read_timeout 300s;
         proxy_send_timeout 300s;
@@ -197,12 +204,14 @@ server {
     location ^~ /base/ {
         limit_req zone=static burst=200 nodelay;
         proxy_pass http://sitio_backend;
+        include /etc/nginx/includes/sitio-hide-headers.inc;
         include /etc/nginx/includes/proxy-params.inc;
     }
 
     location ^~ /webassets/ {
         limit_req zone=static burst=200 nodelay;
         proxy_pass http://sitio_backend;
+        include /etc/nginx/includes/sitio-hide-headers.inc;
         include /etc/nginx/includes/proxy-params.inc;
     }
 

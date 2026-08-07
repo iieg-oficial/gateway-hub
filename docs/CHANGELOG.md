@@ -10,6 +10,33 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ## [No publicado]
 
+### Cambiado: la CSP del portal se descarta en el proxy
+
+Los nueve `location` que enrutan a sitio2026 incluyen `sitio-hide-headers.inc`, que descarta el
+`Content-Security-Policy` que venga del upstream. **La política del dominio la emite el gateway y
+nadie más.**
+
+sitio2026 empezó a emitir la suya desde su propio nginx, generada al compilar desde
+`web/config/csp.config.js`, y además el bundle lleva una `<meta http-equiv>`. Sin descartar la del
+upstream, una misma página llegaría con **dos cabeceras y una meta**: el navegador aplica la
+intersección de las tres, así que un origen agregado en la lista correcta puede seguir bloqueado
+por otra, y no hay forma de saber cuál sin leerlas todas. Peor aún, la del portal se congela en el
+build: cambiarla por entorno obliga a recompilar, que es justo lo que `CSP_EXTRA_ORIGINS` vino a
+evitar.
+
+Descartarla aquí no le quita nada al portal: **sigue emitiéndola cuando se le pega directo a su
+puerto**, que es como se prueba aislado. Lo que no puede es competir con la del borde.
+
+La `<meta>` del bundle queda fuera del alcance del proxy — vive en el HTML. Mientras exista, entrar
+por una IP en vez de por el nombre del entorno sigue bloqueando las imágenes del acervo, porque esa
+lista no incluye el host por el que se entró. La salida es que esos orígenes salgan de una variable
+de Vite; queda propuesto a sitio2026.
+
+`/assets/`, `/api/sitio` y `/api/sitio-admin` ya no emitían la CSP del gateway —nginx no hereda los
+`add_header` del `server` en un `location` que declara los suyos, y esos tres fijan `Cache-Control`—
+así que ahora quedan sin ninguna. No cambia nada en la práctica: la política que aplica el navegador
+es la del documento HTML, no la de un `.js` ni la de una respuesta JSON.
+
 ### Agregado: `CSP_EXTRA_ORIGINS`, orígenes extra para `img-src` y `media-src`
 
 `nginx/includes/security-headers.inc` pasa a ser `security-headers.inc.template` y se genera con
