@@ -38,6 +38,7 @@ services:
       MARIACHI_HOST: ${MARIACHI_HOST:?}
       SEXTANTE_HOST: ${SEXTANTE_HOST:?}
       GTM_ID: ${GTM_ID?}
+      CSP_EXTRA_ORIGINS: ${CSP_EXTRA_ORIGINS?}
       SEO_ENABLED: ${SEO_ENABLED:?}
       REAL_IP_FROM: ${REAL_IP_FROM?}
     healthcheck:

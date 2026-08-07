@@ -10,6 +10,25 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ## [No publicado]
 
+### Agregado: `CSP_EXTRA_ORIGINS`, orígenes extra para `img-src` y `media-src`
+
+`nginx/includes/security-headers.inc` pasa a ser `security-headers.inc.template` y se genera con
+`envsubst` en el arranque, igual que `gtm.inc.template` y `ssl-stapling.inc.template`. La variable
+se suma a `img-src` y `media-src`; **vacía deja la política que había** y es como va en producción.
+
+El problema es de los entornos que **no** se sirven desde el dominio institucional. Ahí el acervo
+deja de ser `'self'`: el portal pide sus miniaturas a `https://iieg.jalisco.gob.mx/acervo/thumb/…`
+—URL escrita en cinco componentes de `sitio2026/web`— y la CSP las bloquea. Antes la única salida
+era editar el archivo, y eso cambiaba producción; ahora es una línea del `.env` de ese entorno.
+
+`media-src` no existía en la cabecera: heredaba `default-src 'self'`, así que declararla con la
+variable vacía no cambia nada. Se agrega porque el mismo acervo sirve audio y video. `connect-src`
+se deja fuera a propósito: del acervo no se pide nada por `fetch`.
+
+La variable se declara con `?` en el `compose.yaml`, así que **falta en el `.env` es un fallo
+explícito del compose**, no un default silencioso. Antes de desplegar hay que agregarla —vacía en
+producción— o el arranque aborta. Cambiar su valor no exige rebuild: basta recrear el contenedor.
+
 ### Agregado: `/aviso-de-privacidad.pdf`
 
 `location` de match exacto que sirve `iieg/avisos-de-privacidad.pdf` del bucket de acervo. Es la
