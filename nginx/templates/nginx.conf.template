@@ -82,6 +82,42 @@ http {
         ''      close;
     }
 
+    # Allowlist explicita. El plugin de MapaLab habla por QgsNetworkAccessManager
+    # y su UA es "Mozilla/5.0 QGIS/<version>/<so>"; hasta ahora pasaba solo porque
+    # no coincidia con ninguna lista. Declararlo aqui evita que un patron nuevo
+    # lo tumbe sin que nadie relacione las dos cosas.
+    map $http_user_agent $ua_en_allowlist {
+        default 0;
+        ~*QGIS/ 1;
+    }
+
+    map $http_user_agent $ua_sospechoso {
+        default 0;
+        ''      1;
+        ~*(scrapy|httpclient|spider|java|perl|ruby|php|go-http|node-fetch|axios|postman|insomnia|httpie|headless|phantom|selenium|puppeteer|playwright|mechanize|libwww|lwp|urllib|winhttp|httrack|clshttp|archiver|loader|email|harvest|extract|grab|miner|nikto|scan|attack|inject|exploit) 1;
+        ~*(ChatGPT|GPTBot|Google-Extended|anthropic|ClaudeBot|CCBot|Bytespider|PetalBot|SemrushBot|AhrefsBot|MJ12bot|DotBot|Barkrowler|DataForSeoBot|BLEXBot|YandexBot) 1;
+        ~*(^curl|^wget|python-requests|python-urllib|aiohttp) 1;
+    }
+
+    map $ua_en_allowlist$ua_sospechoso $ua_bloqueado {
+        default 0;
+        '01'    1;
+    }
+
+    # Sextante mantiene su propia lista, mas amplia que la general (bloquea
+    # "python" y "bot" genericos). Se conserva tal cual y solo se le antepone
+    # la misma allowlist.
+    map $http_user_agent $ua_sospechoso_sextante {
+        default 0;
+        ''      1;
+        ~*(curl|wget|python|scrapy|httpclient|bot|spider|java|perl|ruby|php|go-http|node-fetch|axios|postman|insomnia|httpie|headless|phantom|selenium|puppeteer|playwright|ChatGPT|Google-Extended|anthropic) 1;
+    }
+
+    map $ua_en_allowlist$ua_sospechoso_sextante $ua_bloqueado_sextante {
+        default 0;
+        '01'    1;
+    }
+
     proxy_cache_path /var/cache/nginx-data/mapalab_assets
         keys_zone=mapalab_assets:5m
         max_size=500m

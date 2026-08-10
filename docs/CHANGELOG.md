@@ -10,6 +10,31 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ## [No publicado]
 
+### Cambiado: el bloqueo por User-Agent pasa de cuatro `if` a un `map`, con QGIS en allowlist
+
+`bot-protection.inc` evaluaba cuatro `if ($http_user_agent ~* ...)` por peticion. Ahora la decision
+vive en `$ua_bloqueado`, un `map` en el contexto `http`, y el include se reduce a un solo `if`.
+
+El motivo no es el rendimiento sino la fragilidad: el plugin de QGIS pasaba **por accidente**, porque
+su UA (`Mozilla/5.0 QGIS/<version>/<so>`) no coincidia con ninguna lista, sin estar declarado en
+ningun lado. El dia que alguien agregara un patron nuevo, el plugin se caia sin que nadie relacionara
+las dos cosas. Ahora hay un `$ua_en_allowlist` explicito que gana sobre cualquier patron de bloqueo.
+
+Las locations de `/sextante/` no usan `bot-protection.inc`: tenian su propia lista inline, mas amplia
+(bloquea `python` y `bot` genericos). Se conserva **intacta** en `$ua_sospechoso_sextante` y solo se
+le antepone la misma allowlist, porque es la ruta por la que el plugin descarga los GeoPackage.
+
+### Agregado: zona de rate limit propia para el plugin de QGIS
+
+`sextante_download` (10 r/s por IP) lo compartian el visor y el plugin, y como el limite es por IP de
+salida, una oficina entera detras de NAT comparte un bucket. La respuesta no es subir el numero
+—beneficiaria tambien a cualquier scraper— sino separar los buckets.
+
+Se agrega `mapalab_plugin`, seleccionada por el header `X-Mapalab-Client` que manda el plugin. Dos
+`map` reparten la clave: la peticion con el header cae solo en la zona del plugin y las demas solo en
+`sextante_download`; una clave vacia desactiva la zona para esa peticion. Mismo rate (10 r/s,
+`burst=10`) que el visor, pero en buckets independientes, asi ninguno le come cuota al otro.
+
 ### Corregido: el cache de nginx no sobrevivia a los despliegues
 
 `/var/cache/nginx` vivia en la capa escribible del contenedor —no habia volumen—, asi que cada

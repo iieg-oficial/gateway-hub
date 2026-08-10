@@ -92,7 +92,7 @@ location ^~ /sextante/ {
             return 403;
         }
 
-        if ($http_user_agent ~* (curl|wget|python|scrapy|httpclient|bot|spider|java|perl|ruby|php|go-http|node-fetch|axios|postman|insomnia|httpie|headless|phantom|selenium|puppeteer|playwright|ChatGPT|Google-Extended|anthropic|^$)) {
+        if ($ua_bloqueado_sextante) {
             return 403;
         }
 
@@ -137,11 +137,12 @@ location ^~ /sextante/ {
             return 403;
         }
 
-        if ($http_user_agent ~* (curl|wget|python|scrapy|httpclient|bot|spider|java|perl|ruby|php|go-http|node-fetch|axios|postman|insomnia|httpie|headless|phantom|selenium|puppeteer|playwright|ChatGPT|Google-Extended|anthropic|^$)) {
+        if ($ua_bloqueado_sextante) {
             return 403;
         }
 
         limit_req zone=sextante_download burst=10 nodelay;
+        limit_req zone=mapalab_plugin burst=10 nodelay;
         proxy_pass http://sextante;
         include /etc/nginx/includes/proxy-params.inc;
         include /etc/nginx/includes/sextante-hide-headers.inc;
@@ -175,11 +176,12 @@ location ^~ /sextante/ {
             return 403;
         }
 
-        if ($http_user_agent ~* (curl|wget|python|scrapy|httpclient|bot|spider|java|perl|ruby|php|go-http|node-fetch|axios|postman|insomnia|httpie|headless|phantom|selenium|puppeteer|playwright|ChatGPT|Google-Extended|anthropic|^$)) {
+        if ($ua_bloqueado_sextante) {
             return 403;
         }
 
         limit_req zone=sextante_download burst=10 nodelay;
+        limit_req zone=mapalab_plugin burst=10 nodelay;
         proxy_pass http://sextante;
         include /etc/nginx/includes/proxy-params.inc;
         include /etc/nginx/includes/sextante-hide-headers.inc;
