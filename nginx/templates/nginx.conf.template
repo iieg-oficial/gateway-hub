@@ -63,11 +63,11 @@ http {
     proxy_buffers          16 32k;
     proxy_busy_buffers_size 64k;
 
-    proxy_cache_path /var/cache/nginx/sextante
+    proxy_cache_path /var/cache/nginx-data/sextante
         levels=1:2
-        keys_zone=sextante_cache:20m
-        max_size=2g
-        inactive=12h
+        keys_zone=sextante_cache:320m
+        max_size=50g
+        inactive=30d
         use_temp_path=off;
 
     limit_req_zone $binary_remote_addr zone=general:10m rate=10r/s;
@@ -82,7 +82,7 @@ http {
         ''      close;
     }
 
-    proxy_cache_path /var/cache/nginx/mapalab_assets
+    proxy_cache_path /var/cache/nginx-data/mapalab_assets
         keys_zone=mapalab_assets:5m
         max_size=500m
         inactive=7d

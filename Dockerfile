@@ -9,7 +9,7 @@ COPY nginx/includes/ /etc/nginx/includes/
 COPY nginx/error-pages/ /etc/nginx/error-pages/
 COPY nginx/static/ /usr/share/nginx/html/
 
-RUN mkdir -p /etc/nginx/certs /var/cache/nginx/sextante
+RUN mkdir -p /etc/nginx/certs /var/cache/nginx-data/sextante
 
 EXPOSE 80 443
 

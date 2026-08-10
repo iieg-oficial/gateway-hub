@@ -10,6 +10,34 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ## [No publicado]
 
+### Corregido: el cache de nginx no sobrevivia a los despliegues
+
+`/var/cache/nginx` vivia en la capa escribible del contenedor —no habia volumen—, asi que cada
+`make deploy`, que reconstruye la imagen y recrea el contenedor, **borraba la cache completa**: los
+tiles de sextante y los assets de mapalab. El primer usuario despues de cada despliegue pagaba el
+MISS de todo, y el `inactive` de la zona nunca alcanzaba a importar porque nada duraba tanto.
+
+Las dos zonas se mudan a `/var/cache/nginx-data`, montado desde el host con `NGINX_CACHE_PATH`. Se
+eligio un path nuevo en lugar de montar `/var/cache/nginx` para no tapar los directorios temporales
+que la imagen crea ahi (`client_temp`, `proxy_temp` y demas). Las dos zonas ya declaraban
+`use_temp_path=off`, asi que los archivos temporales se escriben dentro del propio directorio de
+cache y no hay copia entre filesystems. Un bind mount ademas sobrevive a `make clean`, que hace
+`down -v`.
+
+**`NGINX_CACHE_PATH` es obligatoria** (`:?`): sin ella el compose falla al levantar. Hay que
+agregarla al `.env` de cada entorno antes de desplegar, apuntando a un filesystem con ~50 GB libres.
+
+### Cambiado: el cache de tiles de sextante pasa a 50 GB y 30 dias
+
+`max_size` de 2 GB a **50 GB** e `inactive` de 12 h a **30 d**. Con 12 h, lo que se consulto ayer ya
+no estaba hoy: el TTL mataba justo el patron de uso de una jornada a otra.
+
+`keys_zone` sube de 20 MB a **320 MB** en el mismo cambio, porque es la que se habria vuelto el techo
+real. Una zona de 20 MB almacena unas 160 000 claves, y con el objeto medio medido en el cache
+(23.6 KB) eso topa en ~3.8 GB: por debajo de los 50 GB nuevos, aunque quedara por encima de los 2 GB
+viejos. Con 320 MB el limite vuelve a ser `max_size`, que es el control explicito. Cuesta 320 MB de
+RAM en el nodo del gateway.
+
 ### Cambiado: la CSP del portal se descarta en el proxy
 
 Los nueve `location` que enrutan a sitio2026 incluyen `sitio-hide-headers.inc`, que descarta el
