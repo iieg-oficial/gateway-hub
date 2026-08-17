@@ -10,6 +10,15 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ## [No publicado]
 
+### Agregado: cuatro repos mas en `make ecosystem-status`
+
+`mapalab-qgis` —el complemento de QGIS, que salio de mapalab el 2026-08-17—, `vine`, `wacha` y
+`minerva`. El listado solo lee git y docker de cada carpeta, asi que un repo sin compose sale con
+`off` en la columna de contenedores y eso es correcto: el complemento no se levanta.
+
+No entran en `ECOSYSTEM_STEPS`: ese orden es el de despliegue y ninguno de los cuatro se despliega
+desde aqui.
+
 ### Agregado: el /ontoy vigila que el complemento de QGIS se pueda descargar
 
 `ONTOY_DEPENDENCIES` estrena su primer uso en este repo, con `plugin_qgis`: un GET a la URL del ZIP
