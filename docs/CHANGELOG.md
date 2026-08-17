@@ -10,6 +10,14 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ## [No publicado]
 
+### Agregado: el /ontoy vigila que el complemento de QGIS se pueda descargar
+
+`ONTOY_DEPENDENCIES` estrena su primer uso en este repo, con `plugin_qgis`: un GET a la URL del ZIP
+que la Documentacion del admin ofrece para instalar el complemento. No es un servicio con puerto,
+asi que el check de dependencia por URL es la forma de saber que el enlace sigue vivo — que ya se
+cayo una vez, con el archivo de nombre estable sin subir. La URL viene de `PLUGIN_QGIS_URL`, sin
+valor por omision: si falta, el compose falla.
+
 ### Cambiado: el bloqueo por User-Agent pasa de cuatro `if` a un `map`, con QGIS en allowlist
 
 `bot-protection.inc` evaluaba cuatro `if ($http_user_agent ~* ...)` por peticion. Ahora la decision

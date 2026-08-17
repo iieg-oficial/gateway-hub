@@ -61,6 +61,7 @@ services:
       ONTOY_COMPOSE_PROJECT: gateway-hub
       ONTOY_DISK_PATH: ${ONTOY_DISK_PATH:?}
       ONTOY_PORT_CHECKS: "portal=${PORTAL_HOST:?},sitio=${SITIO_HOST:?},mapalab=${MAPALAB_HOST:?},acervo=${ACERVO_HOST:?},sextante=${SEXTANTE_HOST:?},mariachi=${MARIACHI_HOST:?}"
+      ONTOY_DEPENDENCIES: "plugin_qgis=${PLUGIN_QGIS_URL:?}"
     volumes:
       - ./VERSION:/app/VERSION:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
