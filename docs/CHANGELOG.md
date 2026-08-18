@@ -21,11 +21,16 @@ desde aqui.
 
 ### Agregado: el /ontoy vigila que el complemento de QGIS se pueda descargar
 
-`ONTOY_DEPENDENCIES` estrena su primer uso en este repo, con `plugin_qgis`: un GET a la URL del ZIP
-que la Documentacion del admin ofrece para instalar el complemento. No es un servicio con puerto,
-asi que el check de dependencia por URL es la forma de saber que el enlace sigue vivo — que ya se
-cayo una vez, con el archivo de nombre estable sin subir. La URL viene de `PLUGIN_QGIS_URL`, sin
-valor por omision: si falta, el compose falla.
+`ONTOY_DEPENDENCIES` estrena su primer uso en este repo, con `plugin_qgis`: un GET al ZIP que la
+Documentacion del admin ofrece para instalar el complemento. No es un servicio con puerto, asi que
+el check de dependencia por URL es la forma de saber que el enlace sigue vivo — que ya se cayo una
+vez, con el archivo de nombre estable sin subir.
+
+La URL viene de `PLUGIN_QGIS_URL`, **sin valor por omision: si falta, el compose falla**, y hay que
+agregarla al `.env` de cada entorno antes de desplegar. Va **directo al Acervo**
+(`http://${ACERVO_HOST}/<ruta-del-objeto>`), no por el gateway: lo que se cae es el objeto, y asi el
+check no depende del TLS ni de resolver el dominio publico desde dentro de la red. Por el puerto 80
+tampoco serviria — nginx redirige y un 301 cuenta como exito sin haber tocado el ZIP.
 
 ### Cambiado: el bloqueo por User-Agent pasa de cuatro `if` a un `map`, con QGIS en allowlist
 
