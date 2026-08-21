@@ -1,10 +1,16 @@
-ECOSYSTEM_STEPS := acervo huachicol dataengine sextante sieej mariachi mapalab sitio2026 gateway
+ECOSYSTEM_STEPS := acervo huachicol dataengine minerva sextante sieej mariachi mapalab sitio2026 gateway
 
 REPOS_DIR := ..
 GATEWAY_DIR := .
-STACKS ?=
 
-export ECOSYSTEM_STEPS STACKS
+# Que stacks corren en ESTE nodo. Vacio = todos, que es lo correcto en el monolito
+# local. En produccion cada VM lo declara en su .env, para que `make ecosystem-deploy`
+# funcione sin banderas. La linea de comandos sigue ganando: STACKS=mapalab make ...
+STACKS ?= $(shell sed -n 's/^STACKS=//p' .env 2>/dev/null | head -1)
+
+MINERVA_COMPOSE ?= $(shell sed -n 's/^MINERVA_COMPOSE=//p' .env 2>/dev/null | head -1)
+
+export ECOSYSTEM_STEPS STACKS MINERVA_COMPOSE
 
 .PHONY: ecosystem-up ecosystem-down ecosystem-deploy ecosystem-status ecosystem-pull ecosystem-push
 

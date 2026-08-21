@@ -8,7 +8,45 @@ versionado del repo `gateway-hub` es independiente del de Nginx; aqui registramo
 cambios sobre las rutas, certificados, headers de seguridad, rate limits y la
 configuracion de promtail. Bumps por caracteristica registrada en commit.
 
-## [No publicado]
+## [1.48.0] - 2026-08-21
+
+### Agregado: minerva entra al orquestador y cada nodo declara sus stacks
+
+Desde tamal-rojo el SSO deja de ser opcional —sin el no hay login en mariachi ni en vine— asi que
+`minerva` entra a `ECOSYSTEM_STEPS`, **entre `dataengine` y `sextante`**, antes de sus dos
+consumidores.
+
+**minerva no se maneja con `make`.** No trae los Makefiles del ecosistema: usa `just`, y ninguna de
+sus 15 recetas apunta a `docker-compose.deploy.yml` —todas usan el compose de desarrollo—, asi que
+`just` no da una ruta de produccion. Su paso se resuelve con `docker compose` directo, que es
+exactamente lo que hace su `just up` sin agregar la dependencia:
+
+    docker compose --project-directory ../minerva -f ../minerva/$MINERVA_COMPOSE up -d --build
+
+`MINERVA_COMPOSE` decide cual: hoy `docker-compose.yml`, que construye desde fuente. **Queda
+pendiente pedirle a su equipo un entorno de produccion soportado**; cuando exista, la variable pasa a
+`docker-compose.deploy.yml`, la bandera cambia a `--pull always` y se consume su imagen de `ghcr.io`
+con la version fija. Ver `ecosistema/planes/orquestacion-minerva-portalito.md` del repo de contexto.
+
+Un `target` sin equivalente —`migrate`, por ejemplo— sale `n/a` y no rompe la cadena.
+
+### Agregado: `STACKS` se declara por nodo en el `.env`
+
+En produccion cada VM corre solo lo suyo: minerva tendra dominio propio y el portalito vive en su
+nodo. `STACKS` ya filtraba los pasos, pero **solo por linea de comandos**, lo que obligaba a
+recordar `STACKS=sitio2026,gateway` en cada despliegue y contradecia la convencion de `make deploy`
+sin banderas. Ahora se lee del `.env` del nodo:
+
+| Nodo | `STACKS` |
+|---|---|
+| monolito local | vacio: despliega todo |
+| nodo del portalito | `sitio2026` |
+| nodo del SSO | `minerva` |
+
+La linea de comandos sigue ganando (`STACKS=mapalab make ecosystem-deploy`). El salto automatico de
+los pasos cuyo repo no esta clonado se queda como red de seguridad, no como el mecanismo principal:
+un clon hecho para mirar no deberia desplegarse solo.
+
 
 ### Agregado: cuatro repos mas en `make ecosystem-status`
 
