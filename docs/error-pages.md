@@ -53,3 +53,8 @@ Todas las paginas comparten el mismo estilo visual basado en MapaLab:
 - La pagina 500 incluye una animacion sutil de puntos pulsando que indica actividad del sistema.
 - Son HTML autocontenido: se pueden previsualizar abriendo los archivos directamente en el navegador.
 - El boton "Reintentar" (`window.location.reload()`) solo aparece en la pagina 500.
+- **Las rutas de API no reciben estas paginas, y es a proposito.** `proxy_intercept_errors` solo se
+  activa en los bloques que sirven una SPA, donde un 404 tiene que verse como pagina. En una API
+  reemplazar el cuerpo destruye el JSON del error y deja al cliente sin el detalle del fallo. Si se
+  agrega un bloque nuevo para un backend, la pregunta es quien consume la respuesta: un navegador
+  pide pagina, un `fetch` pide JSON.

@@ -357,6 +357,24 @@ server {
         proxy_cache off;
     }
 
+    # La API va aparte del catch-all de abajo por una razon concreta: aquel lleva
+    # proxy_intercept_errors on, pensado para que los 404 del SPA caigan en la
+    # pagina de error del gateway. Aplicado a /mapalab/api/ convierte el JSON de
+    # error de FastAPI en HTML, y cualquier cliente que haga res.json() sobre la
+    # respuesta de error recibe una pagina. Aqui se deja pasar el cuerpo original.
+    # Tampoco se vacia Accept-Encoding: el backend comprime y el gateway solo
+    # reenvia, en vez de recibir 221 KB en crudo para volver a comprimirlos.
+    location ^~ /mapalab/api/ {
+        limit_req zone=api burst=60 nodelay;
+        include /etc/nginx/includes/bot-protection.inc;
+        rewrite ^/mapalab/(.*) /$1 break;
+        proxy_pass http://mapalab_backend;
+        include /etc/nginx/includes/proxy-params.inc;
+        proxy_read_timeout 30s;
+        proxy_send_timeout 30s;
+        add_header X-Robots-Tag $seo_robots;
+    }
+
     location ^~ /mapalab/ {
         limit_req zone=general burst=150 nodelay;
         include /etc/nginx/includes/bot-protection.inc;

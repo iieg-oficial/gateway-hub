@@ -8,6 +8,37 @@ versionado del repo `gateway-hub` es independiente del de Nginx; aqui registramo
 cambios sobre las rutas, certificados, headers de seguridad, rate limits y la
 configuracion de promtail. Bumps por caracteristica registrada en commit.
 
+## [1.48.1] - 2026-08-21
+
+### Corregido: la API de mapalab recibia la pagina de error del gateway en vez de su JSON
+
+`/mapalab/api/` caia en el catch-all `location ^~ /mapalab/`, que lleva `proxy_intercept_errors on`
+para que los 404 de rutas inexistentes del SPA muestren la pagina de error del gateway. Aplicado a la
+API, ese ajuste **reemplaza el cuerpo de la respuesta**: un `{"detail":"Not Found"}` de FastAPI
+llegaba al cliente como 3 KB de HTML con `content-type: text/html`. Cualquier consumidor que haga
+`res.json()` sobre un error recibia una pagina, y el detalle real del fallo se perdia en el camino.
+
+La API estrena bloque propio, antes del catch-all. Como `^~` resuelve por prefijo mas largo, las
+rutas que ya tenian bloque —`/mapalab/api/download/`, `/mapalab/api/ontoy`, refresh e invalidate
+cache— siguen ganando y no cambian.
+
+Tres diferencias contra el catch-all, y solo tres:
+
+| | Catch-all | Bloque de la API |
+|---|---|---|
+| `proxy_intercept_errors` | `on` | no se activa: el cuerpo del error pasa intacto |
+| `Accept-Encoding` al upstream | se vacia | se respeta: el backend comprime y el gateway reenvia |
+| Zona de rate limit | `general`, burst 150 | `api`, burst 60 — mismo rate, contabilidad aparte |
+
+Vaciar `Accept-Encoding` no le costaba nada al cliente —el gateway recomprime de salida— pero
+obligaba a mover el arbol de capas en crudo por el salto interno: **221 KB en vez de 16 KB**, y a
+gastar CPU del gateway comprimiendo lo que el backend ya sabe comprimir.
+
+Verificado con la config parcheada corriendo contra los servicios reales: `GET
+/mapalab/api/layers/no-existe` devuelve `application/json` con `{"detail":"Not Found"}` en vez de
+`text/html`; el arbol de capas sigue en 200 y 16 KB gzip; la descarga sigue saliendo por su bloque
+con `text/csv`; y el 404 del SPA sigue devolviendo el index. `nginx -t` limpio.
+
 ## [1.48.0] - 2026-08-21
 
 ### Agregado: minerva entra al orquestador y cada nodo declara sus stacks
