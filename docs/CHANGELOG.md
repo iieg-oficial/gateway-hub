@@ -8,6 +8,26 @@ versionado del repo `gateway-hub` es independiente del de Nginx; aqui registramo
 cambios sobre las rutas, certificados, headers de seguridad, rate limits y la
 configuracion de promtail. Bumps por caracteristica registrada en commit.
 
+## [1.49.0] - 2026-08-24
+
+### Corregido: los CQL grandes del visor daban 400 antes de llegar a GeoServer
+
+`large_client_header_buffers` estaba en el default de nginx —**4 buffers de 8 KB**— y el visor
+manda peticiones que lo superan. Se sube a **8 de 64 KB**.
+
+El caso que lo destapo: la capa «Establecimientos de salud» agrupa 33 subcapas sobre
+`salud.unidades_salud`, cada una con su filtro de institucion y nivel de atencion. Con la vista por
+municipio activa, el `GetMap` llevaba un `CQL_FILTER` de 7 314 caracteres y una URI de **10 867
+bytes**. Nginx la rechazaba con `400` sin proxiarla, asi que en el visor la capa aparecia vacia y en
+consola solo se veia `Failed to load resource: 400`, sin pista del motivo.
+
+Se detecto leyendo `request_uri` en los logs JSON del propio gateway, que si guardan la peticion
+completa.
+
+Es el mismo tope que ya habia mordido antes por otro camino: el filtro por WKT de municipios, que
+metia entre 3 y 8 KB de poligono en cada URL y se retiro en mapalab 1.50.0. **El CQL crece con el
+catalogo**, asi que el default de 8 KB no da para este visor.
+
 ## [1.48.1] - 2026-08-21
 
 ### Corregido: la API de mapalab recibia la pagina de error del gateway en vez de su JSON
