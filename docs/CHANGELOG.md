@@ -10,6 +10,70 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ## [No publicado]
 
+### Corregido: un cliente saturando acervo dejaba sin cargar los bundles de las apps
+
+Diez `location` compartian la zona `static` (50 r/s), entre ellas `/acervo/` y los bundles de las
+cuatro aplicaciones. El 2026-08-26 una herramienta local recorriendo `/acervo/portal/mapas/...`
+generó **8095 peticiones bloqueadas en quince minutos** y dejó la cubeta clavada en el burst; los
+chunks de `/mapalab/assets/` empezaron a responder 429 y el visor no montaba. Desde el navegador se
+ve igual que si mapalab estuviera caído, que fue justo la confusión.
+
+Los bundles pasan a una zona **`app_assets`** propia (`/assets/`, `/base/`, `/webassets/`,
+`/mapalab/assets/`, `/mariachi/assets/`, `/sieej/assets/`) y `/acervo/` a **`acervo_files`**.
+
+### Agregado: cache de los bundles de portalito, CKAN y mariachi
+
+**Solo `/mapalab/assets/` se cacheaba.** El bundle del portal público —que vive en `/`, la ruta de
+mas trafico del dominio— se proxeaba a S5 **en cada visita**, y lo mismo `/base/` y `/webassets/` de
+CKAN y `/mariachi/assets/`. Son archivos inmutables con hash en el nombre: el caso de libro para una
+cache.
+
+Zona nueva `app_assets_cache` (1 GB, `inactive=7d`) aplicada a las cuatro. TTL de **7 dias** salvo
+`/base/`, que va a **1 hora** porque los estaticos del tema de CKAN no garantizan hash en el nombre
+y un TTL largo serviria version vieja tras una actualizacion.
+
+### Agregado: `proxy_cache_lock` y cacheo breve de los 404
+
+`proxy_cache_lock on` en las cinco locations con cache: colapsa las peticiones concurrentes de un
+MISS en **una sola** al origen. Sin el, purgar la cache provoca una estampida — que es exactamente
+lo que paso el 2026-08-26 al purgar `mapalab_assets` con gente usando el visor.
+
+`proxy_cache_valid 404 1m`: antes solo se cacheaba el `200`, asi que **pedir rutas inexistentes
+atravesaba la cache entera** y llegaba al backend en cada peticion. Un minuto basta para amortiguar
+un escaneo sin estorbar a un despliegue.
+
+### Cambiado: los limites de estaticos moldean en vez de rechazar, y se dimensionan como globales
+
+**Todo el trafico llega al gateway como una sola IP.** Medido el 2026-08-26 sobre 30 minutos:
+51 644 peticiones desde `10.13.128.50` y ninguna direccion externa. El equipo de borde no manda
+`X-Forwarded-For` y **administracion declino añadirlo**, asi que es permanente. Detalle en
+`context-ame-esta`, `repos/gateway-hub/pendientes/ip-de-cliente-tras-el-borde.md`.
+
+Con una sola IP, `limit_req_zone $binary_remote_addr` **no limita por usuario: limita el sitio
+entero**. Un limite por IP sin identidad de cliente no es una defensa, es un fusible compartido: el
+primero que lo funde deja sin servicio a todos.
+
+Dos cambios en consecuencia:
+
+- **Se quita `nodelay` de las seis locations de assets.** El exceso pasa a encolarse hasta el burst
+  en vez de responder 429 al instante. Para un bundle, algo de latencia es preferible a una
+  aplicacion que no arranca. Los limites de rutas dinamicas conservan `nodelay`: ahi un 429 degrada
+  una funcion, no tumba la app.
+- **Tasas dimensionadas como techos de capacidad del sitio**, no como cuota por persona:
+
+| Zona | Antes | Ahora | Burst |
+|---|---|---|---|
+| `app_assets` | 50 r/s (en `static`) | 500 r/s | 1000 |
+| `acervo_files` | 50 r/s (en `static`) | 200 r/s | 400 |
+| `static` | 50 r/s | 200 r/s | 400 |
+
+Con la cache delante, el limite de los assets queda como red de seguridad contra bucles, no como
+mecanismo de proteccion: lo que protege al origen es la cache y el `proxy_cache_lock`.
+
+**Pendiente de la misma revision:** `general` y `api` siguen en 10 r/s y, mientras todo comparta IP,
+son tambien limites globales. No se tocaron en este cambio por prudencia, siendo el gateway la
+entrada unica del ecosistema.
+
 ### Corregido: el cache de nginx no sobrevivia a los despliegues
 
 `/var/cache/nginx` vivia en la capa escribible del contenedor —no habia volumen—, asi que cada
