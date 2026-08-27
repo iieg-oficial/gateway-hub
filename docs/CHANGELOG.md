@@ -8,6 +8,23 @@ versionado del repo `gateway-hub` es independiente del de Nginx; aqui registramo
 cambios sobre las rutas, certificados, headers de seguridad, rate limits y la
 configuracion de promtail. Bumps por caracteristica registrada en commit.
 
+## [1.50.0] - 2026-08-27
+
+### Agregado: el `/ontoy` declara a que nodo pertenece
+
+huachicol 2.9.0 amplio el contrato para que el monitor agrupe por servidor y no solo por servicio.
+`ONTOY_NODE` dice donde corre este repo —**S1**— y `ONTOY_NODE_REPORTER` decide quien habla del
+host. Comparte el nodo S1 con otros repos, asi que va en `false`: solo huachicol habla del host y se acaban las lecturas repetidas de la misma maquina.
+
+`ONTOY_PEER_CHECKS` queda disponible para las aristas entre nodos; vacia por omision.
+
+**Las dos primeras son obligatorias**: el compose falla si faltan, asi que hay que agregarlas al
+`.env` de cada entorno antes de desplegar.
+
+De paso, `ontoy_server.py` se sincroniza con el de huachicol, que es la fuente y llevaba tiempo
+divergiendo entre copias. Los checks de maquina quedan marcados como informativos y ya no tumban el
+estado del servicio.
+
 ## [1.49.0] - 2026-08-24
 
 ### Corregido: los CQL grandes del visor daban 400 antes de llegar a GeoServer
