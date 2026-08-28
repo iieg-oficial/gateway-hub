@@ -8,6 +8,19 @@ versionado del repo `gateway-hub` es independiente del de Nginx; aqui registramo
 cambios sobre las rutas, certificados, headers de seguridad, rate limits y la
 configuracion de promtail. Bumps por caracteristica registrada en commit.
 
+## [1.51.0] - 2026-08-28
+
+### Agregado: vine entra a `make ecosystem-push`
+
+vine sale en `ecosystem-status` desde 1.48.0, pero no en el push: sus commits habia que subirlos a
+mano desde el repo. Ahora va en la lista, entre `sitio2026` y `context-ame-esta`.
+
+Sigue fuera de `ECOSYSTEM_STEPS` y de `ecosystem-pull`, y es lo correcto: ese orden es el de
+despliegue y vine no se despliega desde aqui —comparte VM con wacha—. Push y estatus solo leen y
+escriben git, que es lo unico que este repo necesita saber de vine.
+
+`wacha`, `intranet` y `mapalab-qgis` siguen fuera del push.
+
 ## [1.50.0] - 2026-08-27
 
 ### Agregado: el `/ontoy` declara a que nodo pertenece
