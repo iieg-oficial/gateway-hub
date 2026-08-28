@@ -68,6 +68,7 @@ services:
     volumes:
       - ./VERSION:/app/VERSION:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /etc/os-release:/host/etc/os-release:ro
     extra_hosts: *host-gateway
     healthcheck:
       <<: *healthcheck
