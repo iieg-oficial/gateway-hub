@@ -3,7 +3,7 @@ name: gateway-hub
 x-logging: &logging
   driver: json-file
   options:
-    max-size: "10m"
+    max-size: "30m"
     max-file: "3"
 
 x-healthcheck: &healthcheck
@@ -41,6 +41,7 @@ services:
       GTM_ID: ${GTM_ID?}
       CSP_EXTRA_ORIGINS: ${CSP_EXTRA_ORIGINS?}
       SEO_ENABLED: ${SEO_ENABLED:?}
+      CONN_LIMIT: ${CONN_LIMIT:?}
       REAL_IP_FROM: ${REAL_IP_FROM?}
     healthcheck:
       <<: *healthcheck

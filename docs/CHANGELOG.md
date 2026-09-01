@@ -8,6 +8,82 @@ versionado del repo `gateway-hub` es independiente del de Nginx; aqui registramo
 cambios sobre las rutas, certificados, headers de seguridad, rate limits y la
 configuracion de promtail. Bumps por caracteristica registrada en commit.
 
+## [1.47.1] - 2026-09-01
+
+### Agregado: `limit_conn` por cliente, parametrizado con `CONN_LIMIT`
+
+No habia **ningun** limite de conexiones simultaneas: `limit_req` acota peticiones por segundo, pero
+un cliente que abre miles de conexiones lentas y no las cierra pasa por debajo de ese radar y agota
+los `worker_connections`. `limit_conn per_client ${CONN_LIMIT}` a nivel de `server`, con
+`limit_conn_status 503`.
+
+Va parametrizado y no fijo: mientras el borde no mande `X-Forwarded-For` esto es un techo del sitio
+entero. **Dimensionarlo en 2000** —por debajo de `worker_connections 4096`, muy por encima de las
+~600 conexiones de los 105 usuarios simultaneos medidos— y **bajarlo a ~50 el dia que llegue la
+cabecera**.
+
+### Cambiado: los limites se reparten el trabajo con el borde
+
+Administracion habilito en el equipo de borde proteccion contra DDoS, limites de tasa y de
+conexiones, y filtrado de bots. Ellos **tienen la identidad del cliente** y nosotros no —todo el
+trafico seguira llegando como una sola IP—, asi que vigilar clientes es su trabajo. El nuestro es lo
+que ellos no pueden saber: que un `/mapalab/api/download/` retiene una conexion de PostgreSQL entre
+5 y 60 segundos mientras un bundle sale del cache en microsegundos.
+
+**Permisivo donde es barato, candado donde es escaso.** Las tasas dejan de ser cuotas y pasan a ser
+techos, calibrados contra los stress tests de abril —310 RPS, p95 366 ms, backend de mapalab topando
+en 80-120 req/s—:
+
+| Zona | 1.47.0 | 1.48.0 | Burst | Llave |
+|---|---|---|---|---|
+| `app_assets` | 500 r/s | 1000 r/s | 1000 | IP + user-agent |
+| `static` | 200 r/s | 500 r/s | 500 | IP + user-agent |
+| `general` | 10 r/s | 200 r/s | 300 | IP + user-agent |
+| `acervo_files` | 200 r/s | 300 r/s | 600 | IP |
+| `api` | 10 r/s | 100 r/s | 200 | IP |
+| `acervo_thumb` | 30 r/s | 60 r/s | 240 | IP |
+| `geoserver_files` | 30 r/s | 60 r/s | 400 | IP |
+
+`/mapalab/api/download/` se queda estrecho a proposito (burst 10): su limite real son las 10-15
+conexiones de BD simultaneas, no la tasa.
+
+### Cambiado: `nodelay` solo donde un 429 degrada en vez de romper
+
+Se retira de `general` y `static` —`app_assets` ya no lo tenia desde 1.47.0—: el exceso encola hasta
+el burst en lugar de rechazarse. Con identidad compartida, rechazar es castigo colectivo; encolar
+solo pone lento al conjunto, y el peor caso es `burst / rate`, un segundo para `app_assets`. Se
+conserva en `api`, `acervo_files`, `acervo_thumb` y `geoserver_files`, donde un 429 degrada una
+funcion pero encolar amarraria conexiones contra un backend escaso.
+
+### Cambiado: las zonas baratas se llavean por IP + user-agent
+
+`app_assets`, `static` y `general` pasan a `"$binary_remote_addr$http_user_agent"`. **No es una
+frontera de seguridad** y contra alguien con intencion no sirve; eso lo cubre el borde. Sirve contra
+el modo de fallo real: un cliente desbocado consume su propia cubeta en vez de la de todos. El bucle
+del 2026-08-31 tenia un user-agent y un referer concretos. nginx trunca la llave a 255 bytes y
+agrupa a los navegadores con UA identico; ambas cosas son aceptables aqui. Las zonas de recursos
+escasos conservan la llave por IP.
+
+### Eliminado: el bloqueo de clientes programaticos y de crawlers de IA
+
+El borde ya filtra bots, y mantener dos listas hace que un falso positivo sea el doble de dificil de
+diagnosticar. Se liberan `curl`, `wget`, `python-requests`, `aiohttp`, `axios`, `node-fetch`, los
+scrapers y las herramientas de testing: para un instituto de informacion estadistica, impedir el
+consumo programatico de su API es contraproducente, y `/datos-abiertos` y `/mapalab/mcp` ya se
+excluian a mano por esa razon.
+
+Los crawlers de IA (`GPTBot`, `ClaudeBot`, `ChatGPT`, `CCBot`, `Google-Extended`, `Bytespider`) se
+abren por **decision institucional**. Los bots SEO agresivos siguen bloqueados: ahi el motivo no es
+politica de contenido sino ancho de banda. Se conservan tambien el user-agent vacio, los patrones de
+escaneo y la lista propia de sextante.
+
+### Cambiado: los logs guardan 90 MB por contenedor en vez de 30
+
+`max-size` de `10m` a `30m`. El 2026-08-31, durante la inundacion de `/acervo/portal/mapas/`, un
+`docker logs --since 24h` solo alcanzaba a cubrir **una hora**: el anillo de 30 MB se reescribia
+entero a ese volumen.
+
+
 ## [No publicado]
 
 ### Corregido: un cliente saturando acervo dejaba sin cargar los bundles de las apps
