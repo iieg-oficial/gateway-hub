@@ -77,7 +77,9 @@ http {
     limit_req_zone $binary_remote_addr zone=static:10m rate=50r/s;
     limit_req_zone $binary_remote_addr zone=acervo_thumb:10m rate=30r/s;
     limit_req_zone $binary_remote_addr zone=geoserver_files:10m rate=30r/s;
+    limit_conn_zone $binary_remote_addr zone=per_client:10m;
     limit_req_status 429;
+    limit_conn_status 503;
 
     map $http_upgrade $connection_upgrade {
         default upgrade;

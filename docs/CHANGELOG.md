@@ -8,6 +8,32 @@ versionado del repo `gateway-hub` es independiente del de Nginx; aqui registramo
 cambios sobre las rutas, certificados, headers de seguridad, rate limits y la
 configuracion de promtail. Bumps por caracteristica registrada en commit.
 
+## [1.52.0] - 2026-09-01
+
+### Agregado: `limit_conn` por cliente, parametrizado con `CONN_LIMIT`
+
+Hasta ahora no habia **ningun** limite de conexiones simultaneas: `limit_req` acota peticiones por
+segundo, pero un cliente que abre miles de conexiones lentas y no las cierra pasa por debajo de ese
+radar y agota los `worker_connections`. Vector completamente abierto.
+
+`limit_conn per_client ${CONN_LIMIT}` a nivel de `server`, con `limit_conn_status 503`, cubre las
+cincuenta y tantas locations de una vez.
+
+**Va parametrizado y no fijo a proposito.** Mientras el borde no mande `X-Forwarded-For`, todo el
+trafico llega como una sola IP y esto es un techo del sitio entero, no una cuota por persona:
+dimensionarlo en **2000** —por debajo de `worker_connections 4096`, muy por encima de las ~600
+conexiones que implican los 105 usuarios simultaneos medidos en los stress tests— para que solo
+muerda ante agotamiento real. **Cuando llegue la cabecera, bajarlo a ~50**, que es cuando de verdad
+sirve. Contexto en `context-ame-esta`, `repos/gateway-hub/pendientes/ip-de-cliente-tras-el-borde.md`.
+
+### Cambiado: los logs guardan 90 MB por contenedor en vez de 30
+
+`max-size` de `10m` a `30m`, con `max-file: 3` sin tocar. El 2026-08-31, durante la inundacion de
+`/acervo/portal/mapas/`, un `docker logs --since 24h` solo alcanzaba a cubrir **una hora**: el anillo
+de 30 MB se reescribia entero a ese volumen. Se estuvo a punto de perder el rastro forense del
+incidente, que es justo cuando el log importa.
+
+
 ## [1.51.0] - 2026-08-28
 
 ### Agregado: vine entra a `make ecosystem-push`
