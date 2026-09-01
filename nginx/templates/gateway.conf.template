@@ -133,7 +133,7 @@ server {
     }
 
     location = / {
-        limit_req zone=general burst=150 nodelay;
+        limit_req zone=general burst=300;
         proxy_pass http://sitio_backend;
         include /etc/nginx/includes/sitio-hide-headers.inc;
         include /etc/nginx/includes/proxy-params.inc;
@@ -141,7 +141,7 @@ server {
     }
 
     location / {
-        limit_req zone=general burst=150 nodelay;
+        limit_req zone=general burst=300;
         include /etc/nginx/includes/bot-protection.inc;
         proxy_pass http://sitio_backend;
         include /etc/nginx/includes/sitio-hide-headers.inc;
@@ -151,7 +151,7 @@ server {
     }
 
     location ^~ /assets/ {
-        limit_req zone=static burst=200 nodelay;
+        limit_req zone=app_assets burst=1000;
         add_header Cache-Control "public, max-age=31536000, immutable";
         proxy_pass http://sitio_backend;
         include /etc/nginx/includes/sitio-hide-headers.inc;
@@ -159,7 +159,7 @@ server {
     }
 
     location ^~ /portal-admin {
-        limit_req zone=general burst=150 nodelay;
+        limit_req zone=general burst=300;
         include /etc/nginx/includes/bot-protection.inc;
         proxy_pass http://sitio_backend;
         include /etc/nginx/includes/sitio-hide-headers.inc;
@@ -167,7 +167,7 @@ server {
     }
 
     location ^~ /api/sitio-admin {
-        limit_req zone=api burst=20 nodelay;
+        limit_req zone=api burst=200 nodelay;
         include /etc/nginx/includes/bot-protection.inc;
         client_max_body_size 1G;
         proxy_request_buffering off;
@@ -180,7 +180,7 @@ server {
     }
 
     location ^~ /api/sitio {
-        limit_req zone=api burst=20 nodelay;
+        limit_req zone=api burst=200 nodelay;
         include /etc/nginx/includes/bot-protection.inc;
         proxy_pass http://sitio_backend;
         include /etc/nginx/includes/sitio-hide-headers.inc;
@@ -189,7 +189,7 @@ server {
     }
 
     location ^~ /datos-abiertos {
-        limit_req zone=general burst=150 nodelay;
+        limit_req zone=general burst=300;
         client_max_body_size 1G;
         proxy_request_buffering off;
         proxy_pass http://sitio_backend;
@@ -200,21 +200,21 @@ server {
     }
 
     location ^~ /base/ {
-        limit_req zone=static burst=200 nodelay;
+        limit_req zone=app_assets burst=1000;
         proxy_pass http://sitio_backend;
         include /etc/nginx/includes/sitio-hide-headers.inc;
         include /etc/nginx/includes/proxy-params.inc;
     }
 
     location ^~ /webassets/ {
-        limit_req zone=static burst=200 nodelay;
+        limit_req zone=app_assets burst=1000;
         proxy_pass http://sitio_backend;
         include /etc/nginx/includes/sitio-hide-headers.inc;
         include /etc/nginx/includes/proxy-params.inc;
     }
 
     location ^~ /api/administrador/acervo/thumb {
-        limit_req zone=acervo_thumb burst=120 nodelay;
+        limit_req zone=acervo_thumb burst=240 nodelay;
         proxy_pass http://portal_backend;
         include /etc/nginx/includes/proxy-params.inc;
         proxy_read_timeout 600s;
@@ -222,7 +222,7 @@ server {
     }
 
     location ^~ /api/administrador/acervo {
-        limit_req zone=api burst=20 nodelay;
+        limit_req zone=api burst=200 nodelay;
         client_max_body_size 1G;
         proxy_request_buffering off;
         proxy_pass http://portal_backend;
@@ -233,7 +233,7 @@ server {
     }
 
     location ^~ /api/mariachi/acervo/thumb {
-        limit_req zone=acervo_thumb burst=120 nodelay;
+        limit_req zone=acervo_thumb burst=240 nodelay;
         proxy_pass http://portal_backend;
         include /etc/nginx/includes/proxy-params.inc;
         proxy_read_timeout 600s;
@@ -241,7 +241,7 @@ server {
     }
 
     location ^~ /api/mariachi/acervo {
-        limit_req zone=api burst=20 nodelay;
+        limit_req zone=api burst=200 nodelay;
         client_max_body_size 1G;
         proxy_request_buffering off;
         proxy_pass http://portal_backend;
@@ -252,7 +252,7 @@ server {
     }
 
     location ^~ /api/internal/acervo/ {
-        limit_req zone=api burst=20 nodelay;
+        limit_req zone=api burst=200 nodelay;
         client_max_body_size 1G;
         proxy_request_buffering off;
         proxy_pass http://portal_backend;
@@ -263,7 +263,7 @@ server {
     }
 
     location ^~ /api/mariachi/geoserver/files {
-        limit_req zone=geoserver_files burst=200 nodelay;
+        limit_req zone=geoserver_files burst=400 nodelay;
         client_max_body_size 0;
         proxy_request_buffering off;
         proxy_pass http://portal_backend;
@@ -273,7 +273,7 @@ server {
     }
 
     location ^~ /api/administrador/geoserver/files {
-        limit_req zone=geoserver_files burst=200 nodelay;
+        limit_req zone=geoserver_files burst=400 nodelay;
         client_max_body_size 0;
         proxy_request_buffering off;
         proxy_pass http://portal_backend;
@@ -283,7 +283,7 @@ server {
     }
 
     location /api/ {
-        limit_req zone=api burst=20 nodelay;
+        limit_req zone=api burst=200 nodelay;
         include /etc/nginx/includes/bot-protection.inc;
         proxy_pass http://portal_backend;
         include /etc/nginx/includes/proxy-params.inc;
@@ -307,7 +307,7 @@ server {
     }
 
     location ^~ /mapalab/assets/ {
-        limit_req zone=static burst=200 nodelay;
+        limit_req zone=app_assets burst=1000;
         proxy_cache mapalab_assets;
         proxy_cache_valid 200 7d;
         proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
@@ -319,7 +319,7 @@ server {
     }
 
     location ^~ /mapalab/api/download/ {
-        limit_req zone=api burst=5 nodelay;
+        limit_req zone=api burst=10 nodelay;
         include /etc/nginx/includes/bot-protection.inc;
         rewrite ^/mapalab/(.*) /$1 break;
         proxy_pass http://mapalab_backend;
@@ -330,7 +330,7 @@ server {
     }
 
     location ^~ /mapalab/mcp {
-        limit_req zone=general burst=20 nodelay;
+        limit_req zone=general burst=300;
         rewrite ^/mapalab/(.*) /$1 break;
         proxy_pass http://mapalab_backend;
         include /etc/nginx/includes/proxy-params.inc;
@@ -341,7 +341,7 @@ server {
     }
 
     location ^~ /mapalab/api/ {
-        limit_req zone=api burst=60 nodelay;
+        limit_req zone=api burst=300 nodelay;
         include /etc/nginx/includes/bot-protection.inc;
         rewrite ^/mapalab/(.*) /$1 break;
         proxy_pass http://mapalab_backend;
@@ -352,7 +352,7 @@ server {
     }
 
     location ^~ /mapalab/ {
-        limit_req zone=general burst=150 nodelay;
+        limit_req zone=general burst=300;
         include /etc/nginx/includes/bot-protection.inc;
         rewrite ^/mapalab/(.*) /$1 break;
         proxy_pass http://mapalab_backend;
@@ -365,7 +365,7 @@ server {
     }
 
     location = /aviso-de-privacidad.pdf {
-        limit_req zone=static burst=200 nodelay;
+        limit_req zone=static burst=500;
         set $acervo_upstream "${ACERVO_HOST}";
         rewrite ^ /iieg/avisos-de-privacidad.pdf break;
         proxy_pass http://$acervo_upstream;
@@ -377,7 +377,7 @@ server {
     }
 
     location ^~ /acervo/thumb/ {
-        limit_req zone=acervo_thumb burst=120 nodelay;
+        limit_req zone=acervo_thumb burst=240 nodelay;
         proxy_pass http://portal_backend;
         include /etc/nginx/includes/proxy-params.inc;
         proxy_read_timeout 120s;
@@ -385,7 +385,7 @@ server {
     }
 
     location ^~ /acervo/ {
-        limit_req zone=static burst=200 nodelay;
+        limit_req zone=acervo_files burst=600 nodelay;
         client_max_body_size 1G;
         proxy_buffering off;
         proxy_request_buffering off;
@@ -402,7 +402,7 @@ server {
     }
 
     location ^~ /mariachi/assets/ {
-        limit_req zone=static burst=200 nodelay;
+        limit_req zone=app_assets burst=1000;
         set $mariachi_upstream "${MARIACHI_HOST}";
         proxy_pass http://$mariachi_upstream;
         include /etc/nginx/includes/proxy-params.inc;
@@ -411,7 +411,7 @@ server {
     }
 
     location ^~ /mariachi/ {
-        limit_req zone=general burst=20 nodelay;
+        limit_req zone=general burst=300;
         set $mariachi_upstream "${MARIACHI_HOST}";
         proxy_pass http://$mariachi_upstream;
         include /etc/nginx/includes/proxy-params.inc;
@@ -419,7 +419,7 @@ server {
     }
 
     location ^~ /colibri/ {
-        limit_req zone=static burst=200 nodelay;
+        limit_req zone=static burst=500;
         proxy_pass http://portal_backend;
         include /etc/nginx/includes/proxy-params.inc;
     }
@@ -435,14 +435,14 @@ server {
     }
 
     location ^~ /sieej/assets/ {
-        limit_req zone=static burst=200 nodelay;
+        limit_req zone=app_assets burst=1000;
         alias /usr/share/nginx/html/sieej/assets/;
         try_files $uri =404;
         add_header Cache-Control "public, max-age=31536000, immutable" always;
     }
 
     location ^~ /sieej/ {
-        limit_req zone=static burst=200 nodelay;
+        limit_req zone=static burst=500;
         alias /usr/share/nginx/html/sieej/;
         try_files $uri $uri/ /sieej/index.html;
         add_header Cache-Control "no-store" always;

@@ -72,11 +72,13 @@ http {
         inactive=30d
         use_temp_path=off;
 
-    limit_req_zone $binary_remote_addr zone=general:10m rate=10r/s;
-    limit_req_zone $binary_remote_addr zone=api:10m rate=10r/s;
-    limit_req_zone $binary_remote_addr zone=static:10m rate=50r/s;
-    limit_req_zone $binary_remote_addr zone=acervo_thumb:10m rate=30r/s;
-    limit_req_zone $binary_remote_addr zone=geoserver_files:10m rate=30r/s;
+    limit_req_zone "$binary_remote_addr$http_user_agent" zone=app_assets:10m rate=1000r/s;
+    limit_req_zone "$binary_remote_addr$http_user_agent" zone=static:10m rate=500r/s;
+    limit_req_zone "$binary_remote_addr$http_user_agent" zone=general:10m rate=200r/s;
+    limit_req_zone $binary_remote_addr zone=acervo_files:10m rate=300r/s;
+    limit_req_zone $binary_remote_addr zone=api:10m rate=100r/s;
+    limit_req_zone $binary_remote_addr zone=acervo_thumb:10m rate=60r/s;
+    limit_req_zone $binary_remote_addr zone=geoserver_files:10m rate=60r/s;
     limit_conn_zone $binary_remote_addr zone=per_client:10m;
     limit_req_status 429;
     limit_conn_status 503;
@@ -94,9 +96,8 @@ http {
     map $http_user_agent $ua_sospechoso {
         default 0;
         ''      1;
-        ~*(scrapy|httpclient|spider|java|perl|ruby|php|go-http|node-fetch|axios|postman|insomnia|httpie|headless|phantom|selenium|puppeteer|playwright|mechanize|libwww|lwp|urllib|winhttp|httrack|clshttp|archiver|loader|email|harvest|extract|grab|miner|nikto|scan|attack|inject|exploit) 1;
-        ~*(ChatGPT|GPTBot|Google-Extended|anthropic|ClaudeBot|CCBot|Bytespider|PetalBot|SemrushBot|AhrefsBot|MJ12bot|DotBot|Barkrowler|DataForSeoBot|BLEXBot|YandexBot) 1;
-        ~*(^curl|^wget|python-requests|python-urllib|aiohttp) 1;
+        ~*(nikto|scan|attack|inject|exploit) 1;
+        ~*(PetalBot|SemrushBot|AhrefsBot|MJ12bot|DotBot|Barkrowler|DataForSeoBot|BLEXBot|YandexBot) 1;
     }
 
     map $ua_en_allowlist$ua_sospechoso $ua_bloqueado {

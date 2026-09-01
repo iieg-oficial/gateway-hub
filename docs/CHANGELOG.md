@@ -8,6 +8,82 @@ versionado del repo `gateway-hub` es independiente del de Nginx; aqui registramo
 cambios sobre las rutas, certificados, headers de seguridad, rate limits y la
 configuracion de promtail. Bumps por caracteristica registrada en commit.
 
+## [1.53.0] - 2026-09-01
+
+### Cambiado: los limites se reparten el trabajo con el borde
+
+Administracion habilito en el equipo de borde proteccion contra DDoS, limites de tasa y de
+conexiones, y filtrado de bots. Ellos **tienen la identidad del cliente** y nosotros no —y no la
+vamos a tener: todo el trafico seguira llegando como `10.13.128.50`—, asi que vigilar clientes es su
+trabajo y no el nuestro. El nuestro es lo que ellos no pueden saber: que un `/mapalab/api/download/`
+retiene una conexion de PostgreSQL entre 5 y 60 segundos mientras que un bundle sale del cache en
+microsegundos.
+
+De ahi la regla nueva: **permisivo donde es barato, candado donde es escaso.**
+
+### Cambiado: las zonas se dimensionan contra capacidad medida
+
+Con una sola IP, `limit_req_zone $binary_remote_addr` no limita por persona: cuenta el sitio entero.
+Las tasas dejan de ser cuotas y pasan a ser techos, calibrados contra los stress tests de abril
+—310 RPS con p95 de 366 ms, backend de mapalab topando en 80-120 req/s por sus 8 workers— y no
+contra lo que deberia hacer un visitante.
+
+| Zona | Antes | Ahora | Burst | Llave |
+|---|---|---|---|---|
+| `app_assets` | 50 (en `static`) | 1000 r/s | 1000 | IP + user-agent |
+| `static` | 50 r/s | 500 r/s | 500 | IP + user-agent |
+| `general` | 10 r/s | 200 r/s | 300 | IP + user-agent |
+| `acervo_files` | 50 (en `static`) | 300 r/s | 600 | IP |
+| `api` | 10 r/s | 100 r/s | 200 | IP |
+| `acervo_thumb` | 30 r/s | 60 r/s | 240 | IP |
+| `geoserver_files` | 30 r/s | 60 r/s | 400 | IP |
+
+`app_assets` recoge las seis rutas de bundles (`/assets/`, `/base/`, `/webassets/`,
+`/mapalab/assets/`, `/mariachi/assets/`, `/sieej/assets/`) y `/acervo/` sale a `acervo_files`: eran
+diez `location` compartiendo un mismo fusible, y por eso el 2026-08-31 una inundacion del acervo
+dejo sin cargar el visor.
+
+### Cambiado: `nodelay` solo donde un 429 degrada en vez de romper
+
+Se retira de `app_assets`, `static` y `general`: el exceso encola hasta el burst en lugar de
+rechazarse. Con una identidad compartida, rechazar es castigo colectivo —el que funde el fusible
+deja fuera a todos—, mientras que encolar solo pone lento al conjunto. Se conserva en `api`,
+`acervo_files`, `acervo_thumb` y `geoserver_files`, donde un 429 degrada una funcion pero encolar
+amarraria conexiones contra un backend escaso.
+
+### Cambiado: las zonas baratas se llavean por IP + user-agent
+
+`app_assets`, `static` y `general` pasan a `"$binary_remote_addr$http_user_agent"`. **No es una
+frontera de seguridad** —cambiar el user-agent es trivial— y contra alguien con intencion no sirve
+de nada; eso lo cubre el borde. Sirve contra el modo de fallo real, que ya se dio dos veces: un
+cliente desbocado consume su propia cubeta en vez de la de todos. El bucle del 2026-08-31 tenia un
+user-agent y un referer concretos. nginx trunca la llave a 255 bytes y agrupa a los navegadores con
+UA identico; ambas cosas son aceptables para lo que se busca. Las zonas de recursos escasos
+conservan la llave por IP, porque ahi el techo global es justamente lo que se quiere.
+
+### Eliminado: el bloqueo de clientes programaticos en `bot-protection`
+
+El borde ya filtra bots. Mantener dos listas hace que un falso positivo sea el doble de dificil de
+diagnosticar, y la nuestra tenia un costo conocido: bloqueaba `curl`, `wget`, `python-requests`,
+`aiohttp`, `axios`, `node-fetch` y las herramientas de testing. `/datos-abiertos` y `/mapalab/mcp`
+ya se excluian a mano por esa razon. Para un instituto de informacion estadistica, impedir el
+consumo programatico de su API es contraproducente.
+
+Se conservan el user-agent vacio, los bots SEO agresivos, los patrones de escaneo (`nikto`, `scan`,
+`attack`, `inject`, `exploit`), la lista propia de sextante —mas estricta, protege el backend caro—
+y la allowlist de QGIS.
+
+### Eliminado: el bloqueo de crawlers de IA
+
+Decision institucional, no tecnica: se abre el contenido publico a `GPTBot`, `ClaudeBot`, `ChatGPT`,
+`CCBot`, `Google-Extended` y `Bytespider`. Los bots SEO agresivos —`SemrushBot`, `AhrefsBot`,
+`MJ12bot`, `DotBot`, `Barkrowler`, `DataForSeoBot`, `BLEXBot`, `PetalBot`, `YandexBot`— **siguen
+bloqueados**: ahi el motivo no es politica de contenido sino ancho de banda.
+
+Si mas adelante se quiere modular esto por ruta o por bot, el lugar correcto es `robots.txt`, no un
+403 del gateway: un bloqueo por user-agent no distingue al que respeta las reglas del que no.
+
+
 ## [1.52.0] - 2026-09-01
 
 ### Agregado: `limit_conn` por cliente, parametrizado con `CONN_LIMIT`
