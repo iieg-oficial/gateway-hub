@@ -132,8 +132,6 @@ server {
         add_header Cache-Control "no-cache, no-store, must-revalidate" always;
     }
 
-    # La raiz la sirve sitio2026 (Portalito). Sin bot-protection: es la ruta del
-    # healthcheck y la puerta de entrada de los crawlers legitimos.
     location = / {
         limit_req zone=general burst=150 nodelay;
         proxy_pass http://sitio_backend;
@@ -190,8 +188,6 @@ server {
         add_header Cache-Control "no-store" always;
     }
 
-    # CKAN. Sin bot-protection a proposito: su API es consumo programatico y el
-    # include rechaza curl, wget, python-requests y demas clientes sin navegador.
     location ^~ /datos-abiertos {
         limit_req zone=general burst=150 nodelay;
         client_max_body_size 1G;
@@ -218,10 +214,6 @@ server {
     }
 
     location ^~ /api/administrador/acervo/thumb {
-        # Miniaturas del Acervo: muchas peticiones GET por pagina pero cacheables.
-        # Zona/burst propios para no chocar con el limite general del API y, sobre
-        # todo, NO forzar no-store: se deja pasar el Cache-Control inmutable del
-        # thumbnail para que el navegador cachee y no repita la rafaga en cada render.
         limit_req zone=acervo_thumb burst=120 nodelay;
         proxy_pass http://portal_backend;
         include /etc/nginx/includes/proxy-params.inc;
@@ -259,9 +251,6 @@ server {
         proxy_send_timeout 600s;
     }
 
-    # Subida interna al Acervo desde plataformas externas (Portal). La autentica
-    # mariachi-api con X-Internal-Token; sin bot-protection porque el cliente es
-    # server-to-server, y con settings de upload. Debe ir antes del catch-all /api/.
     location ^~ /api/internal/acervo/ {
         limit_req zone=api burst=20 nodelay;
         client_max_body_size 1G;
@@ -301,8 +290,6 @@ server {
         add_header Cache-Control "no-store" always;
     }
 
-    # Admin-only: mariachi los invoca via iieg-network directo al backend,
-    # no deben ser alcanzables desde internet.
     location = /mapalab/api/layers/refresh-cache {
         return 403;
     }
@@ -311,12 +298,6 @@ server {
         return 403;
     }
 
-    # Las dos rutas del /ontoy de mapalab se cierran aqui, antes del rewrite:
-    # el de abajo convierte /mapalab/<x> en /<x>, asi que un deny puesto en el
-    # nginx de mapalab nunca ve el prefijo. /mapalab/api/ontoy es el handler del
-    # backend y /mapalab/ontoy el sidecar version-api, que desde mapalab 1.102.0
-    # publica los mismos checks fusionados. huachicol no se ve afectado: sondea
-    # el puerto del nginx de mapalab directo, sin pasar por el gateway.
     location = /mapalab/api/ontoy {
         return 403;
     }
@@ -359,13 +340,6 @@ server {
         proxy_cache off;
     }
 
-    # La API va aparte del catch-all de abajo por una razon concreta: aquel lleva
-    # proxy_intercept_errors on, pensado para que los 404 del SPA caigan en la
-    # pagina de error del gateway. Aplicado a /mapalab/api/ convierte el JSON de
-    # error de FastAPI en HTML, y cualquier cliente que haga res.json() sobre la
-    # respuesta de error recibe una pagina. Aqui se deja pasar el cuerpo original.
-    # Tampoco se vacia Accept-Encoding: el backend comprime y el gateway solo
-    # reenvia, en vez de recibir 221 KB en crudo para volver a comprimirlos.
     location ^~ /mapalab/api/ {
         limit_req zone=api burst=60 nodelay;
         include /etc/nginx/includes/bot-protection.inc;
@@ -390,17 +364,7 @@ server {
         add_header X-Robots-Tag $seo_robots;
     }
 
-    # /aviso-de-privacidad y /aviso-de-privacidad-simplificado los sirve sitio2026
-    # desde su CMS, no este archivo: los avisos se editan en el portal en vez de
-    # reemplazar un PDF en acervo. Como el match exacto gana siempre sobre el
-    # location / de sitio2026, las rutas tienen que no existir aqui para que el
-    # portal las reciba. Ver sitio2026#60.
-
     location = /aviso-de-privacidad.pdf {
-        # El integral en PDF conserva ruta propia: es la version imprimible que
-        # enlaza la pagina del CMS. La URL no lleva version ni ubicacion del
-        # objeto, asi que publicar uno nuevo es reemplazarlo en el bucket, sin
-        # tocar ningun repo ni desplegar.
         limit_req zone=static burst=200 nodelay;
         set $acervo_upstream "${ACERVO_HOST}";
         rewrite ^ /iieg/avisos-de-privacidad.pdf break;
@@ -413,10 +377,6 @@ server {
     }
 
     location ^~ /acervo/thumb/ {
-        # Miniaturas publicas on-the-fly del Acervo: las sirve mariachi-api (WebP
-        # escalado), no SeaweedFS. Prefijo mas largo que /acervo/ => gana el matcheo
-        # ^~ y NO se reescribe el path (mariachi-api espera /acervo/thumb/...).
-        # Solo responde para buckets publicos; privados devuelven 404.
         limit_req zone=acervo_thumb burst=120 nodelay;
         proxy_pass http://portal_backend;
         include /etc/nginx/includes/proxy-params.inc;

@@ -86,10 +86,6 @@ http {
         ''      close;
     }
 
-    # Allowlist explicita. El plugin de MapaLab habla por QgsNetworkAccessManager
-    # y su UA es "Mozilla/5.0 QGIS/<version>/<so>"; hasta ahora pasaba solo porque
-    # no coincidia con ninguna lista. Declararlo aqui evita que un patron nuevo
-    # lo tumbe sin que nadie relacione las dos cosas.
     map $http_user_agent $ua_en_allowlist {
         default 0;
         ~*QGIS/ 1;
@@ -108,9 +104,6 @@ http {
         '01'    1;
     }
 
-    # Sextante mantiene su propia lista, mas amplia que la general (bloquea
-    # "python" y "bot" genericos). Se conserva tal cual y solo se le antepone
-    # la misma allowlist.
     map $http_user_agent $ua_sospechoso_sextante {
         default 0;
         ''      1;
