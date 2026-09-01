@@ -122,5 +122,11 @@ http {
         inactive=7d
         use_temp_path=off;
 
+    proxy_cache_path /var/cache/nginx-data/app_assets
+        keys_zone=app_assets_cache:10m
+        max_size=1g
+        inactive=7d
+        use_temp_path=off;
+
     include /etc/nginx/conf.d/*.conf;
 }

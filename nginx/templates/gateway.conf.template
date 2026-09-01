@@ -152,6 +152,11 @@ server {
 
     location ^~ /assets/ {
         limit_req zone=app_assets burst=1000;
+        proxy_cache app_assets_cache;
+        proxy_cache_valid 200 7d;
+        proxy_cache_valid 404 1m;
+        proxy_cache_lock on;
+        add_header X-Cache-Status $upstream_cache_status;
         add_header Cache-Control "public, max-age=31536000, immutable";
         proxy_pass http://sitio_backend;
         include /etc/nginx/includes/sitio-hide-headers.inc;
@@ -201,6 +206,11 @@ server {
 
     location ^~ /base/ {
         limit_req zone=app_assets burst=1000;
+        proxy_cache app_assets_cache;
+        proxy_cache_valid 200 1h;
+        proxy_cache_valid 404 1m;
+        proxy_cache_lock on;
+        add_header X-Cache-Status $upstream_cache_status;
         proxy_pass http://sitio_backend;
         include /etc/nginx/includes/sitio-hide-headers.inc;
         include /etc/nginx/includes/proxy-params.inc;
@@ -208,6 +218,11 @@ server {
 
     location ^~ /webassets/ {
         limit_req zone=app_assets burst=1000;
+        proxy_cache app_assets_cache;
+        proxy_cache_valid 200 7d;
+        proxy_cache_valid 404 1m;
+        proxy_cache_lock on;
+        add_header X-Cache-Status $upstream_cache_status;
         proxy_pass http://sitio_backend;
         include /etc/nginx/includes/sitio-hide-headers.inc;
         include /etc/nginx/includes/proxy-params.inc;
@@ -310,6 +325,8 @@ server {
         limit_req zone=app_assets burst=1000;
         proxy_cache mapalab_assets;
         proxy_cache_valid 200 7d;
+        proxy_cache_valid 404 1m;
+        proxy_cache_lock on;
         proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
         add_header X-Cache-Status $upstream_cache_status;
         add_header Cache-Control "public, max-age=31536000, immutable";
@@ -403,6 +420,11 @@ server {
 
     location ^~ /mariachi/assets/ {
         limit_req zone=app_assets burst=1000;
+        proxy_cache app_assets_cache;
+        proxy_cache_valid 200 7d;
+        proxy_cache_valid 404 1m;
+        proxy_cache_lock on;
+        add_header X-Cache-Status $upstream_cache_status;
         set $mariachi_upstream "${MARIACHI_HOST}";
         proxy_pass http://$mariachi_upstream;
         include /etc/nginx/includes/proxy-params.inc;
