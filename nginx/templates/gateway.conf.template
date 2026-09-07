@@ -490,6 +490,7 @@ server {
         alias /usr/share/nginx/html/sieej/;
         try_files $uri $uri/ /sieej/index.html;
         add_header Cache-Control "no-store" always;
+        include /etc/nginx/includes/security-headers.inc;
     }
 
     include /etc/nginx/includes/sextante-locations.inc;
