@@ -161,6 +161,7 @@ server {
         proxy_pass http://sitio_backend;
         include /etc/nginx/includes/sitio-hide-headers.inc;
         include /etc/nginx/includes/proxy-params.inc;
+        include /etc/nginx/includes/security-headers.inc;
     }
 
     location ^~ /portal-admin {
@@ -182,6 +183,7 @@ server {
         add_header Cache-Control "no-store" always;
         proxy_read_timeout 300s;
         proxy_send_timeout 300s;
+        include /etc/nginx/includes/security-headers.inc;
     }
 
     location ^~ /api/sitio {
@@ -191,6 +193,7 @@ server {
         include /etc/nginx/includes/sitio-hide-headers.inc;
         include /etc/nginx/includes/proxy-params.inc;
         add_header Cache-Control "no-store" always;
+        include /etc/nginx/includes/security-headers.inc;
     }
 
     location ^~ /datos-abiertos {
@@ -214,6 +217,7 @@ server {
         proxy_pass http://sitio_backend;
         include /etc/nginx/includes/sitio-hide-headers.inc;
         include /etc/nginx/includes/proxy-params.inc;
+        include /etc/nginx/includes/security-headers.inc;
     }
 
     location ^~ /webassets/ {
@@ -226,6 +230,7 @@ server {
         proxy_pass http://sitio_backend;
         include /etc/nginx/includes/sitio-hide-headers.inc;
         include /etc/nginx/includes/proxy-params.inc;
+        include /etc/nginx/includes/security-headers.inc;
     }
 
     location ^~ /api/administrador/acervo/thumb {
@@ -392,6 +397,7 @@ server {
         proxy_hide_header Content-Disposition;
         add_header Cache-Control "public, max-age=300, must-revalidate" always;
         add_header Content-Disposition 'inline; filename="Aviso_de_Privacidad_Integral_IIEG.pdf"' always;
+        include /etc/nginx/includes/security-headers.inc;
     }
 
     location ^~ /acervo/thumb/ {
