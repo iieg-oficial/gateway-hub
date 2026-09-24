@@ -8,6 +8,29 @@ versionado del repo `gateway-hub` es independiente del de Nginx; aqui registramo
 cambios sobre las rutas, certificados, headers de seguridad, rate limits y la
 configuracion de promtail. Bumps por caracteristica registrada en commit.
 
+## [1.54.0] - 2026-09-24
+
+### Cambiado: el WFS de sextante entra a la regla de 1.53.0
+
+`sextante_download` se quedo fuera de la revision de 1.53.0: sus reglas viven en
+`conf.d/sextante-upstream.conf.template` y `includes/sextante-locations.inc`, no en las dos plantillas
+que se tocaron. Seguia en **10 r/s, burst 10, `nodelay` y llave solo por IP**, es decir, 10 peticiones
+por segundo para todo el sitio con rechazo inmediato.
+
+Un solo poligono en el visor sobre una categoria con muchas capas lo agotaba: el resumen cuenta cada
+capa con `resultType=hits` y el visor recibía 429 en cadena (visto en el espejo, mapalab rojo 1.210).
+
+| Zona | Antes | Ahora | Burst | Exceso | Llave |
+|---|---|---|---|---|---|
+| `sextante_download` | 10 r/s | 100 r/s | 300 | se encola | IP + user-agent |
+
+Pasa a ser un techo de capacidad, como el resto: el uso normal no lo toca y un navegador desbocado se
+frena solo sin castigar a los demas. La cubeta del plugin de QGIS (`mapalab_plugin`) no cambia.
+
+La concurrencia real de GeoServer la sigue cuidando su control-flow (`ows.global`, `ows.wms.getmap`,
+`ip`, `user`), que tambien ve una sola IP y encola en vez de rechazar. Si tras el despliegue el
+sintoma pasa de 429 a esperas largas, el siguiente cuello es ese.
+
 ## [1.53.0] - 2026-09-01
 
 ### Cambiado: los limites se reparten el trabajo con el borde

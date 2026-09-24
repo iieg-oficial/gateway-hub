@@ -16,7 +16,7 @@ map $arg_request $sextante_no_cache {
 # solo en su zona; el visor y el resto caen solo en sextante_download. Una clave
 # vacia desactiva la zona para esa peticion, asi ninguno le come cuota al otro.
 map $http_x_mapalab_client $clave_sextante_visor {
-    default $binary_remote_addr;
+    default "$binary_remote_addr$http_user_agent";
     ~.      '';
 }
 
@@ -25,5 +25,5 @@ map $http_x_mapalab_client $clave_sextante_plugin {
     ~.      $binary_remote_addr;
 }
 
-limit_req_zone $clave_sextante_visor  zone=sextante_download:10m rate=10r/s;
+limit_req_zone $clave_sextante_visor  zone=sextante_download:10m rate=100r/s;
 limit_req_zone $clave_sextante_plugin zone=mapalab_plugin:10m rate=10r/s;

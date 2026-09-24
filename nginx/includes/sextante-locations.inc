@@ -141,7 +141,7 @@ location ^~ /sextante/ {
             return 403;
         }
 
-        limit_req zone=sextante_download burst=10 nodelay;
+        limit_req zone=sextante_download burst=300;
         limit_req zone=mapalab_plugin burst=10 nodelay;
         proxy_pass http://sextante;
         include /etc/nginx/includes/proxy-params.inc;
@@ -180,7 +180,7 @@ location ^~ /sextante/ {
             return 403;
         }
 
-        limit_req zone=sextante_download burst=10 nodelay;
+        limit_req zone=sextante_download burst=300;
         limit_req zone=mapalab_plugin burst=10 nodelay;
         proxy_pass http://sextante;
         include /etc/nginx/includes/proxy-params.inc;
