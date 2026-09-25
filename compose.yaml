@@ -43,6 +43,7 @@ services:
       SEO_ENABLED: ${SEO_ENABLED:?}
       CONN_LIMIT: ${CONN_LIMIT:?}
       REAL_IP_FROM: ${REAL_IP_FROM?}
+      ADMIN_ALLOW_CIDRS: ${ADMIN_ALLOW_CIDRS?}
     healthcheck:
       <<: *healthcheck
       test: ["CMD-SHELL", "curl -fsk https://localhost/robots.txt || exit 1"]

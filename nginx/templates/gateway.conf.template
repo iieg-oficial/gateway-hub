@@ -8,9 +8,21 @@ map "${SEO_ENABLED}" $seo_block {
     default 1;
 }
 
-map $request_uri $acervo_content_disposition {
-    default         "";
-    ~*\.(txt|xlsx)$ "attachment";
+map $upstream_http_content_type $acervo_tipo_inline {
+    default 0;
+    "~*^image/(png|jpe?g|gif|webp|avif)[ ]*(;|$)" 1;
+    "~*^application/pdf[ ]*(;|$)" 1;
+}
+
+map "$acervo_tipo_inline:$upstream_http_content_disposition" $acervo_disposicion {
+    default attachment;
+    "~*^1:[ ]*attachment" attachment;
+    "~^1:" inline;
+}
+
+map $upstream_http_content_disposition $acervo_disposicion_nombre {
+    default "";
+    "~*(;[ ]*filename.*)$" $1;
 }
 
 server {
@@ -430,16 +442,23 @@ server {
     }
 
     location ^~ /acervo/ {
+        limit_except GET OPTIONS {
+            deny all;
+        }
+
         limit_req zone=acervo_files burst=600 nodelay;
-        client_max_body_size 1G;
         proxy_buffering off;
-        proxy_request_buffering off;
         set $acervo_upstream "${ACERVO_HOST}";
         rewrite ^/acervo/(.*) /$1 break;
         proxy_pass http://$acervo_upstream;
         include /etc/nginx/includes/proxy-params.inc;
         proxy_intercept_errors on;
-        add_header Content-Disposition $acervo_content_disposition always;
+        proxy_hide_header Content-Disposition;
+        proxy_hide_header Content-Security-Policy;
+        proxy_hide_header X-Content-Type-Options;
+        add_header Content-Disposition "$acervo_disposicion$acervo_disposicion_nombre" always;
+        add_header Content-Security-Policy "default-src 'none'; sandbox" always;
+        include /etc/nginx/includes/security-headers.inc;
         proxy_connect_timeout 300;
         proxy_send_timeout 300;
         proxy_read_timeout 300;

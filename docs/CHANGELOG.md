@@ -8,6 +8,38 @@ versionado del repo `gateway-hub` es independiente del de Nginx; aqui registramo
 cambios sobre las rutas, certificados, headers de seguridad, rate limits y la
 configuracion de promtail. Bumps por caracteristica registrada en commit.
 
+## [1.47.2] - 2026-09-24
+
+Hotfix de seguridad sobre `production`, portado de tamal-rojo 1.55.0 (auditoria del 2026-09-24,
+`context-ame-esta/historial/2026-09-24-auditoria-seguridad.md`). Solo entra lo de `/acervo/` y el
+admin de GeoServer; lo demas de la auditoria sale con tamal-rojo.
+
+**Variable nueva en el `.env`: `ADMIN_ALLOW_CIDRS`**, declarada con `?`: si falta el compose aborta, y
+vacia cierra las rutas. Se genera como `allow` al arrancar, asi que cambiarla pide recrear el
+contenedor, no rebuild. **Nunca debe contener la IP del borde**: todo el trafico de Internet llega con
+ella y abrirla equivale a publicar la consola.
+
+### Corregido
+
+- **XSS almacenado por `/acervo/`.** Todo objeto sale con `X-Content-Type-Options: nosniff`,
+  `Content-Security-Policy: default-src 'none'; sandbox` y las cabeceras de seguridad del server, que
+  la `add_header` propia de la location anulaba. La disposicion la decide el `Content-Type` que entrega
+  el acervo, no la extension: `inline` solo para PNG, JPEG, GIF, WebP, AVIF y PDF, y `attachment` para
+  todo lo demas (SVG, HTML, XML, JS, CSV, TXT, JSON). Si el objeto ya traia `attachment` se respeta, y
+  el `filename` original se conserva. Las cabeceras `Content-Disposition`, `Content-Security-Policy` y
+  `X-Content-Type-Options` del upstream se ocultan para no duplicarlas.
+- **`/acervo/` ya no expone la API S3 de escritura.** `limit_except GET OPTIONS`: PUT, POST, DELETE y
+  multipart responden 403, y se retiran `client_max_body_size 1G` y `proxy_request_buffering off`.
+  Ningun repo escribe por el dominio publico: el admin de mariachi sube por su API, mapalab solo
+  firma GET y dataengine y el portal usan endpoints internos. **Antes de desplegar, confirmar que ni el
+  `ACERVO_S3_URL` del portal ni el `AO_ENDPOINT` de dataengine apunten a `https://<dominio>/acervo`.**
+- **Consola, REST y login de GeoServer cerrados a Internet** (`/sextante/web`, `/sextante/rest`,
+  `/sextante/j_spring_security*`) con `allow` desde `ADMIN_ALLOW_CIDRS` y `deny all`. mariachi y
+  mapalab llegan a la REST por la IP interna de GeoServer, sin pasar por aqui.
+- **El catch-all de `/sextante/` ya no rodea el cierre del admin.** 403 a cualquier ruta con `;`, que
+  Tomcat trata como parametro de ruta (`/sextante/;x/rest`), y a `wps`, `gwc/rest`, `rest` y `web` con
+  o sin workspace. Las tres locations de administracion son prefijos mas largos y siguen por CIDR.
+
 ## [1.47.1] - 2026-09-01
 
 ### Agregado: `limit_conn` por cliente, parametrizado con `CONN_LIMIT`
