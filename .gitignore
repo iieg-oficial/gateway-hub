@@ -10,3 +10,7 @@ secrets/*
 compose.local.yaml
 
 data/
+
+*.bak
+*.bak-*
+*.bak.*
