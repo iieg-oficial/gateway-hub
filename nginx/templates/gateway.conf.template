@@ -8,9 +8,35 @@ map "${SEO_ENABLED}" $seo_block {
     default 1;
 }
 
-map $request_uri $acervo_content_disposition {
-    default         "";
-    ~*\.(txt|xlsx)$ "attachment";
+map $host $gateway_domain {
+    default "${APP_DOMAIN}";
+}
+
+map $upstream_http_content_type $acervo_tipo_inline {
+    default 0;
+    "~*^image/(png|jpe?g|gif|webp|avif)[ ]*(;|$)" 1;
+    "~*^application/pdf[ ]*(;|$)" 1;
+}
+
+map "$acervo_tipo_inline:$upstream_http_content_disposition" $acervo_disposicion {
+    default attachment;
+    "~*^1:[ ]*attachment" attachment;
+    "~^1:" inline;
+}
+
+map $upstream_http_content_disposition $acervo_disposicion_nombre {
+    default "";
+    "~*(;[ ]*filename.*)$" $1;
+}
+
+map $uri $gtm_head {
+    "~^/(mariachi|sieej)(/|$)" "";
+    default '<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({"gtm.start":new Date().getTime(),event:"gtm.js"});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!="dataLayer"?"&l="+l:"";j.async=true;j.src="https://www.googletagmanager.com/gtm.js?id="+i+dl;f.parentNode.insertBefore(j,f);})(window,document,"script","dataLayer","${GTM_ID}");</script>';
+}
+
+map $uri $gtm_body {
+    "~^/(mariachi|sieej)(/|$)" "";
+    default '<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=${GTM_ID}" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>';
 }
 
 server {
@@ -20,11 +46,15 @@ server {
     resolver 127.0.0.11 valid=10s ipv6=off;
 
     location = /ontoy {
+        include /etc/nginx/includes/allow-monitor.inc;
+        deny all;
         set $gateway_ontoy_upstream "gateway-version-api:8088";
         proxy_pass http://$gateway_ontoy_upstream/ontoy;
     }
 
     location = /sextante/ontoy {
+        include /etc/nginx/includes/allow-monitor.inc;
+        deny all;
         set $sextante_ontoy_upstream "sextante-version-api:8088";
         proxy_pass http://$sextante_ontoy_upstream/ontoy;
         proxy_http_version 1.1;
@@ -33,6 +63,8 @@ server {
     }
 
     location = /acervo/ontoy {
+        include /etc/nginx/includes/allow-monitor.inc;
+        deny all;
         set $acervo_ontoy_upstream "acervo-version-api:8088";
         proxy_pass http://$acervo_ontoy_upstream/ontoy;
         proxy_http_version 1.1;
@@ -41,6 +73,8 @@ server {
     }
 
     location = /huachicol/ontoy {
+        include /etc/nginx/includes/allow-monitor.inc;
+        deny all;
         set $huachicol_ontoy_upstream "huachicol-version-api:8088";
         proxy_pass http://$huachicol_ontoy_upstream/ontoy;
         proxy_http_version 1.1;
@@ -80,7 +114,6 @@ server {
 
     server_tokens off;
     client_max_body_size 100M;
-    ignore_invalid_headers off;
 
     limit_conn per_client ${CONN_LIMIT};
 
@@ -104,32 +137,43 @@ server {
     }
 
     location = /ontoy {
+        include /etc/nginx/includes/allow-monitor.inc;
+        deny all;
         set $gateway_ontoy_upstream "gateway-version-api:8088";
         proxy_pass http://$gateway_ontoy_upstream/ontoy;
     }
 
     location = /sextante/ontoy {
+        include /etc/nginx/includes/allow-monitor.inc;
+        deny all;
         set $sextante_ontoy_upstream "sextante-version-api:8088";
         proxy_pass http://$sextante_ontoy_upstream/ontoy;
         proxy_http_version 1.1;
         proxy_set_header Connection "";
         add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+        include /etc/nginx/includes/security-headers.inc;
     }
 
     location = /acervo/ontoy {
+        include /etc/nginx/includes/allow-monitor.inc;
+        deny all;
         set $acervo_ontoy_upstream "acervo-version-api:8088";
         proxy_pass http://$acervo_ontoy_upstream/ontoy;
         proxy_http_version 1.1;
         proxy_set_header Connection "";
         add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+        include /etc/nginx/includes/security-headers.inc;
     }
 
     location = /huachicol/ontoy {
+        include /etc/nginx/includes/allow-monitor.inc;
+        deny all;
         set $huachicol_ontoy_upstream "huachicol-version-api:8088";
         proxy_pass http://$huachicol_ontoy_upstream/ontoy;
         proxy_http_version 1.1;
         proxy_set_header Connection "";
         add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+        include /etc/nginx/includes/security-headers.inc;
     }
 
     location = / {
@@ -153,6 +197,7 @@ server {
     location ^~ /assets/ {
         limit_req zone=app_assets burst=1000;
         proxy_cache app_assets_cache;
+        proxy_cache_key "$scheme$host$proxy_host$request_uri";
         proxy_cache_valid 200 7d;
         proxy_cache_valid 404 1m;
         proxy_cache_lock on;
@@ -210,6 +255,7 @@ server {
     location ^~ /base/ {
         limit_req zone=app_assets burst=1000;
         proxy_cache app_assets_cache;
+        proxy_cache_key "$scheme$host$proxy_host$request_uri";
         proxy_cache_valid 200 1h;
         proxy_cache_valid 404 1m;
         proxy_cache_lock on;
@@ -223,6 +269,7 @@ server {
     location ^~ /webassets/ {
         limit_req zone=app_assets burst=1000;
         proxy_cache app_assets_cache;
+        proxy_cache_key "$scheme$host$proxy_host$request_uri";
         proxy_cache_valid 200 7d;
         proxy_cache_valid 404 1m;
         proxy_cache_lock on;
@@ -248,6 +295,7 @@ server {
         proxy_pass http://portal_backend;
         include /etc/nginx/includes/proxy-params.inc;
         add_header Cache-Control "no-store" always;
+        include /etc/nginx/includes/security-headers.inc;
         proxy_read_timeout 600s;
         proxy_send_timeout 600s;
     }
@@ -267,17 +315,21 @@ server {
         proxy_pass http://portal_backend;
         include /etc/nginx/includes/proxy-params.inc;
         add_header Cache-Control "no-store" always;
+        include /etc/nginx/includes/security-headers.inc;
         proxy_read_timeout 600s;
         proxy_send_timeout 600s;
     }
 
     location ^~ /api/internal/acervo/ {
+        include /etc/nginx/includes/allow-internal-upload.inc;
+        deny all;
         limit_req zone=api burst=200 nodelay;
         client_max_body_size 1G;
         proxy_request_buffering off;
         proxy_pass http://portal_backend;
         include /etc/nginx/includes/proxy-params.inc;
         add_header Cache-Control "no-store" always;
+        include /etc/nginx/includes/security-headers.inc;
         proxy_read_timeout 600s;
         proxy_send_timeout 600s;
     }
@@ -308,6 +360,7 @@ server {
         proxy_pass http://portal_backend;
         include /etc/nginx/includes/proxy-params.inc;
         add_header Cache-Control "no-store" always;
+        include /etc/nginx/includes/security-headers.inc;
     }
 
     location = /mapalab/api/layers/refresh-cache {
@@ -329,6 +382,7 @@ server {
     location ^~ /mapalab/assets/ {
         limit_req zone=app_assets burst=1000;
         proxy_cache mapalab_assets;
+        proxy_cache_key "$scheme$host$proxy_host$request_uri";
         proxy_cache_valid 200 7d;
         proxy_cache_valid 404 1m;
         proxy_cache_lock on;
@@ -338,6 +392,7 @@ server {
         rewrite ^/mapalab/(.*) /$1 break;
         proxy_pass http://mapalab_backend;
         include /etc/nginx/includes/proxy-params.inc;
+        include /etc/nginx/includes/security-headers.inc;
     }
 
     location ^~ /mapalab/api/download/ {
@@ -371,6 +426,7 @@ server {
         proxy_read_timeout 30s;
         proxy_send_timeout 30s;
         add_header X-Robots-Tag $seo_robots;
+        include /etc/nginx/includes/security-headers.inc;
     }
 
     location ^~ /mapalab/ {
@@ -409,16 +465,23 @@ server {
     }
 
     location ^~ /acervo/ {
+        limit_except GET OPTIONS {
+            deny all;
+        }
+
         limit_req zone=acervo_files burst=600 nodelay;
-        client_max_body_size 1G;
         proxy_buffering off;
-        proxy_request_buffering off;
         set $acervo_upstream "${ACERVO_HOST}";
         rewrite ^/acervo/(.*) /$1 break;
         proxy_pass http://$acervo_upstream;
         include /etc/nginx/includes/proxy-params.inc;
         proxy_intercept_errors on;
-        add_header Content-Disposition $acervo_content_disposition always;
+        proxy_hide_header Content-Disposition;
+        proxy_hide_header Content-Security-Policy;
+        proxy_hide_header X-Content-Type-Options;
+        add_header Content-Disposition "$acervo_disposicion$acervo_disposicion_nombre" always;
+        add_header Content-Security-Policy "default-src 'none'; sandbox" always;
+        include /etc/nginx/includes/security-headers.inc;
         proxy_connect_timeout 300;
         proxy_send_timeout 300;
         proxy_read_timeout 300;
@@ -428,6 +491,7 @@ server {
     location ^~ /mariachi/assets/ {
         limit_req zone=app_assets burst=1000;
         proxy_cache app_assets_cache;
+        proxy_cache_key "$scheme$host$proxy_host$request_uri";
         proxy_cache_valid 200 7d;
         proxy_cache_valid 404 1m;
         proxy_cache_lock on;
@@ -437,6 +501,7 @@ server {
         include /etc/nginx/includes/proxy-params.inc;
         proxy_hide_header Cache-Control;
         add_header Cache-Control "public, max-age=31536000, immutable";
+        include /etc/nginx/includes/security-headers.inc;
     }
 
     location ^~ /mariachi/ {
@@ -468,6 +533,11 @@ server {
         alias /usr/share/nginx/html/sieej/assets/;
         try_files $uri =404;
         add_header Cache-Control "public, max-age=31536000, immutable" always;
+        include /etc/nginx/includes/security-headers.inc;
+
+        location ~ /\. {
+            deny all;
+        }
     }
 
     location ^~ /sieej/ {
@@ -476,6 +546,10 @@ server {
         try_files $uri $uri/ /sieej/index.html;
         add_header Cache-Control "no-store" always;
         include /etc/nginx/includes/security-headers.inc;
+
+        location ~ /\. {
+            deny all;
+        }
     }
 
     include /etc/nginx/includes/sextante-locations.inc;
@@ -500,6 +574,10 @@ server {
     location ^~ /.well-known/ {
         root /usr/share/nginx/html;
         access_log off;
+
+        location ~ ^/\.well-known/.*/\. {
+            deny all;
+        }
     }
 
     location ~ /\. {

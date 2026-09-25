@@ -30,15 +30,25 @@ selected_steps() {
     done
 }
 
-# minerva no es repo nuestro y no trae los Makefiles del ecosistema, asi que su paso
-# se resuelve con docker compose directo (equivale a su `just up`, sin depender de just).
-#
-# MINERVA_COMPOSE elige con cual: hoy `docker-compose.yml`, que construye desde fuente,
-# porque su Justfile no expone ninguna receta para `docker-compose.deploy.yml` y ese es
-# el unico camino documentado por su equipo. Cuando publiquen un entorno de produccion
-# soportado, esto pasa a `docker-compose.deploy.yml` y se consume su imagen de ghcr.io.
-# Ver ecosistema/planes/orquestacion-minerva-portalito.md.
-MINERVA_COMPOSE="${MINERVA_COMPOSE:-docker-compose.yml}"
+minerva_env() {
+    sed -n "s/^$2=//p" "$1/.env" 2>/dev/null | tail -n1 | tr -d '"'"'"
+}
+
+minerva_compose() {
+    if [ -n "${MINERVA_COMPOSE:-}" ]; then
+        printf '%s' "$MINERVA_COMPOSE"
+        return 0
+    fi
+    case "$(minerva_env "$1" APP_ENV)" in
+        dev|development|local) printf 'docker-compose.yml' ;;
+        *)                     printf 'docker-compose.deploy.yml' ;;
+    esac
+}
+
+minerva_sin_version() {
+    printf 'minerva: MINERVA_VERSION vacia o latest en %s/.env; fija la version de la imagen de ghcr.io\n' "$1" >&2
+    return 1
+}
 
 step_cmd() {
     local name=$1 target=$2 dir=$3
@@ -47,9 +57,18 @@ step_cmd() {
         STEP_CMD=(make -C "$dir" "$target")
         return 0
     fi
-    local -a compose=(docker compose --project-directory "$dir" -f "$dir/$MINERVA_COMPOSE")
-    local -a extra=()
-    [ "$MINERVA_COMPOSE" = 'docker-compose.yml' ] && extra=(--build) || extra=(--pull always)
+    local file version
+    file=$(minerva_compose "$dir")
+    local -a compose=(docker compose --project-directory "$dir" -f "$dir/$file")
+    local -a extra=(--build)
+    if [ "$file" = 'docker-compose.deploy.yml' ]; then
+        version=$(minerva_env "$dir" MINERVA_VERSION)
+        if [ "$target" != 'down' ] && { [ -z "$version" ] || [ "$version" = 'latest' ]; }; then
+            STEP_CMD=(minerva_sin_version "$dir")
+            return 0
+        fi
+        extra=(--pull always)
+    fi
     case "$target" in
         deploy)   STEP_CMD=("${compose[@]}" up -d "${extra[@]}") ;;
         _up-prod) STEP_CMD=("${compose[@]}" up -d) ;;

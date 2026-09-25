@@ -8,6 +8,93 @@ versionado del repo `gateway-hub` es independiente del de Nginx; aqui registramo
 cambios sobre las rutas, certificados, headers de seguridad, rate limits y la
 configuracion de promtail. Bumps por caracteristica registrada en commit.
 
+## [1.55.0] - 2026-09-24
+
+Reparaciones de la auditoria de seguridad del 2026-09-24 (`context-ame-esta`,
+`historial/2026-09-24-auditoria-seguridad.md`).
+
+**Tres variables nuevas en el `.env` de cada nodo**, declaradas con `?`: si faltan el compose aborta,
+y vacias cierran la ruta. Se generan como `allow` al arrancar, asi que cambiarlas pide recrear el
+contenedor, no rebuild. **Ninguna debe contener la IP del borde (`10.13.128.50`)**: todo el trafico
+de Internet llega con ella y abrirla equivale a publicar la ruta.
+
+| Variable | Abre | Valor esperado |
+|---|---|---|
+| `ADMIN_ALLOW_CIDRS` | `/sextante/web`, `/sextante/rest`, `/sextante/j_spring_security*` | red de administracion o VPN que entra por la IP de LAN de S1 |
+| `MONITOR_ALLOW_CIDRS` | `/ontoy`, `/sextante/ontoy`, `/acervo/ontoy`, `/huachicol/ontoy` (80 y 443) | subred de `iieg-network` |
+| `INTERNAL_UPLOAD_ALLOW_CIDRS` | `/api/internal/acervo/` | IP de LAN del nodo del portal, o vacia |
+
+### Corregido
+
+- **XSS almacenado por `/acervo/`.** Todo objeto sale con `X-Content-Type-Options: nosniff`,
+  `Content-Security-Policy: default-src 'none'; sandbox` y las cabeceras de seguridad del server. La
+  disposicion la decide el `Content-Type` que entrega SeaweedFS, no la extension: `inline` solo para
+  PNG, JPEG, GIF, WebP, AVIF y PDF, y `attachment` para todo lo demas (SVG, HTML, XML, JS, CSV, TXT,
+  JSON). Si el objeto ya traia `attachment` se respeta, y el `filename` original se conserva. Las
+  cabeceras `Content-Disposition` y `Content-Security-Policy` del upstream se ocultan para no
+  duplicarlas. Un `<img>` o un `<video>` no se ven afectados por `attachment`; el PDF con `sandbox` se
+  verifico en Chrome y se sigue viendo en linea.
+- **`/acervo/` ya no expone la API S3 de escritura.** `limit_except GET OPTIONS`: PUT, POST, DELETE
+  y multipart responden 403, y se retira el `client_max_body_size 1G`. Ningun repo del ecosistema
+  escribe por el dominio publico: mariachi sube por `/api/.../acervo`, CKAN y el portal por
+  `ACERVO_S3_URL` interno, dataengine por `<S1>:8333`. **Antes de desplegar, confirmar en S5 que el
+  `ACERVO_S3_URL` del portal no apunte a `https://<dominio>/acervo`.**
+- **Las `add_header` por location ya no borran HSTS, CSP, `X-Frame-Options` ni `nosniff`.** Se
+  incluye `security-headers.inc` en cada location con cabeceras propias que no lo tenia: los `/ontoy`
+  de 443, `/api/`, `/api/{administrador,mariachi}/acervo`, `/api/internal/acervo/`,
+  `/mapalab/assets/`, `/mapalab/api/`, `/acervo/`, `/mariachi/assets/`, `/sieej/assets/` y los
+  `gwc/service`, `wms`, `ows` y `wfs|wcs` de sextante, que pierden sus `X-Frame-Options` y `nosniff`
+  sueltos. Se evaluo `add_header_inherit merge` (nginx 1.30.4 lo soporta), pero habria duplicado las
+  cabeceras de las locations que ya incluyen el archivo.
+- **Consola, REST y login de GeoServer cerrados a Internet** con `ADMIN_ALLOW_CIDRS`. mariachi y
+  mapalab llegan a la REST por `<S3>:8080`, sin pasar por aqui. Estas tres locations conservan
+  `X-Forwarded-Host $host` para que el login funcione entrando por IP.
+- **Catch-all de `/sextante/`:** solo GET y HEAD, `limit_req` de `sextante_download` (la misma cubeta
+  del WFS), 403 a `wps`, `gwc/rest`, `rest` y `web` con o sin workspace, y 403 a cualquier ruta con `;`,
+  que Tomcat trata como parametro de ruta y permitia rodear las locations de administracion
+  (`/sextante/;x/rest`). El WPS de mapalab va directo a `<S3>:8080/ows` y no se toca.
+- **Los `/ontoy` de gateway, sextante, acervo y huachicol dejan de ser publicos**, en 80 y en 443,
+  con `MONITOR_ALLOW_CIDRS`. El monitor los sondea por `iieg-network`
+  (`http://gateway-hub-nginx-1:80/ontoy`); las verificaciones a mano pasan a hacerse desde dentro de
+  la red o con `docker exec`. `/sieej/ontoy` sigue publico.
+- **`/api/internal/acervo/` cerrado** con `INTERNAL_UPLOAD_ALLOW_CIDRS`. Solo sirve si el portal
+  llama por la IP de LAN de S1: por el dominio publico llega como el borde.
+- **`X-Forwarded-Host` ya no viene del cliente en las rutas publicas de sextante.** Nuevo
+  `includes/sextante-proxy-params.inc` que fija `Host` y `X-Forwarded-Host` a `APP_DOMAIN`, y los
+  `proxy_cache_key` de sextante, `app_assets_cache` y `mapalab_assets` suman `$host`. **El cambio de
+  llave deja frios esos caches una vez**: el primer dia los tiles vuelven a pedirse a GeoServer.
+- **Dotfiles negados dentro de las `^~` con `alias` o `root`:** `/sieej/`, `/sieej/assets/` y
+  `/.well-known/`, que el `location ~ /\.` del server no alcanzaba.
+- **Sin `ignore_invalid_headers off`.** Entro en `aec6926` para la API S3 de MinIO por `/acervo/`;
+  sin escrituras por esa ruta ya no hay quien mande cabeceras con guion bajo.
+
+### Cambiado
+
+- **GTM no se inyecta en `/mariachi/` ni en `/sieej/`.** `gtm.inc` sustituye con `$gtm_head` y
+  `$gtm_body`, dos `map` sobre `$uri` que quedan vacios en esos prefijos. La CSP conserva
+  `'unsafe-inline'` en `script-src`: el snippet de GTM se podria cubrir con un hash, pero las
+  etiquetas personalizadas de GTM, CKAN y el portal insertan scripts en linea que no se pudieron
+  inventariar sin navegador contra produccion.
+- **minerva se despliega con `docker-compose.deploy.yml` salvo en desarrollo.** Sin `MINERVA_COMPOSE`,
+  el orquestador lee `APP_ENV` del `.env` de minerva: `development`, `dev` o `local` usan
+  `docker-compose.yml`; cualquier otro valor usa el de deploy, que no publica backend, Redis ni
+  Postgres. En deploy se exige `MINERVA_VERSION` fija (ni vacia ni `latest`) y hace falta
+  `docker login ghcr.io`. `MINERVA_COMPOSE` sigue forzando el archivo.
+- `.env.example`: la arista de `ONTOY_PEER_CHECKS` a S4 pasa de `:6432` a `:5432`, porque pgbouncer ya
+  no se publica fuera de la VM.
+- El sidecar `version-api` ya no monta `docker.sock`; consulta contenedores por
+  `DOCKER_HOST=tcp://docker-socket-proxy:2375` (`tecnativa/docker-socket-proxy:v0.5.0`,
+  `CONTAINERS=1` y lo demas en 0, red interna `gateway-hub-docker-api`) y corre como uid 65534.
+- `ontoy_server.py` sincronizado con huachicol 2.18.0: 500 con texto fijo, tope de 8 hilos, timeout
+  de 5 s, cache de 2 s y CPU sin sleep por peticion; desaparece `ONTOY_CPU_SAMPLE_SECONDS`.
+
+### Sin cambio a proposito
+
+- **Las zonas `general`, `static` y `app_assets` conservan la llave IP + user-agent.** Con todo el
+  trafico llegando como una sola IP, quitar el user-agent convierte cada zona en un fusible del sitio
+  entero y reabre el castigo colectivo que 1.53.0 corrigio. La evasion rotando user-agent la cubre el
+  borde, como se decidio entonces.
+
 ## [1.54.0] - 2026-09-24
 
 ### Cambiado: el WFS de sextante entra a la regla de 1.53.0
