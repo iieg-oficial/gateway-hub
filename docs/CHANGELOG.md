@@ -8,6 +8,12 @@ versionado del repo `gateway-hub` es independiente del de Nginx; aqui registramo
 cambios sobre las rutas, certificados, headers de seguridad, rate limits y la
 configuracion de promtail. Bumps por caracteristica registrada en commit.
 
+## [1.56.0] - 2026-09-29
+
+### Agregado
+
+- intranet entra al orquestador: `ecosystem-up`, `ecosystem-down` y `ecosystem-deploy` la recorren al final, después de `gateway`, para que un nodo sin su `.env.production` no deje a medias al resto; también `ecosystem-pull` y `ecosystem-push`. En su nodo se elige con `STACKS=intranet`. No lleva `location`: el borde del hipervisor la reparte por SNI.
+
 ## [1.55.2] - 2026-09-29
 
 ### Corregido
