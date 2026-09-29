@@ -534,6 +534,26 @@ tanto entra por `'self'`, así que el permiso ya no tiene a quién servir. `www.
 gateway se reconstruye primero, el portal todavía en producción pide el iframe de Google contra
 una CSP que ya no lo permite y la página de contacto se queda con un hueco.
 
+## [1.47.3] - 2026-09-29
+
+### Agregado
+
+- **Aviso de mantenimiento para mapalab.** Si existe `data/mantenimiento/mapalab`, todo `/mapalab/`
+  (visor, API, descargas, assets y MCP) responde **503** con `Retry-After: 60`, `Cache-Control:
+  no-store` y la página `error-pages/mantenimiento-mapalab.html` (actualización a MapaLab 2, con sus
+  novedades y un enlace al sitio del IIEG). Se enciende y se apaga con `make mantenimiento`, que tiene
+  selector, o creando y borrando el archivo: no hace falta recargar nginx. `/mapalab/ontoy` sigue igual.
+- La carpeta se monta de solo lectura en `/etc/nginx/mantenimiento`; `make up` y `make deploy` la
+  crean antes de levantar para que Docker no la cree como root.
+
+### Notas
+
+- La bandera se revisa con `if (-f ...)` y el include apaga `open_file_cache` en esas rutas: con la
+  caché global (`open_file_cache_valid 30s`) el apagado tardaba hasta 30 s en verse.
+- La reescritura va a una ruta interna que responde 503 por su cuenta, en vez de `error_page 503` en
+  las rutas de mapalab: así un 503 legítimo (el `limit_conn` del propio gateway) no muestra el aviso y
+  las páginas de error heredadas del server no se pierden.
+
 ## [1.47.2] - 2026-09-24
 
 Hotfix de seguridad sobre `production`, portado de tamal-rojo 1.55.0 (auditoria del 2026-09-24,

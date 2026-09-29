@@ -101,3 +101,15 @@ ecosystem_run() {
     done
     return $rc
 }
+
+MANTENIMIENTO_DIR='data/mantenimiento'
+MANTENIMIENTO_SERVICIOS='mapalab'
+
+ensure_mantenimiento() {
+    mkdir -p "$MANTENIMIENTO_DIR"
+    row 'Mantenimiento' 'listo' "$C_GREEN" "$MANTENIMIENTO_DIR"
+}
+
+estado_mantenimiento() {
+    if [ -f "$MANTENIMIENTO_DIR/$1" ]; then printf 'encendido'; else printf 'apagado'; fi
+}

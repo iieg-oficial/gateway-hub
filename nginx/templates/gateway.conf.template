@@ -136,6 +136,20 @@ server {
         internal;
     }
 
+    location = /__mantenimiento/mapalab {
+        internal;
+        error_page 503 /error-pages/mantenimiento-mapalab.html;
+        return 503;
+    }
+
+    location = /error-pages/mantenimiento-mapalab.html {
+        alias /etc/nginx/error-pages/mantenimiento-mapalab.html;
+        internal;
+        include /etc/nginx/includes/security-headers.inc;
+        add_header Retry-After 60 always;
+        add_header Cache-Control "no-store" always;
+    }
+
     location = /ontoy {
         include /etc/nginx/includes/allow-monitor.inc;
         deny all;
@@ -380,6 +394,7 @@ server {
     }
 
     location ^~ /mapalab/assets/ {
+        include /etc/nginx/includes/mantenimiento-mapalab.inc;
         limit_req zone=app_assets burst=1000;
         proxy_cache mapalab_assets;
         proxy_cache_key "$scheme$host$proxy_host$request_uri";
@@ -396,6 +411,7 @@ server {
     }
 
     location ^~ /mapalab/api/download/ {
+        include /etc/nginx/includes/mantenimiento-mapalab.inc;
         limit_req zone=api burst=10 nodelay;
         include /etc/nginx/includes/bot-protection.inc;
         rewrite ^/mapalab/(.*) /$1 break;
@@ -407,6 +423,7 @@ server {
     }
 
     location ^~ /mapalab/mcp {
+        include /etc/nginx/includes/mantenimiento-mapalab.inc;
         limit_req zone=general burst=300;
         rewrite ^/mapalab/(.*) /$1 break;
         proxy_pass http://mapalab_backend;
@@ -418,6 +435,7 @@ server {
     }
 
     location ^~ /mapalab/api/ {
+        include /etc/nginx/includes/mantenimiento-mapalab.inc;
         limit_req zone=api burst=300 nodelay;
         include /etc/nginx/includes/bot-protection.inc;
         rewrite ^/mapalab/(.*) /$1 break;
@@ -430,6 +448,7 @@ server {
     }
 
     location ^~ /mapalab/ {
+        include /etc/nginx/includes/mantenimiento-mapalab.inc;
         limit_req zone=general burst=300;
         include /etc/nginx/includes/bot-protection.inc;
         rewrite ^/mapalab/(.*) /$1 break;
