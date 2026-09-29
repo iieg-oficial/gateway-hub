@@ -8,9 +8,21 @@ map "${SEO_ENABLED}" $seo_block {
     default 1;
 }
 
-map $request_uri $acervo_content_disposition {
-    default         "";
-    ~*\.(txt|xlsx)$ "attachment";
+map $upstream_http_content_type $acervo_tipo_inline {
+    default 0;
+    "~*^image/(png|jpe?g|gif|webp|avif)[ ]*(;|$)" 1;
+    "~*^application/pdf[ ]*(;|$)" 1;
+}
+
+map "$acervo_tipo_inline:$upstream_http_content_disposition" $acervo_disposicion {
+    default attachment;
+    "~*^1:[ ]*attachment" attachment;
+    "~^1:" inline;
+}
+
+map $upstream_http_content_disposition $acervo_disposicion_nombre {
+    default "";
+    "~*(;[ ]*filename.*)$" $1;
 }
 
 server {
@@ -101,6 +113,20 @@ server {
     location /error-pages/ {
         alias /etc/nginx/error-pages/;
         internal;
+    }
+
+    location = /__mantenimiento/mapalab {
+        internal;
+        error_page 503 /error-pages/mantenimiento-mapalab.html;
+        return 503;
+    }
+
+    location = /error-pages/mantenimiento-mapalab.html {
+        alias /etc/nginx/error-pages/mantenimiento-mapalab.html;
+        internal;
+        include /etc/nginx/includes/security-headers.inc;
+        add_header Retry-After 60 always;
+        add_header Cache-Control "no-store" always;
     }
 
     location = /ontoy {
@@ -346,6 +372,7 @@ server {
     }
 
     location ^~ /mapalab/assets/ {
+        include /etc/nginx/includes/mantenimiento-mapalab.inc;
         limit_req zone=app_assets burst=1000;
         proxy_cache mapalab_assets;
         proxy_cache_valid 200 7d;
@@ -360,6 +387,7 @@ server {
     }
 
     location ^~ /mapalab/api/download/ {
+        include /etc/nginx/includes/mantenimiento-mapalab.inc;
         limit_req zone=api burst=10 nodelay;
         include /etc/nginx/includes/bot-protection.inc;
         rewrite ^/mapalab/(.*) /$1 break;
@@ -371,6 +399,7 @@ server {
     }
 
     location ^~ /mapalab/mcp {
+        include /etc/nginx/includes/mantenimiento-mapalab.inc;
         limit_req zone=general burst=300;
         rewrite ^/mapalab/(.*) /$1 break;
         proxy_pass http://mapalab_backend;
@@ -382,6 +411,7 @@ server {
     }
 
     location ^~ /mapalab/ {
+        include /etc/nginx/includes/mantenimiento-mapalab.inc;
         limit_req zone=general burst=300;
         include /etc/nginx/includes/bot-protection.inc;
         rewrite ^/mapalab/(.*) /$1 break;
@@ -430,16 +460,23 @@ server {
     }
 
     location ^~ /acervo/ {
+        limit_except GET OPTIONS {
+            deny all;
+        }
+
         limit_req zone=acervo_files burst=600 nodelay;
-        client_max_body_size 1G;
         proxy_buffering off;
-        proxy_request_buffering off;
         set $acervo_upstream "${ACERVO_HOST}";
         rewrite ^/acervo/(.*) /$1 break;
         proxy_pass http://$acervo_upstream;
         include /etc/nginx/includes/proxy-params.inc;
         proxy_intercept_errors on;
-        add_header Content-Disposition $acervo_content_disposition always;
+        proxy_hide_header Content-Disposition;
+        proxy_hide_header Content-Security-Policy;
+        proxy_hide_header X-Content-Type-Options;
+        add_header Content-Disposition "$acervo_disposicion$acervo_disposicion_nombre" always;
+        add_header Content-Security-Policy "default-src 'none'; sandbox" always;
+        include /etc/nginx/includes/security-headers.inc;
         proxy_connect_timeout 300;
         proxy_send_timeout 300;
         proxy_read_timeout 300;

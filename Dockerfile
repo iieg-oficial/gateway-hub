@@ -20,6 +20,7 @@ CMD ["/bin/sh", "-c", \
     done && \
     envsubst '${PORTAL_HOST} ${MAPALAB_HOST} ${ACERVO_HOST} ${MARIACHI_HOST} ${SEXTANTE_HOST} ${APP_DOMAIN} ${SSL_CERTIFICATE} ${SSL_CERTIFICATE_KEY} ${GTM_ID} ${SEO_ENABLED} ${CONN_LIMIT}' \
         < /etc/nginx/templates/gateway.conf.template > /etc/nginx/conf.d/gateway.conf && \
+    for c in $ADMIN_ALLOW_CIDRS; do echo \"allow $c;\"; done > /etc/nginx/includes/allow-admin.inc && \
     envsubst '${CSP_EXTRA_ORIGINS}' \
         < /etc/nginx/includes/security-headers.inc.template > /etc/nginx/includes/security-headers.inc && \
     if [ -n \"$GTM_ID\" ]; then envsubst '${GTM_ID}' < /etc/nginx/includes/gtm.inc.template > /etc/nginx/includes/gtm.inc; else : > /etc/nginx/includes/gtm.inc; fi && \

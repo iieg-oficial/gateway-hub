@@ -1,4 +1,6 @@
 location ^~ /sextante/web {
+    include /etc/nginx/includes/allow-admin.inc;
+    deny all;
     limit_req zone=general burst=20 nodelay;
     proxy_pass http://sextante/sextante/web;
     include /etc/nginx/includes/proxy-params.inc;
@@ -7,6 +9,8 @@ location ^~ /sextante/web {
 }
 
 location ^~ /sextante/rest {
+    include /etc/nginx/includes/allow-admin.inc;
+    deny all;
     limit_req zone=general burst=20 nodelay;
     proxy_pass http://sextante/sextante/rest;
     include /etc/nginx/includes/proxy-params.inc;
@@ -15,6 +19,8 @@ location ^~ /sextante/rest {
 }
 
 location ^~ /sextante/j_spring_security {
+    include /etc/nginx/includes/allow-admin.inc;
+    deny all;
     limit_req zone=general burst=20 nodelay;
     proxy_pass http://sextante/sextante/j_spring_security;
     include /etc/nginx/includes/proxy-params.inc;
@@ -23,6 +29,14 @@ location ^~ /sextante/j_spring_security {
 }
 
 location ^~ /sextante/ {
+    location ~ "[;]" {
+        return 403;
+    }
+
+    location ~ ^/sextante/([^/]+/)?(wps|gwc/rest|rest|web)(/|$) {
+        return 403;
+    }
+
     location ~ ^/sextante/gwc/service/ {
         limit_except GET HEAD OPTIONS {
             deny all;
