@@ -142,6 +142,16 @@ server {
         return 503;
     }
 
+    location = /__mantenimiento/mapalab-widget {
+        internal;
+        types { }
+        default_type "application/javascript; charset=utf-8";
+        alias /etc/nginx/error-pages/mantenimiento-mapalab-widget.js;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Access-Control-Allow-Origin "*" always;
+        add_header Cache-Control "no-store" always;
+    }
+
     location = /error-pages/mantenimiento-mapalab.html {
         alias /etc/nginx/error-pages/mantenimiento-mapalab.html;
         internal;
@@ -441,6 +451,21 @@ server {
         rewrite ^/mapalab/(.*) /$1 break;
         proxy_pass http://mapalab_backend;
         include /etc/nginx/includes/proxy-params.inc;
+        proxy_read_timeout 30s;
+        proxy_send_timeout 30s;
+        add_header X-Robots-Tag $seo_robots;
+        include /etc/nginx/includes/security-headers.inc;
+    }
+
+    location ^~ /mapalab/widget/ {
+        include /etc/nginx/includes/mantenimiento-mapalab-widget.inc;
+        limit_req zone=general burst=300;
+        include /etc/nginx/includes/bot-protection.inc;
+        rewrite ^/mapalab/(.*) /$1 break;
+        proxy_pass http://mapalab_backend;
+        include /etc/nginx/includes/proxy-params.inc;
+        proxy_set_header Accept-Encoding "";
+        proxy_intercept_errors on;
         proxy_read_timeout 30s;
         proxy_send_timeout 30s;
         add_header X-Robots-Tag $seo_robots;
