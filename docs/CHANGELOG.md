@@ -8,6 +8,15 @@ versionado del repo `gateway-hub` es independiente del de Nginx; aqui registramo
 cambios sobre las rutas, certificados, headers de seguridad, rate limits y la
 configuracion de promtail. Bumps por caracteristica registrada en commit.
 
+## [1.57.1] - 2026-09-30
+
+### Corregido
+
+- **`/mapalab/embed` tiene ruta propia, sin los encabezados de seguridad del gateway.** La ruta
+  `/mapalab/` agrega `X-Frame-Options: SAMEORIGIN` y un CSP con `frame-ancestors 'self'`, que se
+  sumaban al `frame-ancestors` que mapalab arma con los dominios de la llave: ningún sitio externo
+  podía incrustar el mapa. El resto de `/mapalab/` conserva sus encabezados.
+
 ## [1.57.0] - 2026-09-30
 
 ### Agregado
