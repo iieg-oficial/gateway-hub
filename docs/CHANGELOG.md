@@ -8,6 +8,30 @@ versionado del repo `gateway-hub` es independiente del de Nginx; aqui registramo
 cambios sobre las rutas, certificados, headers de seguridad, rate limits y la
 configuracion de promtail. Bumps por caracteristica registrada en commit.
 
+## [1.56.3] - 2026-09-30
+
+### Agregado: frames, vine y mapalab-qgis en las reglas de git del ecosistema
+
+Las tres listas de repos habian derivado. `scripts/ecosystem-status.sh` cubria catorce; `pull` y
+`push` menos, y sin un criterio que explicara la diferencia: vine estaba en `push` pero no en `pull`,
+frames solo en `status` —se agrego ahi al renombrarlo desde wacha el 2026-09-02 y se olvido el
+resto—, y mapalab-qgis en ninguna de las dos.
+
+`ecosystem-pull.sh` gana frames, vine y mapalab-qgis; `ecosystem-push.sh` gana frames y
+mapalab-qgis. Las tres quedan en el mismo orden: gateway, acervo, huachicol, dataengine, sextante,
+mariachi, mapalab, mapalab-qgis, sieej, sitio2026, vine, frames, intranet, minerva.
+
+### Cambiado: `ECOSYSTEM_STEPS` se queda en once a proposito
+
+No se les agrega al ciclo de vida, y conviene que quede escrito para que nadie lo "arregle" despues.
+`ECOSYSTEM_STEPS` es el orden topologico de lo que corre en **S1-S5**: frames y vine viven en la VM
+`vine-wacha`, fuera de ese esquema, y no estan en la ruta de nadie, asi que un `ecosystem-deploy`
+desde el gateway no tiene por que levantarlos. mapalab-qgis no es un servicio: es un complemento de
+QGIS y no tiene contenedores.
+
+La distincion queda entonces: **catorce repos para lo que es git** —traer y subir— y **once para el
+ciclo de vida** en S1-S5.
+
 ## [1.56.2] - 2026-09-30
 
 ### Agregado: minerva entra a las reglas de pull y push del ecosistema

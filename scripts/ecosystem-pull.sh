@@ -21,8 +21,11 @@ REPO_ORDER=(
   "$REPOS_DIR/sextante"
   "$REPOS_DIR/mariachi"
   "$REPOS_DIR/mapalab"
+  "$REPOS_DIR/mapalab-qgis"
   "$REPOS_DIR/sieej"
   "$REPOS_DIR/sitio2026"
+  "$REPOS_DIR/vine"
+  "$REPOS_DIR/frames"
   "$REPOS_DIR/intranet"
   "$REPOS_DIR/minerva"
 )
@@ -35,8 +38,11 @@ declare -A REPO_NAMES=(
   ["$REPOS_DIR/sextante"]="sextante"
   ["$REPOS_DIR/mariachi"]="mariachi"
   ["$REPOS_DIR/mapalab"]="mapalab"
+  ["$REPOS_DIR/mapalab-qgis"]="mapalab-qgis"
   ["$REPOS_DIR/sieej"]="sieej"
   ["$REPOS_DIR/sitio2026"]="sitio2026"
+  ["$REPOS_DIR/vine"]="vine"
+  ["$REPOS_DIR/frames"]="frames"
   ["$REPOS_DIR/intranet"]="intranet"
   ["$REPOS_DIR/minerva"]="minerva"
 )
