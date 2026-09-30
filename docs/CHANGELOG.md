@@ -8,6 +8,24 @@ versionado del repo `gateway-hub` es independiente del de Nginx; aqui registramo
 cambios sobre las rutas, certificados, headers de seguridad, rate limits y la
 configuracion de promtail. Bumps por caracteristica registrada en commit.
 
+## [1.56.2] - 2026-09-30
+
+### Agregado: minerva entra a las reglas de pull y push del ecosistema
+
+Ya estaba en `ECOSYSTEM_STEPS` —de ahi que `ecosystem-up`, `ecosystem-down` y `ecosystem-deploy` la
+cubrieran, con su `MINERVA_COMPOSE` porque no tiene Makefile homologado— y en
+`scripts/ecosystem-status.sh`. Faltaba en los otros dos scripts, asi que `make ecosystem-pull` no la
+actualizaba y `make ecosystem-push` no la subia: habia que hacerlo a mano sin que nada lo recordara.
+
+Se agrega a `REPO_ORDER` y `REPO_NAMES` de `ecosystem-pull.sh` y a `REPO_ORDER` de
+`ecosystem-push.sh`, al final de la lista, igual que en `ecosystem-status.sh`.
+
+**Cuidado con el push.** El script sube la **rama que este checada**, sin lista blanca: solo omite
+HEAD detached, repos sin git y lo que no tenga nada pendiente. minerva **no es repo nuestro** —la
+integracion es contra `main` y su `develop` no se toca—, asi que si su clon queda en `main` o en
+`develop` con commits locales, el push del ecosistema los sube ahi. Hoy esta en `tamal-rojo`, que si
+es nuestra y rastrea `origin`.
+
 ## [1.56.1] - 2026-09-30
 
 ### Corregido: el guard de mantenimiento rompia el deploy por permisos

@@ -26,6 +26,7 @@ REPO_ORDER=(
   "sitio2026:$REPOS_DIR/sitio2026"
   "vine:$REPOS_DIR/vine"
   "intranet:$REPOS_DIR/intranet"
+  "minerva:$REPOS_DIR/minerva"
   "context-ame-esta:$REPOS_DIR/context-ame-esta"
 )
 

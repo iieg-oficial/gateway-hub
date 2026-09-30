@@ -24,6 +24,7 @@ REPO_ORDER=(
   "$REPOS_DIR/sieej"
   "$REPOS_DIR/sitio2026"
   "$REPOS_DIR/intranet"
+  "$REPOS_DIR/minerva"
 )
 
 declare -A REPO_NAMES=(
@@ -37,6 +38,7 @@ declare -A REPO_NAMES=(
   ["$REPOS_DIR/sieej"]="sieej"
   ["$REPOS_DIR/sitio2026"]="sitio2026"
   ["$REPOS_DIR/intranet"]="intranet"
+  ["$REPOS_DIR/minerva"]="minerva"
 )
 
 W_REPO=14
