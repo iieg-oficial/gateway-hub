@@ -8,6 +8,26 @@ versionado del repo `gateway-hub` es independiente del de Nginx; aqui registramo
 cambios sobre las rutas, certificados, headers de seguridad, rate limits y la
 configuracion de promtail. Bumps por caracteristica registrada en commit.
 
+## [1.56.1] - 2026-09-30
+
+### Corregido: el guard de mantenimiento rompia el deploy por permisos
+
+`ensure_mantenimiento` hacia `mkdir -p data/mantenimiento`, y **`data/` es de Docker**: el daemon lo
+crea como `root:root` al materializar el bind mount de `NGINX_CACHE_PATH` (`./data/nginx-cache`).
+Cualquier `make deploy` posterior al primer arranque de nginx moria con `mkdir: Permission denied`
+—cuarto guard, despues de que los tres anteriores ya habian salido en verde— y no habia forma de
+arreglarlo sin `sudo` en cada maquina.
+
+El switch se muda a **`mantenimiento/`** en la raiz del repo, que es del usuario: se crea y se
+escribe sin privilegios. El bind mount del compose apunta ahi y el `.gitignore` lo cubre. La ruta
+dentro del contenedor no cambia, asi que `mantenimiento-mapalab.inc` y su
+`if (-f /etc/nginx/mantenimiento/mapalab)` quedan iguales.
+
+**Al desplegar, un aviso encendido se apaga**: nginx monta el directorio nuevo, vacio. Comprobar
+`data/mantenimiento` antes de la ventana y, si hay algun flag puesto, volver a ponerlo en la ruta
+nueva. El `data/mantenimiento` viejo queda inerte y se puede borrar.
+
+
 ## [1.56.0] - 2026-09-29
 
 ### Agregado

@@ -102,7 +102,7 @@ ecosystem_run() {
     return $rc
 }
 
-MANTENIMIENTO_DIR='data/mantenimiento'
+MANTENIMIENTO_DIR='mantenimiento'
 MANTENIMIENTO_SERVICIOS='mapalab'
 
 ensure_mantenimiento() {

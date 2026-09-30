@@ -27,7 +27,7 @@ services:
       - ${SSL_HOST_PATH:?}:/etc/nginx/certs:ro
       - ${SIEEJ_DIST_PATH:?}:/usr/share/nginx/html/sieej:ro
       - ${NGINX_CACHE_PATH:?}:/var/cache/nginx-data
-      - ./data/mantenimiento:/etc/nginx/mantenimiento:ro
+      - ./mantenimiento:/etc/nginx/mantenimiento:ro
     environment:
       APP_DOMAIN: ${APP_DOMAIN:?}
       SSL_CERTIFICATE: ${SSL_CERTIFICATE:?}
