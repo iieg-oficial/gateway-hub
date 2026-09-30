@@ -8,6 +8,17 @@ versionado del repo `gateway-hub` es independiente del de Nginx; aqui registramo
 cambios sobre las rutas, certificados, headers de seguridad, rate limits y la
 configuracion de promtail. Bumps por caracteristica registrada en commit.
 
+## [1.48.0] - 2026-09-30
+
+### Agregado
+
+- **Aviso de mantenimiento para el widget de mapalab.** Con la bandera encendida,
+  `/mapalab/widget/` ya no responde la página HTML con 503 (el navegador no la ejecutaba y
+  `<iieg-mapalab>` quedaba como un hueco vacío en los sitios que lo embeben): responde 200 con
+  `error-pages/mantenimiento-mapalab-widget.js`, un elemento `iieg-mapalab` mínimo que respeta
+  `height` y `width` y dice «MapaLab se está actualizando». Lleva `Access-Control-Allow-Origin: *`,
+  `nosniff` y `no-store`, así que al apagar el mantenimiento la siguiente carga trae el widget real.
+
 ## [1.47.3] - 2026-09-29
 
 ### Agregado
