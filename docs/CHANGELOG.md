@@ -8,6 +8,17 @@ versionado del repo `gateway-hub` es independiente del de Nginx; aqui registramo
 cambios sobre las rutas, certificados, headers de seguridad, rate limits y la
 configuracion de promtail. Bumps por caracteristica registrada en commit.
 
+## [1.58.0] - 2026-10-05
+
+### Agregado
+
+- `location ^~ /mapalab/api/privado/` para el proxy de capas privadas de MapaLab: sin caché, sin buffer y con 120 s de lectura (las descargas WFS privadas tardan más que los 30 s del resto de la API).
+- `scripts/purgar-cache-capa.sh <workspace> <capa>`: borra de la caché de sextante las entradas de una capa (WMS, OWS y teselas GWC, con el nombre en claro o codificado). Hace falta al volver privada una capa que ya estuvo pública, porque la caché guarda hasta 6 h los WMS y 30 días las teselas sin preguntar a GeoServer. Recorre toda la caché: tarda minutos.
+
+### Cambiado
+
+- `/mapalab/api/layers/tree/completo` responde 403 desde fuera, como `refresh-cache`: es el árbol con las capas privadas y solo lo pide mariachi por la red interna.
+
 ## [1.57.1] - 2026-09-30
 
 ### Corregido
