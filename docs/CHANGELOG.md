@@ -8,6 +8,16 @@ versionado del repo `gateway-hub` es independiente del de Nginx; aqui registramo
 cambios sobre las rutas, certificados, headers de seguridad, rate limits y la
 configuracion de promtail. Bumps por caracteristica registrada en commit.
 
+## [1.59.0] - 2026-10-05
+
+### Agregado
+
+- **Puerto 8443 con `proxy_protocol`** para un borde que solo reenvía TCP, como el del espejo de Proxmox. Por ahí llega la IP real del visitante; el 443 queda igual para los nodos que entran directo. Se publica en `GATEWAY_PROXY_PROTOCOL_BIND`, aparte de `GATEWAY_BIND_ADDR`, para que en producción quede en `127.0.0.1` y no se exponga.
+
+### Cambiado
+
+- `real_ip_header` deja de estar fijo en `X-Forwarded-For` y sale de `REAL_IP_HEADER`: `X-Forwarded-For` donde el borde termina TLS y manda la cabecera (producción), `proxy_protocol` en el espejo. Con el borde TCP y sin esto, el gateway veía a todos los visitantes con la IP del hipervisor: los límites de peticiones por IP los trataban como uno solo y `ADMIN_ALLOW_CIDRS` no podía abrir la consola de GeoServer a una persona sin abrirla a toda la LAN.
+
 ## [1.58.0] - 2026-10-05
 
 ### Agregado

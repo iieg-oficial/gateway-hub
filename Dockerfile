@@ -14,7 +14,7 @@ RUN mkdir -p /etc/nginx/certs /var/cache/nginx-data/sextante
 EXPOSE 80 443
 
 CMD ["/bin/sh", "-c", \
-    "envsubst '${REAL_IP_FROM}' < /etc/nginx/templates/nginx.conf.template > /etc/nginx/nginx.conf && \
+    "envsubst '${REAL_IP_FROM} ${REAL_IP_HEADER}' < /etc/nginx/templates/nginx.conf.template > /etc/nginx/nginx.conf && \
     for f in /etc/nginx/templates/conf.d/*; do \
         envsubst '${SEXTANTE_HOST} ${PORTAL_HOST} ${SITIO_HOST} ${MAPALAB_HOST}' < \"$f\" > /etc/nginx/conf.d/$(basename \"${f%.template}\"); \
     done && \

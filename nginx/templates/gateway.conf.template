@@ -95,6 +95,7 @@ server {
 
 server {
     listen 443 ssl default_server;
+    listen 8443 ssl proxy_protocol;
     http2 on;
     server_name ${APP_DOMAIN} _;
 

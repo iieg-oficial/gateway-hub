@@ -23,6 +23,7 @@ services:
     ports:
       - '${GATEWAY_BIND_ADDR:?}:80:80'
       - '${GATEWAY_BIND_ADDR:?}:443:443'
+      - '${GATEWAY_PROXY_PROTOCOL_BIND:?}:8443:8443'
     volumes:
       - ${SSL_HOST_PATH:?}:/etc/nginx/certs:ro
       - ${SIEEJ_DIST_PATH:?}:/usr/share/nginx/html/sieej:ro
@@ -44,6 +45,7 @@ services:
       SEO_ENABLED: ${SEO_ENABLED:?}
       CONN_LIMIT: ${CONN_LIMIT:?}
       REAL_IP_FROM: ${REAL_IP_FROM?}
+      REAL_IP_HEADER: ${REAL_IP_HEADER:?}
       ADMIN_ALLOW_CIDRS: ${ADMIN_ALLOW_CIDRS?}
       MONITOR_ALLOW_CIDRS: ${MONITOR_ALLOW_CIDRS?}
       INTERNAL_UPLOAD_ALLOW_CIDRS: ${INTERNAL_UPLOAD_ALLOW_CIDRS?}
