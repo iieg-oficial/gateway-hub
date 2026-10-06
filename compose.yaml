@@ -23,11 +23,12 @@ services:
     ports:
       - '${GATEWAY_BIND_ADDR:?}:80:80'
       - '${GATEWAY_BIND_ADDR:?}:443:443'
+      - '${GATEWAY_PROXY_PROTOCOL_BIND:?}:8443:8443'
     volumes:
       - ${SSL_HOST_PATH:?}:/etc/nginx/certs:ro
       - ${SIEEJ_DIST_PATH:?}:/usr/share/nginx/html/sieej:ro
       - ${NGINX_CACHE_PATH:?}:/var/cache/nginx-data
-      - ./data/mantenimiento:/etc/nginx/mantenimiento:ro
+      - ./mantenimiento:/etc/nginx/mantenimiento:ro
     environment:
       APP_DOMAIN: ${APP_DOMAIN:?}
       SSL_CERTIFICATE: ${SSL_CERTIFICATE:?}
@@ -44,7 +45,10 @@ services:
       SEO_ENABLED: ${SEO_ENABLED:?}
       CONN_LIMIT: ${CONN_LIMIT:?}
       REAL_IP_FROM: ${REAL_IP_FROM?}
+      REAL_IP_HEADER: ${REAL_IP_HEADER:?}
       ADMIN_ALLOW_CIDRS: ${ADMIN_ALLOW_CIDRS?}
+      MONITOR_ALLOW_CIDRS: ${MONITOR_ALLOW_CIDRS?}
+      INTERNAL_UPLOAD_ALLOW_CIDRS: ${INTERNAL_UPLOAD_ALLOW_CIDRS?}
     healthcheck:
       <<: *healthcheck
       test: ["CMD-SHELL", "curl -fsk https://localhost/robots.txt || exit 1"]
@@ -55,26 +59,58 @@ services:
     restart: unless-stopped
     logging: *logging
 
+  docker-socket-proxy:
+    image: nginx:1.30.4-alpine
+    container_name: gateway-docker-socket-proxy
+    restart: unless-stopped
+    user: "101:101"
+    group_add:
+      - ${DOCKER_GID:?}
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - ./version-api/docker-proxy.conf:/etc/nginx/nginx.conf:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - docker-api
+    logging: *logging
+
   version-api:
     build: ./version-api
     container_name: gateway-version-api
     restart: unless-stopped
     environment:
       ONTOY_SERVICE: gateway-hub
+      ONTOY_NODE: ${ONTOY_NODE:?}
+      ONTOY_NODE_REPORTER: ${ONTOY_NODE_REPORTER:?}
+      ONTOY_PEER_CHECKS: ${ONTOY_PEER_CHECKS}
       ONTOY_COMPOSE_PROJECT: gateway-hub
       ONTOY_DISK_PATH: ${ONTOY_DISK_PATH:?}
+      DOCKER_HOST: tcp://docker-socket-proxy:2375
       ONTOY_PORT_CHECKS: "portal=${PORTAL_HOST:?},sitio=${SITIO_HOST:?},mapalab=${MAPALAB_HOST:?},acervo=${ACERVO_HOST:?},sextante=${SEXTANTE_HOST:?},mariachi=${MARIACHI_HOST:?}"
+      ONTOY_DEPENDENCIES: "plugin_qgis=${PLUGIN_QGIS_URL:?}"
     volumes:
       - ./VERSION:/app/VERSION:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /etc/os-release:/host/etc/os-release:ro
+    depends_on:
+      - docker-socket-proxy
     extra_hosts: *host-gateway
     healthcheck:
       <<: *healthcheck
       test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1', 8088), timeout=3).close()"]
     networks:
       - iieg-network
+      - docker-api
     logging: *logging
 
 networks:
   iieg-network:
     external: true
+  docker-api:
+    name: gateway-hub-docker-api
+    internal: true

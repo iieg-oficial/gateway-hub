@@ -8,199 +8,506 @@ versionado del repo `gateway-hub` es independiente del de Nginx; aqui registramo
 cambios sobre las rutas, certificados, headers de seguridad, rate limits y la
 configuracion de promtail. Bumps por caracteristica registrada en commit.
 
-## [1.47.3] - 2026-09-29
+## [1.59.0] - 2026-10-05
 
 ### Agregado
 
-- **Aviso de mantenimiento para mapalab.** Si existe `data/mantenimiento/mapalab`, todo `/mapalab/`
-  (visor, API, descargas, assets y MCP) responde **503** con `Retry-After: 60`, `Cache-Control:
-  no-store` y la página `error-pages/mantenimiento-mapalab.html` (actualización a MapaLab 2, con sus
-  novedades y un enlace al sitio del IIEG). Se enciende y se apaga con `make mantenimiento`, que tiene
-  selector, o creando y borrando el archivo: no hace falta recargar nginx. `/mapalab/ontoy` sigue igual.
-- La carpeta se monta de solo lectura en `/etc/nginx/mantenimiento`; `make up` y `make deploy` la
-  crean antes de levantar para que Docker no la cree como root.
+- **Puerto 8443 con `proxy_protocol`** para un borde que solo reenvía TCP, como el del espejo de Proxmox. Por ahí llega la IP real del visitante; el 443 queda igual para los nodos que entran directo. Se publica en `GATEWAY_PROXY_PROTOCOL_BIND`, aparte de `GATEWAY_BIND_ADDR`, para que en producción quede en `127.0.0.1` y no se exponga.
 
-### Notas
+### Cambiado
 
-- La bandera se revisa con `if (-f ...)` y el include apaga `open_file_cache` en esas rutas: con la
-  caché global (`open_file_cache_valid 30s`) el apagado tardaba hasta 30 s en verse.
-- La reescritura va a una ruta interna que responde 503 por su cuenta, en vez de `error_page 503` en
-  las rutas de mapalab: así un 503 legítimo (el `limit_conn` del propio gateway) no muestra el aviso y
-  las páginas de error heredadas del server no se pierden.
+- `real_ip_header` deja de estar fijo en `X-Forwarded-For` y sale de `REAL_IP_HEADER`: `X-Forwarded-For` donde el borde termina TLS y manda la cabecera (producción), `proxy_protocol` en el espejo. Con el borde TCP y sin esto, el gateway veía a todos los visitantes con la IP del hipervisor: los límites de peticiones por IP los trataban como uno solo y `ADMIN_ALLOW_CIDRS` no podía abrir la consola de GeoServer a una persona sin abrirla a toda la LAN.
 
-## [1.47.2] - 2026-09-24
+## [1.58.0] - 2026-10-05
 
-Hotfix de seguridad sobre `production`, portado de tamal-rojo 1.55.0 (auditoria del 2026-09-24,
-`context-ame-esta/historial/2026-09-24-auditoria-seguridad.md`). Solo entra lo de `/acervo/` y el
-admin de GeoServer; lo demas de la auditoria sale con tamal-rojo.
+### Agregado
 
-**Variable nueva en el `.env`: `ADMIN_ALLOW_CIDRS`**, declarada con `?`: si falta el compose aborta, y
-vacia cierra las rutas. Se genera como `allow` al arrancar, asi que cambiarla pide recrear el
-contenedor, no rebuild. **Nunca debe contener la IP del borde**: todo el trafico de Internet llega con
-ella y abrirla equivale a publicar la consola.
+- `location ^~ /mapalab/api/privado/` para el proxy de capas privadas de MapaLab: sin caché, sin buffer y con 120 s de lectura (las descargas WFS privadas tardan más que los 30 s del resto de la API).
+- `scripts/purgar-cache-capa.sh <workspace> <capa>`: borra de la caché de sextante las entradas de una capa (WMS, OWS y teselas GWC, con el nombre en claro o codificado). Hace falta al volver privada una capa que ya estuvo pública, porque la caché guarda hasta 6 h los WMS y 30 días las teselas sin preguntar a GeoServer. Recorre toda la caché: tarda minutos.
+
+### Cambiado
+
+- `/mapalab/api/layers/tree/completo` responde 403 desde fuera, como `refresh-cache`: es el árbol con las capas privadas y solo lo pide mariachi por la red interna.
+
+## [1.57.1] - 2026-09-30
+
+### Corregido
+
+- **`/mapalab/embed` tiene ruta propia, sin los encabezados de seguridad del gateway.** La ruta
+  `/mapalab/` agrega `X-Frame-Options: SAMEORIGIN` y un CSP con `frame-ancestors 'self'`, que se
+  sumaban al `frame-ancestors` que mapalab arma con los dominios de la llave: ningún sitio externo
+  podía incrustar el mapa. El resto de `/mapalab/` conserva sus encabezados.
+
+## [1.57.0] - 2026-09-30
+
+### Agregado
+
+- **Aviso de mantenimiento para el widget de mapalab.** Con la bandera encendida,
+  `/mapalab/widget/` ya no responde la página HTML con 503 (el navegador no la ejecutaba y
+  `<iieg-mapalab>` quedaba como un hueco vacío en los sitios que lo embeben): responde 200 con
+  `error-pages/mantenimiento-mapalab-widget.js`, un elemento `iieg-mapalab` mínimo que respeta
+  `height` y `width` y dice «MapaLab se está actualizando». Lleva `Access-Control-Allow-Origin: *`,
+  `nosniff` y `no-store`, así que al apagar el mantenimiento la siguiente carga trae el widget real.
+
+## [1.56.3] - 2026-09-30
+
+### Agregado: frames, vine y mapalab-qgis en las reglas de git del ecosistema
+
+Las tres listas de repos habian derivado. `scripts/ecosystem-status.sh` cubria catorce; `pull` y
+`push` menos, y sin un criterio que explicara la diferencia: vine estaba en `push` pero no en `pull`,
+frames solo en `status` —se agrego ahi al renombrarlo desde wacha el 2026-09-02 y se olvido el
+resto—, y mapalab-qgis en ninguna de las dos.
+
+`ecosystem-pull.sh` gana frames, vine y mapalab-qgis; `ecosystem-push.sh` gana frames y
+mapalab-qgis. Las tres quedan en el mismo orden: gateway, acervo, huachicol, dataengine, sextante,
+mariachi, mapalab, mapalab-qgis, sieej, sitio2026, vine, frames, intranet, minerva.
+
+### Cambiado: `ECOSYSTEM_STEPS` se queda en once a proposito
+
+No se les agrega al ciclo de vida, y conviene que quede escrito para que nadie lo "arregle" despues.
+`ECOSYSTEM_STEPS` es el orden topologico de lo que corre en **S1-S5**: frames y vine viven en la VM
+`vine-wacha`, fuera de ese esquema, y no estan en la ruta de nadie, asi que un `ecosystem-deploy`
+desde el gateway no tiene por que levantarlos. mapalab-qgis no es un servicio: es un complemento de
+QGIS y no tiene contenedores.
+
+La distincion queda entonces: **catorce repos para lo que es git** —traer y subir— y **once para el
+ciclo de vida** en S1-S5.
+
+## [1.56.2] - 2026-09-30
+
+### Agregado: minerva entra a las reglas de pull y push del ecosistema
+
+Ya estaba en `ECOSYSTEM_STEPS` —de ahi que `ecosystem-up`, `ecosystem-down` y `ecosystem-deploy` la
+cubrieran, con su `MINERVA_COMPOSE` porque no tiene Makefile homologado— y en
+`scripts/ecosystem-status.sh`. Faltaba en los otros dos scripts, asi que `make ecosystem-pull` no la
+actualizaba y `make ecosystem-push` no la subia: habia que hacerlo a mano sin que nada lo recordara.
+
+Se agrega a `REPO_ORDER` y `REPO_NAMES` de `ecosystem-pull.sh` y a `REPO_ORDER` de
+`ecosystem-push.sh`, al final de la lista, igual que en `ecosystem-status.sh`.
+
+**Cuidado con el push.** El script sube la **rama que este checada**, sin lista blanca: solo omite
+HEAD detached, repos sin git y lo que no tenga nada pendiente. minerva **no es repo nuestro** —la
+integracion es contra `main` y su `develop` no se toca—, asi que si su clon queda en `main` o en
+`develop` con commits locales, el push del ecosistema los sube ahi. Hoy esta en `tamal-rojo`, que si
+es nuestra y rastrea `origin`.
+
+## [1.56.1] - 2026-09-30
+
+### Corregido: el guard de mantenimiento rompia el deploy por permisos
+
+`ensure_mantenimiento` hacia `mkdir -p data/mantenimiento`, y **`data/` es de Docker**: el daemon lo
+crea como `root:root` al materializar el bind mount de `NGINX_CACHE_PATH` (`./data/nginx-cache`).
+Cualquier `make deploy` posterior al primer arranque de nginx moria con `mkdir: Permission denied`
+—cuarto guard, despues de que los tres anteriores ya habian salido en verde— y no habia forma de
+arreglarlo sin `sudo` en cada maquina.
+
+El switch se muda a **`mantenimiento/`** en la raiz del repo, que es del usuario: se crea y se
+escribe sin privilegios. El bind mount del compose apunta ahi y el `.gitignore` lo cubre. La ruta
+dentro del contenedor no cambia, asi que `mantenimiento-mapalab.inc` y su
+`if (-f /etc/nginx/mantenimiento/mapalab)` quedan iguales.
+
+**Al desplegar, un aviso encendido se apaga**: nginx monta el directorio nuevo, vacio. Comprobar
+`data/mantenimiento` antes de la ventana y, si hay algun flag puesto, volver a ponerlo en la ruta
+nueva. El `data/mantenimiento` viejo queda inerte y se puede borrar.
+
+
+## [1.56.0] - 2026-09-29
+
+### Agregado
+
+- intranet entra al orquestador: `ecosystem-up`, `ecosystem-down` y `ecosystem-deploy` la recorren al final, después de `gateway`, para que un nodo sin su `.env.production` no deje a medias al resto; también `ecosystem-pull` y `ecosystem-push`. En su nodo se elige con `STACKS=intranet`. No lleva `location`: el borde del hipervisor la reparte por SNI.
+
+## [1.55.2] - 2026-09-29
+
+### Corregido
+
+- El proxy del socket de Docker del sidecar `/ontoy` deja de ser `tecnativa/docker-socket-proxy`: con `CONTAINERS=1` también dejaba pedir `/containers/{id}/json` (el entorno, con secretos), `logs` y `archive` de cualquier contenedor del host. Ahora es `nginx:1.30.4-alpine` sin root, de solo lectura y sin capacidades, con `version-api/docker-proxy.conf`, que solo deja pasar `GET /containers/json` (con o sin prefijo `/vX.Y/`) y responde 403 a todo lo demás. Pide `DOCKER_GID` en el `.env`.
+
+## [1.55.1] - 2026-09-29
+
+### Corregido
+
+- El check `containers` de `/ontoy` ya no marca degradado un contenedor de un solo uso que terminó con código 0 (el `monitor-data-init` de huachicol), y el sidecar deja de contar su propia salud, que lo dejaba en `unhealthy` en cada arranque.
+
+## [1.55.0] - 2026-09-24
+
+Reparaciones de la auditoria de seguridad del 2026-09-24 (`context-ame-esta`,
+`historial/2026-09-24-auditoria-seguridad.md`).
+
+**Tres variables nuevas en el `.env` de cada nodo**, declaradas con `?`: si faltan el compose aborta,
+y vacias cierran la ruta. Se generan como `allow` al arrancar, asi que cambiarlas pide recrear el
+contenedor, no rebuild. **Ninguna debe contener la IP del borde (`10.13.128.50`)**: todo el trafico
+de Internet llega con ella y abrirla equivale a publicar la ruta.
+
+| Variable | Abre | Valor esperado |
+|---|---|---|
+| `ADMIN_ALLOW_CIDRS` | `/sextante/web`, `/sextante/rest`, `/sextante/j_spring_security*` | red de administracion o VPN que entra por la IP de LAN de S1 |
+| `MONITOR_ALLOW_CIDRS` | `/ontoy`, `/sextante/ontoy`, `/acervo/ontoy`, `/huachicol/ontoy` (80 y 443) | subred de `iieg-network` |
+| `INTERNAL_UPLOAD_ALLOW_CIDRS` | `/api/internal/acervo/` | IP de LAN del nodo del portal, o vacia |
 
 ### Corregido
 
 - **XSS almacenado por `/acervo/`.** Todo objeto sale con `X-Content-Type-Options: nosniff`,
-  `Content-Security-Policy: default-src 'none'; sandbox` y las cabeceras de seguridad del server, que
-  la `add_header` propia de la location anulaba. La disposicion la decide el `Content-Type` que entrega
-  el acervo, no la extension: `inline` solo para PNG, JPEG, GIF, WebP, AVIF y PDF, y `attachment` para
-  todo lo demas (SVG, HTML, XML, JS, CSV, TXT, JSON). Si el objeto ya traia `attachment` se respeta, y
-  el `filename` original se conserva. Las cabeceras `Content-Disposition`, `Content-Security-Policy` y
-  `X-Content-Type-Options` del upstream se ocultan para no duplicarlas.
-- **`/acervo/` ya no expone la API S3 de escritura.** `limit_except GET OPTIONS`: PUT, POST, DELETE y
-  multipart responden 403, y se retiran `client_max_body_size 1G` y `proxy_request_buffering off`.
-  Ningun repo escribe por el dominio publico: el admin de mariachi sube por su API, mapalab solo
-  firma GET y dataengine y el portal usan endpoints internos. **Antes de desplegar, confirmar que ni el
-  `ACERVO_S3_URL` del portal ni el `AO_ENDPOINT` de dataengine apunten a `https://<dominio>/acervo`.**
-- **Consola, REST y login de GeoServer cerrados a Internet** (`/sextante/web`, `/sextante/rest`,
-  `/sextante/j_spring_security*`) con `allow` desde `ADMIN_ALLOW_CIDRS` y `deny all`. mariachi y
-  mapalab llegan a la REST por la IP interna de GeoServer, sin pasar por aqui.
-- **El catch-all de `/sextante/` ya no rodea el cierre del admin.** 403 a cualquier ruta con `;`, que
-  Tomcat trata como parametro de ruta (`/sextante/;x/rest`), y a `wps`, `gwc/rest`, `rest` y `web` con
-  o sin workspace. Las tres locations de administracion son prefijos mas largos y siguen por CIDR.
+  `Content-Security-Policy: default-src 'none'; sandbox` y las cabeceras de seguridad del server. La
+  disposicion la decide el `Content-Type` que entrega SeaweedFS, no la extension: `inline` solo para
+  PNG, JPEG, GIF, WebP, AVIF y PDF, y `attachment` para todo lo demas (SVG, HTML, XML, JS, CSV, TXT,
+  JSON). Si el objeto ya traia `attachment` se respeta, y el `filename` original se conserva. Las
+  cabeceras `Content-Disposition` y `Content-Security-Policy` del upstream se ocultan para no
+  duplicarlas. Un `<img>` o un `<video>` no se ven afectados por `attachment`; el PDF con `sandbox` se
+  verifico en Chrome y se sigue viendo en linea.
+- **`/acervo/` ya no expone la API S3 de escritura.** `limit_except GET OPTIONS`: PUT, POST, DELETE
+  y multipart responden 403, y se retira el `client_max_body_size 1G`. Ningun repo del ecosistema
+  escribe por el dominio publico: mariachi sube por `/api/.../acervo`, CKAN y el portal por
+  `ACERVO_S3_URL` interno, dataengine por `<S1>:8333`. **Antes de desplegar, confirmar en S5 que el
+  `ACERVO_S3_URL` del portal no apunte a `https://<dominio>/acervo`.**
+- **Las `add_header` por location ya no borran HSTS, CSP, `X-Frame-Options` ni `nosniff`.** Se
+  incluye `security-headers.inc` en cada location con cabeceras propias que no lo tenia: los `/ontoy`
+  de 443, `/api/`, `/api/{administrador,mariachi}/acervo`, `/api/internal/acervo/`,
+  `/mapalab/assets/`, `/mapalab/api/`, `/acervo/`, `/mariachi/assets/`, `/sieej/assets/` y los
+  `gwc/service`, `wms`, `ows` y `wfs|wcs` de sextante, que pierden sus `X-Frame-Options` y `nosniff`
+  sueltos. Se evaluo `add_header_inherit merge` (nginx 1.30.4 lo soporta), pero habria duplicado las
+  cabeceras de las locations que ya incluyen el archivo.
+- **Consola, REST y login de GeoServer cerrados a Internet** con `ADMIN_ALLOW_CIDRS`. mariachi y
+  mapalab llegan a la REST por `<S3>:8080`, sin pasar por aqui. Estas tres locations conservan
+  `X-Forwarded-Host $host` para que el login funcione entrando por IP.
+- **Catch-all de `/sextante/`:** solo GET y HEAD, `limit_req` de `sextante_download` (la misma cubeta
+  del WFS), 403 a `wps`, `gwc/rest`, `rest` y `web` con o sin workspace, y 403 a cualquier ruta con `;`,
+  que Tomcat trata como parametro de ruta y permitia rodear las locations de administracion
+  (`/sextante/;x/rest`). El WPS de mapalab va directo a `<S3>:8080/ows` y no se toca.
+- **Los `/ontoy` de gateway, sextante, acervo y huachicol dejan de ser publicos**, en 80 y en 443,
+  con `MONITOR_ALLOW_CIDRS`. El monitor los sondea por `iieg-network`
+  (`http://gateway-hub-nginx-1:80/ontoy`); las verificaciones a mano pasan a hacerse desde dentro de
+  la red o con `docker exec`. `/sieej/ontoy` sigue publico.
+- **`/api/internal/acervo/` cerrado** con `INTERNAL_UPLOAD_ALLOW_CIDRS`. Solo sirve si el portal
+  llama por la IP de LAN de S1: por el dominio publico llega como el borde.
+- **`X-Forwarded-Host` ya no viene del cliente en las rutas publicas de sextante.** Nuevo
+  `includes/sextante-proxy-params.inc` que fija `Host` y `X-Forwarded-Host` a `APP_DOMAIN`, y los
+  `proxy_cache_key` de sextante, `app_assets_cache` y `mapalab_assets` suman `$host`. **El cambio de
+  llave deja frios esos caches una vez**: el primer dia los tiles vuelven a pedirse a GeoServer.
+- **Dotfiles negados dentro de las `^~` con `alias` o `root`:** `/sieej/`, `/sieej/assets/` y
+  `/.well-known/`, que el `location ~ /\.` del server no alcanzaba.
+- **Sin `ignore_invalid_headers off`.** Entro en `aec6926` para la API S3 de MinIO por `/acervo/`;
+  sin escrituras por esa ruta ya no hay quien mande cabeceras con guion bajo.
 
-## [1.47.1] - 2026-09-01
+### Cambiado
 
-### Agregado: `limit_conn` por cliente, parametrizado con `CONN_LIMIT`
+- **GTM no se inyecta en `/mariachi/` ni en `/sieej/`.** `gtm.inc` sustituye con `$gtm_head` y
+  `$gtm_body`, dos `map` sobre `$uri` que quedan vacios en esos prefijos. La CSP conserva
+  `'unsafe-inline'` en `script-src`: el snippet de GTM se podria cubrir con un hash, pero las
+  etiquetas personalizadas de GTM, CKAN y el portal insertan scripts en linea que no se pudieron
+  inventariar sin navegador contra produccion.
+- **minerva se despliega con `docker-compose.deploy.yml` salvo en desarrollo.** Sin `MINERVA_COMPOSE`,
+  el orquestador lee `APP_ENV` del `.env` de minerva: `development`, `dev` o `local` usan
+  `docker-compose.yml`; cualquier otro valor usa el de deploy, que no publica backend, Redis ni
+  Postgres. En deploy se exige `MINERVA_VERSION` fija (ni vacia ni `latest`) y hace falta
+  `docker login ghcr.io`. `MINERVA_COMPOSE` sigue forzando el archivo.
+- `.env.example`: la arista de `ONTOY_PEER_CHECKS` a S4 pasa de `:6432` a `:5432`, porque pgbouncer ya
+  no se publica fuera de la VM.
+- El sidecar `version-api` ya no monta `docker.sock`; consulta contenedores por
+  `DOCKER_HOST=tcp://docker-socket-proxy:2375` (`tecnativa/docker-socket-proxy:v0.5.0`,
+  `CONTAINERS=1` y lo demas en 0, red interna `gateway-hub-docker-api`) y corre como uid 65534.
+- `ontoy_server.py` sincronizado con huachicol 2.18.0: 500 con texto fijo, tope de 8 hilos, timeout
+  de 5 s, cache de 2 s y CPU sin sleep por peticion; desaparece `ONTOY_CPU_SAMPLE_SECONDS`.
 
-No habia **ningun** limite de conexiones simultaneas: `limit_req` acota peticiones por segundo, pero
-un cliente que abre miles de conexiones lentas y no las cierra pasa por debajo de ese radar y agota
-los `worker_connections`. `limit_conn per_client ${CONN_LIMIT}` a nivel de `server`, con
-`limit_conn_status 503`.
+### Sin cambio a proposito
 
-Va parametrizado y no fijo: mientras el borde no mande `X-Forwarded-For` esto es un techo del sitio
-entero. **Dimensionarlo en 2000** —por debajo de `worker_connections 4096`, muy por encima de las
-~600 conexiones de los 105 usuarios simultaneos medidos— y **bajarlo a ~50 el dia que llegue la
-cabecera**.
+- **Las zonas `general`, `static` y `app_assets` conservan la llave IP + user-agent.** Con todo el
+  trafico llegando como una sola IP, quitar el user-agent convierte cada zona en un fusible del sitio
+  entero y reabre el castigo colectivo que 1.53.0 corrigio. La evasion rotando user-agent la cubre el
+  borde, como se decidio entonces.
+
+## [1.54.0] - 2026-09-24
+
+### Cambiado: el WFS de sextante entra a la regla de 1.53.0
+
+`sextante_download` se quedo fuera de la revision de 1.53.0: sus reglas viven en
+`conf.d/sextante-upstream.conf.template` y `includes/sextante-locations.inc`, no en las dos plantillas
+que se tocaron. Seguia en **10 r/s, burst 10, `nodelay` y llave solo por IP**, es decir, 10 peticiones
+por segundo para todo el sitio con rechazo inmediato.
+
+Un solo poligono en el visor sobre una categoria con muchas capas lo agotaba: el resumen cuenta cada
+capa con `resultType=hits` y el visor recibía 429 en cadena (visto en el espejo, mapalab rojo 1.210).
+
+| Zona | Antes | Ahora | Burst | Exceso | Llave |
+|---|---|---|---|---|---|
+| `sextante_download` | 10 r/s | 100 r/s | 300 | se encola | IP + user-agent |
+
+Pasa a ser un techo de capacidad, como el resto: el uso normal no lo toca y un navegador desbocado se
+frena solo sin castigar a los demas. La cubeta del plugin de QGIS (`mapalab_plugin`) no cambia.
+
+La concurrencia real de GeoServer la sigue cuidando su control-flow (`ows.global`, `ows.wms.getmap`,
+`ip`, `user`), que tambien ve una sola IP y encola en vez de rechazar. Si tras el despliegue el
+sintoma pasa de 429 a esperas largas, el siguiente cuello es ese.
+
+## [1.53.0] - 2026-09-01
 
 ### Cambiado: los limites se reparten el trabajo con el borde
 
 Administracion habilito en el equipo de borde proteccion contra DDoS, limites de tasa y de
-conexiones, y filtrado de bots. Ellos **tienen la identidad del cliente** y nosotros no —todo el
-trafico seguira llegando como una sola IP—, asi que vigilar clientes es su trabajo. El nuestro es lo
-que ellos no pueden saber: que un `/mapalab/api/download/` retiene una conexion de PostgreSQL entre
-5 y 60 segundos mientras un bundle sale del cache en microsegundos.
+conexiones, y filtrado de bots. Ellos **tienen la identidad del cliente** y nosotros no —y no la
+vamos a tener: todo el trafico seguira llegando como `10.13.128.50`—, asi que vigilar clientes es su
+trabajo y no el nuestro. El nuestro es lo que ellos no pueden saber: que un `/mapalab/api/download/`
+retiene una conexion de PostgreSQL entre 5 y 60 segundos mientras que un bundle sale del cache en
+microsegundos.
 
-**Permisivo donde es barato, candado donde es escaso.** Las tasas dejan de ser cuotas y pasan a ser
-techos, calibrados contra los stress tests de abril —310 RPS, p95 366 ms, backend de mapalab topando
-en 80-120 req/s—:
+De ahi la regla nueva: **permisivo donde es barato, candado donde es escaso.**
 
-| Zona | 1.47.0 | 1.48.0 | Burst | Llave |
+### Cambiado: las zonas se dimensionan contra capacidad medida
+
+Con una sola IP, `limit_req_zone $binary_remote_addr` no limita por persona: cuenta el sitio entero.
+Las tasas dejan de ser cuotas y pasan a ser techos, calibrados contra los stress tests de abril
+—310 RPS con p95 de 366 ms, backend de mapalab topando en 80-120 req/s por sus 8 workers— y no
+contra lo que deberia hacer un visitante.
+
+| Zona | Antes | Ahora | Burst | Llave |
 |---|---|---|---|---|
-| `app_assets` | 500 r/s | 1000 r/s | 1000 | IP + user-agent |
-| `static` | 200 r/s | 500 r/s | 500 | IP + user-agent |
+| `app_assets` | 50 (en `static`) | 1000 r/s | 1000 | IP + user-agent |
+| `static` | 50 r/s | 500 r/s | 500 | IP + user-agent |
 | `general` | 10 r/s | 200 r/s | 300 | IP + user-agent |
-| `acervo_files` | 200 r/s | 300 r/s | 600 | IP |
+| `acervo_files` | 50 (en `static`) | 300 r/s | 600 | IP |
 | `api` | 10 r/s | 100 r/s | 200 | IP |
 | `acervo_thumb` | 30 r/s | 60 r/s | 240 | IP |
 | `geoserver_files` | 30 r/s | 60 r/s | 400 | IP |
 
-`/mapalab/api/download/` se queda estrecho a proposito (burst 10): su limite real son las 10-15
-conexiones de BD simultaneas, no la tasa.
+`app_assets` recoge las seis rutas de bundles (`/assets/`, `/base/`, `/webassets/`,
+`/mapalab/assets/`, `/mariachi/assets/`, `/sieej/assets/`) y `/acervo/` sale a `acervo_files`: eran
+diez `location` compartiendo un mismo fusible, y por eso el 2026-08-31 una inundacion del acervo
+dejo sin cargar el visor.
 
 ### Cambiado: `nodelay` solo donde un 429 degrada en vez de romper
 
-Se retira de `general` y `static` —`app_assets` ya no lo tenia desde 1.47.0—: el exceso encola hasta
-el burst en lugar de rechazarse. Con identidad compartida, rechazar es castigo colectivo; encolar
-solo pone lento al conjunto, y el peor caso es `burst / rate`, un segundo para `app_assets`. Se
-conserva en `api`, `acervo_files`, `acervo_thumb` y `geoserver_files`, donde un 429 degrada una
-funcion pero encolar amarraria conexiones contra un backend escaso.
+Se retira de `app_assets`, `static` y `general`: el exceso encola hasta el burst en lugar de
+rechazarse. Con una identidad compartida, rechazar es castigo colectivo —el que funde el fusible
+deja fuera a todos—, mientras que encolar solo pone lento al conjunto. Se conserva en `api`,
+`acervo_files`, `acervo_thumb` y `geoserver_files`, donde un 429 degrada una funcion pero encolar
+amarraria conexiones contra un backend escaso.
 
 ### Cambiado: las zonas baratas se llavean por IP + user-agent
 
 `app_assets`, `static` y `general` pasan a `"$binary_remote_addr$http_user_agent"`. **No es una
-frontera de seguridad** y contra alguien con intencion no sirve; eso lo cubre el borde. Sirve contra
-el modo de fallo real: un cliente desbocado consume su propia cubeta en vez de la de todos. El bucle
-del 2026-08-31 tenia un user-agent y un referer concretos. nginx trunca la llave a 255 bytes y
-agrupa a los navegadores con UA identico; ambas cosas son aceptables aqui. Las zonas de recursos
-escasos conservan la llave por IP.
+frontera de seguridad** —cambiar el user-agent es trivial— y contra alguien con intencion no sirve
+de nada; eso lo cubre el borde. Sirve contra el modo de fallo real, que ya se dio dos veces: un
+cliente desbocado consume su propia cubeta en vez de la de todos. El bucle del 2026-08-31 tenia un
+user-agent y un referer concretos. nginx trunca la llave a 255 bytes y agrupa a los navegadores con
+UA identico; ambas cosas son aceptables para lo que se busca. Las zonas de recursos escasos
+conservan la llave por IP, porque ahi el techo global es justamente lo que se quiere.
 
-### Eliminado: el bloqueo de clientes programaticos y de crawlers de IA
+### Eliminado: el bloqueo de clientes programaticos en `bot-protection`
 
-El borde ya filtra bots, y mantener dos listas hace que un falso positivo sea el doble de dificil de
-diagnosticar. Se liberan `curl`, `wget`, `python-requests`, `aiohttp`, `axios`, `node-fetch`, los
-scrapers y las herramientas de testing: para un instituto de informacion estadistica, impedir el
-consumo programatico de su API es contraproducente, y `/datos-abiertos` y `/mapalab/mcp` ya se
-excluian a mano por esa razon.
+El borde ya filtra bots. Mantener dos listas hace que un falso positivo sea el doble de dificil de
+diagnosticar, y la nuestra tenia un costo conocido: bloqueaba `curl`, `wget`, `python-requests`,
+`aiohttp`, `axios`, `node-fetch` y las herramientas de testing. `/datos-abiertos` y `/mapalab/mcp`
+ya se excluian a mano por esa razon. Para un instituto de informacion estadistica, impedir el
+consumo programatico de su API es contraproducente.
 
-Los crawlers de IA (`GPTBot`, `ClaudeBot`, `ChatGPT`, `CCBot`, `Google-Extended`, `Bytespider`) se
-abren por **decision institucional**. Los bots SEO agresivos siguen bloqueados: ahi el motivo no es
-politica de contenido sino ancho de banda. Se conservan tambien el user-agent vacio, los patrones de
-escaneo y la lista propia de sextante.
+Se conservan el user-agent vacio, los bots SEO agresivos, los patrones de escaneo (`nikto`, `scan`,
+`attack`, `inject`, `exploit`), la lista propia de sextante —mas estricta, protege el backend caro—
+y la allowlist de QGIS.
+
+### Eliminado: el bloqueo de crawlers de IA
+
+Decision institucional, no tecnica: se abre el contenido publico a `GPTBot`, `ClaudeBot`, `ChatGPT`,
+`CCBot`, `Google-Extended` y `Bytespider`. Los bots SEO agresivos —`SemrushBot`, `AhrefsBot`,
+`MJ12bot`, `DotBot`, `Barkrowler`, `DataForSeoBot`, `BLEXBot`, `PetalBot`, `YandexBot`— **siguen
+bloqueados**: ahi el motivo no es politica de contenido sino ancho de banda.
+
+Si mas adelante se quiere modular esto por ruta o por bot, el lugar correcto es `robots.txt`, no un
+403 del gateway: un bloqueo por user-agent no distingue al que respeta las reglas del que no.
+
+
+## [1.52.0] - 2026-09-01
+
+### Agregado: `limit_conn` por cliente, parametrizado con `CONN_LIMIT`
+
+Hasta ahora no habia **ningun** limite de conexiones simultaneas: `limit_req` acota peticiones por
+segundo, pero un cliente que abre miles de conexiones lentas y no las cierra pasa por debajo de ese
+radar y agota los `worker_connections`. Vector completamente abierto.
+
+`limit_conn per_client ${CONN_LIMIT}` a nivel de `server`, con `limit_conn_status 503`, cubre las
+cincuenta y tantas locations de una vez.
+
+**Va parametrizado y no fijo a proposito.** Mientras el borde no mande `X-Forwarded-For`, todo el
+trafico llega como una sola IP y esto es un techo del sitio entero, no una cuota por persona:
+dimensionarlo en **2000** —por debajo de `worker_connections 4096`, muy por encima de las ~600
+conexiones que implican los 105 usuarios simultaneos medidos en los stress tests— para que solo
+muerda ante agotamiento real. **Cuando llegue la cabecera, bajarlo a ~50**, que es cuando de verdad
+sirve. Contexto en `context-ame-esta`, `repos/gateway-hub/pendientes/ip-de-cliente-tras-el-borde.md`.
 
 ### Cambiado: los logs guardan 90 MB por contenedor en vez de 30
 
-`max-size` de `10m` a `30m`. El 2026-08-31, durante la inundacion de `/acervo/portal/mapas/`, un
-`docker logs --since 24h` solo alcanzaba a cubrir **una hora**: el anillo de 30 MB se reescribia
-entero a ese volumen.
+`max-size` de `10m` a `30m`, con `max-file: 3` sin tocar. El 2026-08-31, durante la inundacion de
+`/acervo/portal/mapas/`, un `docker logs --since 24h` solo alcanzaba a cubrir **una hora**: el anillo
+de 30 MB se reescribia entero a ese volumen. Se estuvo a punto de perder el rastro forense del
+incidente, que es justo cuando el log importa.
 
 
-## [No publicado]
+## [1.51.0] - 2026-08-28
 
-### Corregido: un cliente saturando acervo dejaba sin cargar los bundles de las apps
+### Agregado: vine entra a `make ecosystem-push`
 
-Diez `location` compartian la zona `static` (50 r/s), entre ellas `/acervo/` y los bundles de las
-cuatro aplicaciones. El 2026-08-26 una herramienta local recorriendo `/acervo/portal/mapas/...`
-generó **8095 peticiones bloqueadas en quince minutos** y dejó la cubeta clavada en el burst; los
-chunks de `/mapalab/assets/` empezaron a responder 429 y el visor no montaba. Desde el navegador se
-ve igual que si mapalab estuviera caído, que fue justo la confusión.
+vine sale en `ecosystem-status` desde 1.48.0, pero no en el push: sus commits habia que subirlos a
+mano desde el repo. Ahora va en la lista, entre `sitio2026` y `context-ame-esta`.
 
-Los bundles pasan a una zona **`app_assets`** propia (`/assets/`, `/base/`, `/webassets/`,
-`/mapalab/assets/`, `/mariachi/assets/`, `/sieej/assets/`) y `/acervo/` a **`acervo_files`**.
+Sigue fuera de `ECOSYSTEM_STEPS` y de `ecosystem-pull`, y es lo correcto: ese orden es el de
+despliegue y vine no se despliega desde aqui —comparte VM con wacha—. Push y estatus solo leen y
+escriben git, que es lo unico que este repo necesita saber de vine.
 
-### Agregado: cache de los bundles de portalito, CKAN y mariachi
+`wacha`, `intranet` y `mapalab-qgis` siguen fuera del push.
 
-**Solo `/mapalab/assets/` se cacheaba.** El bundle del portal público —que vive en `/`, la ruta de
-mas trafico del dominio— se proxeaba a S5 **en cada visita**, y lo mismo `/base/` y `/webassets/` de
-CKAN y `/mariachi/assets/`. Son archivos inmutables con hash en el nombre: el caso de libro para una
-cache.
+## [1.50.0] - 2026-08-27
 
-Zona nueva `app_assets_cache` (1 GB, `inactive=7d`) aplicada a las cuatro. TTL de **7 dias** salvo
-`/base/`, que va a **1 hora** porque los estaticos del tema de CKAN no garantizan hash en el nombre
-y un TTL largo serviria version vieja tras una actualizacion.
+### Agregado: el `/ontoy` declara a que nodo pertenece
 
-### Agregado: `proxy_cache_lock` y cacheo breve de los 404
+huachicol 2.9.0 amplio el contrato para que el monitor agrupe por servidor y no solo por servicio.
+`ONTOY_NODE` dice donde corre este repo —**S1**— y `ONTOY_NODE_REPORTER` decide quien habla del
+host. Comparte el nodo S1 con otros repos, asi que va en `false`: solo huachicol habla del host y se acaban las lecturas repetidas de la misma maquina.
 
-`proxy_cache_lock on` en las cinco locations con cache: colapsa las peticiones concurrentes de un
-MISS en **una sola** al origen. Sin el, purgar la cache provoca una estampida — que es exactamente
-lo que paso el 2026-08-26 al purgar `mapalab_assets` con gente usando el visor.
+`ONTOY_PEER_CHECKS` queda disponible para las aristas entre nodos; vacia por omision.
 
-`proxy_cache_valid 404 1m`: antes solo se cacheaba el `200`, asi que **pedir rutas inexistentes
-atravesaba la cache entera** y llegaba al backend en cada peticion. Un minuto basta para amortiguar
-un escaneo sin estorbar a un despliegue.
+**Las dos primeras son obligatorias**: el compose falla si faltan, asi que hay que agregarlas al
+`.env` de cada entorno antes de desplegar.
 
-### Cambiado: los limites de estaticos moldean en vez de rechazar, y se dimensionan como globales
+De paso, `ontoy_server.py` se sincroniza con el de huachicol, que es la fuente y llevaba tiempo
+divergiendo entre copias. Los checks de maquina quedan marcados como informativos y ya no tumban el
+estado del servicio.
 
-**Todo el trafico llega al gateway como una sola IP.** Medido el 2026-08-26 sobre 30 minutos:
-51 644 peticiones desde `10.13.128.50` y ninguna direccion externa. El equipo de borde no manda
-`X-Forwarded-For` y **administracion declino añadirlo**, asi que es permanente. Detalle en
-`context-ame-esta`, `repos/gateway-hub/pendientes/ip-de-cliente-tras-el-borde.md`.
+## [1.49.0] - 2026-08-24
 
-Con una sola IP, `limit_req_zone $binary_remote_addr` **no limita por usuario: limita el sitio
-entero**. Un limite por IP sin identidad de cliente no es una defensa, es un fusible compartido: el
-primero que lo funde deja sin servicio a todos.
+### Corregido: los CQL grandes del visor daban 400 antes de llegar a GeoServer
 
-Dos cambios en consecuencia:
+`large_client_header_buffers` estaba en el default de nginx —**4 buffers de 8 KB**— y el visor
+manda peticiones que lo superan. Se sube a **8 de 64 KB**.
 
-- **Se quita `nodelay` de las seis locations de assets.** El exceso pasa a encolarse hasta el burst
-  en vez de responder 429 al instante. Para un bundle, algo de latencia es preferible a una
-  aplicacion que no arranca. Los limites de rutas dinamicas conservan `nodelay`: ahi un 429 degrada
-  una funcion, no tumba la app.
-- **Tasas dimensionadas como techos de capacidad del sitio**, no como cuota por persona:
+El caso que lo destapo: la capa «Establecimientos de salud» agrupa 33 subcapas sobre
+`salud.unidades_salud`, cada una con su filtro de institucion y nivel de atencion. Con la vista por
+municipio activa, el `GetMap` llevaba un `CQL_FILTER` de 7 314 caracteres y una URI de **10 867
+bytes**. Nginx la rechazaba con `400` sin proxiarla, asi que en el visor la capa aparecia vacia y en
+consola solo se veia `Failed to load resource: 400`, sin pista del motivo.
 
-| Zona | Antes | Ahora | Burst |
-|---|---|---|---|
-| `app_assets` | 50 r/s (en `static`) | 500 r/s | 1000 |
-| `acervo_files` | 50 r/s (en `static`) | 200 r/s | 400 |
-| `static` | 50 r/s | 200 r/s | 400 |
+Se detecto leyendo `request_uri` en los logs JSON del propio gateway, que si guardan la peticion
+completa.
 
-Con la cache delante, el limite de los assets queda como red de seguridad contra bucles, no como
-mecanismo de proteccion: lo que protege al origen es la cache y el `proxy_cache_lock`.
+Es el mismo tope que ya habia mordido antes por otro camino: el filtro por WKT de municipios, que
+metia entre 3 y 8 KB de poligono en cada URL y se retiro en mapalab 1.50.0. **El CQL crece con el
+catalogo**, asi que el default de 8 KB no da para este visor.
 
-**Pendiente de la misma revision:** `general` y `api` siguen en 10 r/s y, mientras todo comparta IP,
-son tambien limites globales. No se tocaron en este cambio por prudencia, siendo el gateway la
-entrada unica del ecosistema.
+## [1.48.1] - 2026-08-21
+
+### Corregido: la API de mapalab recibia la pagina de error del gateway en vez de su JSON
+
+`/mapalab/api/` caia en el catch-all `location ^~ /mapalab/`, que lleva `proxy_intercept_errors on`
+para que los 404 de rutas inexistentes del SPA muestren la pagina de error del gateway. Aplicado a la
+API, ese ajuste **reemplaza el cuerpo de la respuesta**: un `{"detail":"Not Found"}` de FastAPI
+llegaba al cliente como 3 KB de HTML con `content-type: text/html`. Cualquier consumidor que haga
+`res.json()` sobre un error recibia una pagina, y el detalle real del fallo se perdia en el camino.
+
+La API estrena bloque propio, antes del catch-all. Como `^~` resuelve por prefijo mas largo, las
+rutas que ya tenian bloque —`/mapalab/api/download/`, `/mapalab/api/ontoy`, refresh e invalidate
+cache— siguen ganando y no cambian.
+
+Tres diferencias contra el catch-all, y solo tres:
+
+| | Catch-all | Bloque de la API |
+|---|---|---|
+| `proxy_intercept_errors` | `on` | no se activa: el cuerpo del error pasa intacto |
+| `Accept-Encoding` al upstream | se vacia | se respeta: el backend comprime y el gateway reenvia |
+| Zona de rate limit | `general`, burst 150 | `api`, burst 60 — mismo rate, contabilidad aparte |
+
+Vaciar `Accept-Encoding` no le costaba nada al cliente —el gateway recomprime de salida— pero
+obligaba a mover el arbol de capas en crudo por el salto interno: **221 KB en vez de 16 KB**, y a
+gastar CPU del gateway comprimiendo lo que el backend ya sabe comprimir.
+
+Verificado con la config parcheada corriendo contra los servicios reales: `GET
+/mapalab/api/layers/no-existe` devuelve `application/json` con `{"detail":"Not Found"}` en vez de
+`text/html`; el arbol de capas sigue en 200 y 16 KB gzip; la descarga sigue saliendo por su bloque
+con `text/csv`; y el 404 del SPA sigue devolviendo el index. `nginx -t` limpio.
+
+## [1.48.0] - 2026-08-21
+
+### Agregado: minerva entra al orquestador y cada nodo declara sus stacks
+
+Desde tamal-rojo el SSO deja de ser opcional —sin el no hay login en mariachi ni en vine— asi que
+`minerva` entra a `ECOSYSTEM_STEPS`, **entre `dataengine` y `sextante`**, antes de sus dos
+consumidores.
+
+**minerva no se maneja con `make`.** No trae los Makefiles del ecosistema: usa `just`, y ninguna de
+sus 15 recetas apunta a `docker-compose.deploy.yml` —todas usan el compose de desarrollo—, asi que
+`just` no da una ruta de produccion. Su paso se resuelve con `docker compose` directo, que es
+exactamente lo que hace su `just up` sin agregar la dependencia:
+
+    docker compose --project-directory ../minerva -f ../minerva/$MINERVA_COMPOSE up -d --build
+
+`MINERVA_COMPOSE` decide cual: hoy `docker-compose.yml`, que construye desde fuente. **Queda
+pendiente pedirle a su equipo un entorno de produccion soportado**; cuando exista, la variable pasa a
+`docker-compose.deploy.yml`, la bandera cambia a `--pull always` y se consume su imagen de `ghcr.io`
+con la version fija. Ver `ecosistema/planes/orquestacion-minerva-portalito.md` del repo de contexto.
+
+Un `target` sin equivalente —`migrate`, por ejemplo— sale `n/a` y no rompe la cadena.
+
+### Agregado: `STACKS` se declara por nodo en el `.env`
+
+En produccion cada VM corre solo lo suyo: minerva tendra dominio propio y el portalito vive en su
+nodo. `STACKS` ya filtraba los pasos, pero **solo por linea de comandos**, lo que obligaba a
+recordar `STACKS=sitio2026,gateway` en cada despliegue y contradecia la convencion de `make deploy`
+sin banderas. Ahora se lee del `.env` del nodo:
+
+| Nodo | `STACKS` |
+|---|---|
+| monolito local | vacio: despliega todo |
+| nodo del portalito | `sitio2026` |
+| nodo del SSO | `minerva` |
+
+La linea de comandos sigue ganando (`STACKS=mapalab make ecosystem-deploy`). El salto automatico de
+los pasos cuyo repo no esta clonado se queda como red de seguridad, no como el mecanismo principal:
+un clon hecho para mirar no deberia desplegarse solo.
+
+
+### Agregado: cuatro repos mas en `make ecosystem-status`
+
+`mapalab-qgis` —el complemento de QGIS, que salio de mapalab el 2026-08-17—, `vine`, `wacha` y
+`minerva`. El listado solo lee git y docker de cada carpeta, asi que un repo sin compose sale con
+`off` en la columna de contenedores y eso es correcto: el complemento no se levanta.
+
+No entran en `ECOSYSTEM_STEPS`: ese orden es el de despliegue y ninguno de los cuatro se despliega
+desde aqui.
+
+### Agregado: el /ontoy vigila que el complemento de QGIS se pueda descargar
+
+`ONTOY_DEPENDENCIES` estrena su primer uso en este repo, con `plugin_qgis`: un GET al ZIP que la
+Documentacion del admin ofrece para instalar el complemento. No es un servicio con puerto, asi que
+el check de dependencia por URL es la forma de saber que el enlace sigue vivo — que ya se cayo una
+vez, con el archivo de nombre estable sin subir.
+
+La URL viene de `PLUGIN_QGIS_URL`, **sin valor por omision: si falta, el compose falla**, y hay que
+agregarla al `.env` de cada entorno antes de desplegar. Va **directo al Acervo**
+(`http://${ACERVO_HOST}/<ruta-del-objeto>`), no por el gateway: lo que se cae es el objeto, y asi el
+check no depende del TLS ni de resolver el dominio publico desde dentro de la red. Por el puerto 80
+tampoco serviria — nginx redirige y un 301 cuenta como exito sin haber tocado el ZIP.
+
+### Cambiado: el bloqueo por User-Agent pasa de cuatro `if` a un `map`, con QGIS en allowlist
+
+`bot-protection.inc` evaluaba cuatro `if ($http_user_agent ~* ...)` por peticion. Ahora la decision
+vive en `$ua_bloqueado`, un `map` en el contexto `http`, y el include se reduce a un solo `if`.
+
+El motivo no es el rendimiento sino la fragilidad: el plugin de QGIS pasaba **por accidente**, porque
+su UA (`Mozilla/5.0 QGIS/<version>/<so>`) no coincidia con ninguna lista, sin estar declarado en
+ningun lado. El dia que alguien agregara un patron nuevo, el plugin se caia sin que nadie relacionara
+las dos cosas. Ahora hay un `$ua_en_allowlist` explicito que gana sobre cualquier patron de bloqueo.
+
+Las locations de `/sextante/` no usan `bot-protection.inc`: tenian su propia lista inline, mas amplia
+(bloquea `python` y `bot` genericos). Se conserva **intacta** en `$ua_sospechoso_sextante` y solo se
+le antepone la misma allowlist, porque es la ruta por la que el plugin descarga los GeoPackage.
+
+### Agregado: zona de rate limit propia para el plugin de QGIS
+
+`sextante_download` (10 r/s por IP) lo compartian el visor y el plugin, y como el limite es por IP de
+salida, una oficina entera detras de NAT comparte un bucket. La respuesta no es subir el numero
+—beneficiaria tambien a cualquier scraper— sino separar los buckets.
+
+Se agrega `mapalab_plugin`, seleccionada por el header `X-Mapalab-Client` que manda el plugin. Dos
+`map` reparten la clave: la peticion con el header cae solo en la zona del plugin y las demas solo en
+`sextante_download`; una clave vacia desactiva la zona para esa peticion. Mismo rate (10 r/s,
+`burst=10`) que el visor, pero en buckets independientes, asi ninguno le come cuota al otro.
 
 ### Corregido: el cache de nginx no sobrevivia a los despliegues
 
@@ -335,6 +642,134 @@ tanto entra por `'self'`, así que el permiso ya no tiene a quién servir. `www.
 **El orden importa.** Este cambio va *después* de desplegar el portal con el mapa nuevo. Si el
 gateway se reconstruye primero, el portal todavía en producción pide el iframe de Google contra
 una CSP que ya no lo permite y la página de contacto se queda con un hueco.
+
+## [1.47.3] - 2026-09-29
+
+### Agregado
+
+- **Aviso de mantenimiento para mapalab.** Si existe `data/mantenimiento/mapalab`, todo `/mapalab/`
+  (visor, API, descargas, assets y MCP) responde **503** con `Retry-After: 60`, `Cache-Control:
+  no-store` y la página `error-pages/mantenimiento-mapalab.html` (actualización a MapaLab 2, con sus
+  novedades y un enlace al sitio del IIEG). Se enciende y se apaga con `make mantenimiento`, que tiene
+  selector, o creando y borrando el archivo: no hace falta recargar nginx. `/mapalab/ontoy` sigue igual.
+- La carpeta se monta de solo lectura en `/etc/nginx/mantenimiento`; `make up` y `make deploy` la
+  crean antes de levantar para que Docker no la cree como root.
+
+### Notas
+
+- La bandera se revisa con `if (-f ...)` y el include apaga `open_file_cache` en esas rutas: con la
+  caché global (`open_file_cache_valid 30s`) el apagado tardaba hasta 30 s en verse.
+- La reescritura va a una ruta interna que responde 503 por su cuenta, en vez de `error_page 503` en
+  las rutas de mapalab: así un 503 legítimo (el `limit_conn` del propio gateway) no muestra el aviso y
+  las páginas de error heredadas del server no se pierden.
+
+## [1.47.2] - 2026-09-24
+
+Hotfix de seguridad sobre `production`, portado de tamal-rojo 1.55.0 (auditoria del 2026-09-24,
+`context-ame-esta/historial/2026-09-24-auditoria-seguridad.md`). Solo entra lo de `/acervo/` y el
+admin de GeoServer; lo demas de la auditoria sale con tamal-rojo.
+
+**Variable nueva en el `.env`: `ADMIN_ALLOW_CIDRS`**, declarada con `?`: si falta el compose aborta, y
+vacia cierra las rutas. Se genera como `allow` al arrancar, asi que cambiarla pide recrear el
+contenedor, no rebuild. **Nunca debe contener la IP del borde**: todo el trafico de Internet llega con
+ella y abrirla equivale a publicar la consola.
+
+### Corregido
+
+- **XSS almacenado por `/acervo/`.** Todo objeto sale con `X-Content-Type-Options: nosniff`,
+  `Content-Security-Policy: default-src 'none'; sandbox` y las cabeceras de seguridad del server, que
+  la `add_header` propia de la location anulaba. La disposicion la decide el `Content-Type` que entrega
+  el acervo, no la extension: `inline` solo para PNG, JPEG, GIF, WebP, AVIF y PDF, y `attachment` para
+  todo lo demas (SVG, HTML, XML, JS, CSV, TXT, JSON). Si el objeto ya traia `attachment` se respeta, y
+  el `filename` original se conserva. Las cabeceras `Content-Disposition`, `Content-Security-Policy` y
+  `X-Content-Type-Options` del upstream se ocultan para no duplicarlas.
+- **`/acervo/` ya no expone la API S3 de escritura.** `limit_except GET OPTIONS`: PUT, POST, DELETE y
+  multipart responden 403, y se retiran `client_max_body_size 1G` y `proxy_request_buffering off`.
+  Ningun repo escribe por el dominio publico: el admin de mariachi sube por su API, mapalab solo
+  firma GET y dataengine y el portal usan endpoints internos. **Antes de desplegar, confirmar que ni el
+  `ACERVO_S3_URL` del portal ni el `AO_ENDPOINT` de dataengine apunten a `https://<dominio>/acervo`.**
+- **Consola, REST y login de GeoServer cerrados a Internet** (`/sextante/web`, `/sextante/rest`,
+  `/sextante/j_spring_security*`) con `allow` desde `ADMIN_ALLOW_CIDRS` y `deny all`. mariachi y
+  mapalab llegan a la REST por la IP interna de GeoServer, sin pasar por aqui.
+- **El catch-all de `/sextante/` ya no rodea el cierre del admin.** 403 a cualquier ruta con `;`, que
+  Tomcat trata como parametro de ruta (`/sextante/;x/rest`), y a `wps`, `gwc/rest`, `rest` y `web` con
+  o sin workspace. Las tres locations de administracion son prefijos mas largos y siguen por CIDR.
+
+## [1.47.1] - 2026-09-01
+
+### Agregado: `limit_conn` por cliente, parametrizado con `CONN_LIMIT`
+
+No habia **ningun** limite de conexiones simultaneas: `limit_req` acota peticiones por segundo, pero
+un cliente que abre miles de conexiones lentas y no las cierra pasa por debajo de ese radar y agota
+los `worker_connections`. `limit_conn per_client ${CONN_LIMIT}` a nivel de `server`, con
+`limit_conn_status 503`.
+
+Va parametrizado y no fijo: mientras el borde no mande `X-Forwarded-For` esto es un techo del sitio
+entero. **Dimensionarlo en 2000** —por debajo de `worker_connections 4096`, muy por encima de las
+~600 conexiones de los 105 usuarios simultaneos medidos— y **bajarlo a ~50 el dia que llegue la
+cabecera**.
+
+### Cambiado: los limites se reparten el trabajo con el borde
+
+Administracion habilito en el equipo de borde proteccion contra DDoS, limites de tasa y de
+conexiones, y filtrado de bots. Ellos **tienen la identidad del cliente** y nosotros no —todo el
+trafico seguira llegando como una sola IP—, asi que vigilar clientes es su trabajo. El nuestro es lo
+que ellos no pueden saber: que un `/mapalab/api/download/` retiene una conexion de PostgreSQL entre
+5 y 60 segundos mientras un bundle sale del cache en microsegundos.
+
+**Permisivo donde es barato, candado donde es escaso.** Las tasas dejan de ser cuotas y pasan a ser
+techos, calibrados contra los stress tests de abril —310 RPS, p95 366 ms, backend de mapalab topando
+en 80-120 req/s—:
+
+| Zona | 1.47.0 | 1.48.0 | Burst | Llave |
+|---|---|---|---|---|
+| `app_assets` | 500 r/s | 1000 r/s | 1000 | IP + user-agent |
+| `static` | 200 r/s | 500 r/s | 500 | IP + user-agent |
+| `general` | 10 r/s | 200 r/s | 300 | IP + user-agent |
+| `acervo_files` | 200 r/s | 300 r/s | 600 | IP |
+| `api` | 10 r/s | 100 r/s | 200 | IP |
+| `acervo_thumb` | 30 r/s | 60 r/s | 240 | IP |
+| `geoserver_files` | 30 r/s | 60 r/s | 400 | IP |
+
+`/mapalab/api/download/` se queda estrecho a proposito (burst 10): su limite real son las 10-15
+conexiones de BD simultaneas, no la tasa.
+
+### Cambiado: `nodelay` solo donde un 429 degrada en vez de romper
+
+Se retira de `general` y `static` —`app_assets` ya no lo tenia desde 1.47.0—: el exceso encola hasta
+el burst en lugar de rechazarse. Con identidad compartida, rechazar es castigo colectivo; encolar
+solo pone lento al conjunto, y el peor caso es `burst / rate`, un segundo para `app_assets`. Se
+conserva en `api`, `acervo_files`, `acervo_thumb` y `geoserver_files`, donde un 429 degrada una
+funcion pero encolar amarraria conexiones contra un backend escaso.
+
+### Cambiado: las zonas baratas se llavean por IP + user-agent
+
+`app_assets`, `static` y `general` pasan a `"$binary_remote_addr$http_user_agent"`. **No es una
+frontera de seguridad** y contra alguien con intencion no sirve; eso lo cubre el borde. Sirve contra
+el modo de fallo real: un cliente desbocado consume su propia cubeta en vez de la de todos. El bucle
+del 2026-08-31 tenia un user-agent y un referer concretos. nginx trunca la llave a 255 bytes y
+agrupa a los navegadores con UA identico; ambas cosas son aceptables aqui. Las zonas de recursos
+escasos conservan la llave por IP.
+
+### Eliminado: el bloqueo de clientes programaticos y de crawlers de IA
+
+El borde ya filtra bots, y mantener dos listas hace que un falso positivo sea el doble de dificil de
+diagnosticar. Se liberan `curl`, `wget`, `python-requests`, `aiohttp`, `axios`, `node-fetch`, los
+scrapers y las herramientas de testing: para un instituto de informacion estadistica, impedir el
+consumo programatico de su API es contraproducente, y `/datos-abiertos` y `/mapalab/mcp` ya se
+excluian a mano por esa razon.
+
+Los crawlers de IA (`GPTBot`, `ClaudeBot`, `ChatGPT`, `CCBot`, `Google-Extended`, `Bytespider`) se
+abren por **decision institucional**. Los bots SEO agresivos siguen bloqueados: ahi el motivo no es
+politica de contenido sino ancho de banda. Se conservan tambien el user-agent vacio, los patrones de
+escaneo y la lista propia de sextante.
+
+### Cambiado: los logs guardan 90 MB por contenedor en vez de 30
+
+`max-size` de `10m` a `30m`. El 2026-08-31, durante la inundacion de `/acervo/portal/mapas/`, un
+`docker logs --since 24h` solo alcanzaba a cubrir **una hora**: el anillo de 30 MB se reescribia
+entero a ese volumen.
+
 
 ## [1.42.0] - 2026-07-31
 

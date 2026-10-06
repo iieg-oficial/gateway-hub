@@ -8,6 +8,10 @@ map "${SEO_ENABLED}" $seo_block {
     default 1;
 }
 
+map $host $gateway_domain {
+    default "${APP_DOMAIN}";
+}
+
 map $upstream_http_content_type $acervo_tipo_inline {
     default 0;
     "~*^image/(png|jpe?g|gif|webp|avif)[ ]*(;|$)" 1;
@@ -25,6 +29,16 @@ map $upstream_http_content_disposition $acervo_disposicion_nombre {
     "~*(;[ ]*filename.*)$" $1;
 }
 
+map $uri $gtm_head {
+    "~^/(mariachi|sieej)(/|$)" "";
+    default '<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({"gtm.start":new Date().getTime(),event:"gtm.js"});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!="dataLayer"?"&l="+l:"";j.async=true;j.src="https://www.googletagmanager.com/gtm.js?id="+i+dl;f.parentNode.insertBefore(j,f);})(window,document,"script","dataLayer","${GTM_ID}");</script>';
+}
+
+map $uri $gtm_body {
+    "~^/(mariachi|sieej)(/|$)" "";
+    default '<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=${GTM_ID}" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>';
+}
+
 server {
     listen 80 default_server;
     server_name ${APP_DOMAIN} _;
@@ -32,11 +46,15 @@ server {
     resolver 127.0.0.11 valid=10s ipv6=off;
 
     location = /ontoy {
+        include /etc/nginx/includes/allow-monitor.inc;
+        deny all;
         set $gateway_ontoy_upstream "gateway-version-api:8088";
         proxy_pass http://$gateway_ontoy_upstream/ontoy;
     }
 
     location = /sextante/ontoy {
+        include /etc/nginx/includes/allow-monitor.inc;
+        deny all;
         set $sextante_ontoy_upstream "sextante-version-api:8088";
         proxy_pass http://$sextante_ontoy_upstream/ontoy;
         proxy_http_version 1.1;
@@ -45,6 +63,8 @@ server {
     }
 
     location = /acervo/ontoy {
+        include /etc/nginx/includes/allow-monitor.inc;
+        deny all;
         set $acervo_ontoy_upstream "acervo-version-api:8088";
         proxy_pass http://$acervo_ontoy_upstream/ontoy;
         proxy_http_version 1.1;
@@ -53,6 +73,8 @@ server {
     }
 
     location = /huachicol/ontoy {
+        include /etc/nginx/includes/allow-monitor.inc;
+        deny all;
         set $huachicol_ontoy_upstream "huachicol-version-api:8088";
         proxy_pass http://$huachicol_ontoy_upstream/ontoy;
         proxy_http_version 1.1;
@@ -73,6 +95,7 @@ server {
 
 server {
     listen 443 ssl default_server;
+    listen 8443 ssl proxy_protocol;
     http2 on;
     server_name ${APP_DOMAIN} _;
 
@@ -92,7 +115,6 @@ server {
 
     server_tokens off;
     client_max_body_size 100M;
-    ignore_invalid_headers off;
 
     limit_conn per_client ${CONN_LIMIT};
 
@@ -121,6 +143,16 @@ server {
         return 503;
     }
 
+    location = /__mantenimiento/mapalab-widget {
+        internal;
+        types { }
+        default_type "application/javascript; charset=utf-8";
+        alias /etc/nginx/error-pages/mantenimiento-mapalab-widget.js;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Access-Control-Allow-Origin "*" always;
+        add_header Cache-Control "no-store" always;
+    }
+
     location = /error-pages/mantenimiento-mapalab.html {
         alias /etc/nginx/error-pages/mantenimiento-mapalab.html;
         internal;
@@ -130,36 +162,45 @@ server {
     }
 
     location = /ontoy {
+        include /etc/nginx/includes/allow-monitor.inc;
+        deny all;
         set $gateway_ontoy_upstream "gateway-version-api:8088";
         proxy_pass http://$gateway_ontoy_upstream/ontoy;
     }
 
     location = /sextante/ontoy {
+        include /etc/nginx/includes/allow-monitor.inc;
+        deny all;
         set $sextante_ontoy_upstream "sextante-version-api:8088";
         proxy_pass http://$sextante_ontoy_upstream/ontoy;
         proxy_http_version 1.1;
         proxy_set_header Connection "";
         add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+        include /etc/nginx/includes/security-headers.inc;
     }
 
     location = /acervo/ontoy {
+        include /etc/nginx/includes/allow-monitor.inc;
+        deny all;
         set $acervo_ontoy_upstream "acervo-version-api:8088";
         proxy_pass http://$acervo_ontoy_upstream/ontoy;
         proxy_http_version 1.1;
         proxy_set_header Connection "";
         add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+        include /etc/nginx/includes/security-headers.inc;
     }
 
     location = /huachicol/ontoy {
+        include /etc/nginx/includes/allow-monitor.inc;
+        deny all;
         set $huachicol_ontoy_upstream "huachicol-version-api:8088";
         proxy_pass http://$huachicol_ontoy_upstream/ontoy;
         proxy_http_version 1.1;
         proxy_set_header Connection "";
         add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+        include /etc/nginx/includes/security-headers.inc;
     }
 
-    # La raiz la sirve sitio2026 (Portalito). Sin bot-protection: es la ruta del
-    # healthcheck y la puerta de entrada de los crawlers legitimos.
     location = / {
         limit_req zone=general burst=300;
         proxy_pass http://sitio_backend;
@@ -181,6 +222,7 @@ server {
     location ^~ /assets/ {
         limit_req zone=app_assets burst=1000;
         proxy_cache app_assets_cache;
+        proxy_cache_key "$scheme$host$proxy_host$request_uri";
         proxy_cache_valid 200 7d;
         proxy_cache_valid 404 1m;
         proxy_cache_lock on;
@@ -224,8 +266,6 @@ server {
         include /etc/nginx/includes/security-headers.inc;
     }
 
-    # CKAN. Sin bot-protection a proposito: su API es consumo programatico y el
-    # include rechaza curl, wget, python-requests y demas clientes sin navegador.
     location ^~ /datos-abiertos {
         limit_req zone=general burst=300;
         client_max_body_size 1G;
@@ -240,6 +280,7 @@ server {
     location ^~ /base/ {
         limit_req zone=app_assets burst=1000;
         proxy_cache app_assets_cache;
+        proxy_cache_key "$scheme$host$proxy_host$request_uri";
         proxy_cache_valid 200 1h;
         proxy_cache_valid 404 1m;
         proxy_cache_lock on;
@@ -253,6 +294,7 @@ server {
     location ^~ /webassets/ {
         limit_req zone=app_assets burst=1000;
         proxy_cache app_assets_cache;
+        proxy_cache_key "$scheme$host$proxy_host$request_uri";
         proxy_cache_valid 200 7d;
         proxy_cache_valid 404 1m;
         proxy_cache_lock on;
@@ -264,10 +306,6 @@ server {
     }
 
     location ^~ /api/administrador/acervo/thumb {
-        # Miniaturas del Acervo: muchas peticiones GET por pagina pero cacheables.
-        # Zona/burst propios para no chocar con el limite general del API y, sobre
-        # todo, NO forzar no-store: se deja pasar el Cache-Control inmutable del
-        # thumbnail para que el navegador cachee y no repita la rafaga en cada render.
         limit_req zone=acervo_thumb burst=240 nodelay;
         proxy_pass http://portal_backend;
         include /etc/nginx/includes/proxy-params.inc;
@@ -282,6 +320,7 @@ server {
         proxy_pass http://portal_backend;
         include /etc/nginx/includes/proxy-params.inc;
         add_header Cache-Control "no-store" always;
+        include /etc/nginx/includes/security-headers.inc;
         proxy_read_timeout 600s;
         proxy_send_timeout 600s;
     }
@@ -301,20 +340,21 @@ server {
         proxy_pass http://portal_backend;
         include /etc/nginx/includes/proxy-params.inc;
         add_header Cache-Control "no-store" always;
+        include /etc/nginx/includes/security-headers.inc;
         proxy_read_timeout 600s;
         proxy_send_timeout 600s;
     }
 
-    # Subida interna al Acervo desde plataformas externas (Portal). La autentica
-    # mariachi-api con X-Internal-Token; sin bot-protection porque el cliente es
-    # server-to-server, y con settings de upload. Debe ir antes del catch-all /api/.
     location ^~ /api/internal/acervo/ {
+        include /etc/nginx/includes/allow-internal-upload.inc;
+        deny all;
         limit_req zone=api burst=200 nodelay;
         client_max_body_size 1G;
         proxy_request_buffering off;
         proxy_pass http://portal_backend;
         include /etc/nginx/includes/proxy-params.inc;
         add_header Cache-Control "no-store" always;
+        include /etc/nginx/includes/security-headers.inc;
         proxy_read_timeout 600s;
         proxy_send_timeout 600s;
     }
@@ -345,10 +385,9 @@ server {
         proxy_pass http://portal_backend;
         include /etc/nginx/includes/proxy-params.inc;
         add_header Cache-Control "no-store" always;
+        include /etc/nginx/includes/security-headers.inc;
     }
 
-    # Admin-only: mariachi los invoca via iieg-network directo al backend,
-    # no deben ser alcanzables desde internet.
     location = /mapalab/api/layers/refresh-cache {
         return 403;
     }
@@ -357,12 +396,10 @@ server {
         return 403;
     }
 
-    # Las dos rutas del /ontoy de mapalab se cierran aqui, antes del rewrite:
-    # el de abajo convierte /mapalab/<x> en /<x>, asi que un deny puesto en el
-    # nginx de mapalab nunca ve el prefijo. /mapalab/api/ontoy es el handler del
-    # backend y /mapalab/ontoy el sidecar version-api, que desde mapalab 1.102.0
-    # publica los mismos checks fusionados. huachicol no se ve afectado: sondea
-    # el puerto del nginx de mapalab directo, sin pasar por el gateway.
+    location = /mapalab/api/layers/tree/completo {
+        return 403;
+    }
+
     location = /mapalab/api/ontoy {
         return 403;
     }
@@ -375,6 +412,7 @@ server {
         include /etc/nginx/includes/mantenimiento-mapalab.inc;
         limit_req zone=app_assets burst=1000;
         proxy_cache mapalab_assets;
+        proxy_cache_key "$scheme$host$proxy_host$request_uri";
         proxy_cache_valid 200 7d;
         proxy_cache_valid 404 1m;
         proxy_cache_lock on;
@@ -384,6 +422,7 @@ server {
         rewrite ^/mapalab/(.*) /$1 break;
         proxy_pass http://mapalab_backend;
         include /etc/nginx/includes/proxy-params.inc;
+        include /etc/nginx/includes/security-headers.inc;
     }
 
     location ^~ /mapalab/api/download/ {
@@ -410,7 +449,35 @@ server {
         proxy_cache off;
     }
 
-    location ^~ /mapalab/ {
+    location ^~ /mapalab/api/privado/ {
+        include /etc/nginx/includes/mantenimiento-mapalab.inc;
+        limit_req zone=api burst=300 nodelay;
+        include /etc/nginx/includes/bot-protection.inc;
+        rewrite ^/mapalab/(.*) /$1 break;
+        proxy_pass http://mapalab_backend;
+        include /etc/nginx/includes/proxy-params.inc;
+        proxy_read_timeout 120s;
+        proxy_send_timeout 120s;
+        proxy_buffering off;
+        proxy_cache off;
+        add_header X-Robots-Tag "noindex, nofollow" always;
+        include /etc/nginx/includes/security-headers.inc;
+    }
+
+    location ^~ /mapalab/api/ {
+        include /etc/nginx/includes/mantenimiento-mapalab.inc;
+        limit_req zone=api burst=300 nodelay;
+        include /etc/nginx/includes/bot-protection.inc;
+        rewrite ^/mapalab/(.*) /$1 break;
+        proxy_pass http://mapalab_backend;
+        include /etc/nginx/includes/proxy-params.inc;
+        proxy_read_timeout 30s;
+        proxy_send_timeout 30s;
+        add_header X-Robots-Tag $seo_robots;
+        include /etc/nginx/includes/security-headers.inc;
+    }
+
+    location = /mapalab/embed {
         include /etc/nginx/includes/mantenimiento-mapalab.inc;
         limit_req zone=general burst=300;
         include /etc/nginx/includes/bot-protection.inc;
@@ -424,17 +491,37 @@ server {
         add_header X-Robots-Tag $seo_robots;
     }
 
-    # /aviso-de-privacidad y /aviso-de-privacidad-simplificado los sirve sitio2026
-    # desde su CMS, no este archivo: los avisos se editan en el portal en vez de
-    # reemplazar un PDF en acervo. Como el match exacto gana siempre sobre el
-    # location / de sitio2026, las rutas tienen que no existir aqui para que el
-    # portal las reciba. Ver sitio2026#60.
+    location ^~ /mapalab/widget/ {
+        include /etc/nginx/includes/mantenimiento-mapalab-widget.inc;
+        limit_req zone=general burst=300;
+        include /etc/nginx/includes/bot-protection.inc;
+        rewrite ^/mapalab/(.*) /$1 break;
+        proxy_pass http://mapalab_backend;
+        include /etc/nginx/includes/proxy-params.inc;
+        proxy_set_header Accept-Encoding "";
+        proxy_intercept_errors on;
+        proxy_read_timeout 30s;
+        proxy_send_timeout 30s;
+        add_header X-Robots-Tag $seo_robots;
+        include /etc/nginx/includes/security-headers.inc;
+    }
+
+    location ^~ /mapalab/ {
+        include /etc/nginx/includes/mantenimiento-mapalab.inc;
+        limit_req zone=general burst=300;
+        include /etc/nginx/includes/bot-protection.inc;
+        rewrite ^/mapalab/(.*) /$1 break;
+        proxy_pass http://mapalab_backend;
+        include /etc/nginx/includes/proxy-params.inc;
+        proxy_set_header Accept-Encoding "";
+        proxy_intercept_errors on;
+        proxy_read_timeout 30s;
+        proxy_send_timeout 30s;
+        add_header X-Robots-Tag $seo_robots;
+        include /etc/nginx/includes/security-headers.inc;
+    }
 
     location = /aviso-de-privacidad.pdf {
-        # El integral en PDF conserva ruta propia: es la version imprimible que
-        # enlaza la pagina del CMS. La URL no lleva version ni ubicacion del
-        # objeto, asi que publicar uno nuevo es reemplazarlo en el bucket, sin
-        # tocar ningun repo ni desplegar.
         limit_req zone=static burst=500;
         set $acervo_upstream "${ACERVO_HOST}";
         rewrite ^ /iieg/avisos-de-privacidad.pdf break;
@@ -448,10 +535,6 @@ server {
     }
 
     location ^~ /acervo/thumb/ {
-        # Miniaturas publicas on-the-fly del Acervo: las sirve mariachi-api (WebP
-        # escalado), no SeaweedFS. Prefijo mas largo que /acervo/ => gana el matcheo
-        # ^~ y NO se reescribe el path (mariachi-api espera /acervo/thumb/...).
-        # Solo responde para buckets publicos; privados devuelven 404.
         limit_req zone=acervo_thumb burst=240 nodelay;
         proxy_pass http://portal_backend;
         include /etc/nginx/includes/proxy-params.inc;
@@ -486,6 +569,7 @@ server {
     location ^~ /mariachi/assets/ {
         limit_req zone=app_assets burst=1000;
         proxy_cache app_assets_cache;
+        proxy_cache_key "$scheme$host$proxy_host$request_uri";
         proxy_cache_valid 200 7d;
         proxy_cache_valid 404 1m;
         proxy_cache_lock on;
@@ -495,6 +579,7 @@ server {
         include /etc/nginx/includes/proxy-params.inc;
         proxy_hide_header Cache-Control;
         add_header Cache-Control "public, max-age=31536000, immutable";
+        include /etc/nginx/includes/security-headers.inc;
     }
 
     location ^~ /mariachi/ {
@@ -526,6 +611,11 @@ server {
         alias /usr/share/nginx/html/sieej/assets/;
         try_files $uri =404;
         add_header Cache-Control "public, max-age=31536000, immutable" always;
+        include /etc/nginx/includes/security-headers.inc;
+
+        location ~ /\. {
+            deny all;
+        }
     }
 
     location ^~ /sieej/ {
@@ -534,6 +624,10 @@ server {
         try_files $uri $uri/ /sieej/index.html;
         add_header Cache-Control "no-store" always;
         include /etc/nginx/includes/security-headers.inc;
+
+        location ~ /\. {
+            deny all;
+        }
     }
 
     include /etc/nginx/includes/sextante-locations.inc;
@@ -558,6 +652,10 @@ server {
     location ^~ /.well-known/ {
         root /usr/share/nginx/html;
         access_log off;
+
+        location ~ ^/\.well-known/.*/\. {
+            deny all;
+        }
     }
 
     location ~ /\. {

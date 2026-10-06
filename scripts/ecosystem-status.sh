@@ -23,8 +23,13 @@ declare -A REPO_NAMES=(
   ["$REPOS_DIR/sextante"]="sextante"
   ["$REPOS_DIR/mariachi"]="mariachi"
   ["$REPOS_DIR/mapalab"]="mapalab"
+  ["$REPOS_DIR/mapalab-qgis"]="mapalab-qgis"
   ["$REPOS_DIR/sieej"]="sieej"
   ["$REPOS_DIR/sitio2026"]="sitio2026"
+  ["$REPOS_DIR/vine"]="vine"
+  ["$REPOS_DIR/frames"]="frames"
+  ["$REPOS_DIR/intranet"]="intranet"
+  ["$REPOS_DIR/minerva"]="minerva"
 )
 
 REPO_ORDER=(
@@ -35,8 +40,13 @@ REPO_ORDER=(
   "$REPOS_DIR/sextante"
   "$REPOS_DIR/mariachi"
   "$REPOS_DIR/mapalab"
+  "$REPOS_DIR/mapalab-qgis"
   "$REPOS_DIR/sieej"
   "$REPOS_DIR/sitio2026"
+  "$REPOS_DIR/vine"
+  "$REPOS_DIR/frames"
+  "$REPOS_DIR/intranet"
+  "$REPOS_DIR/minerva"
 )
 
 total_repos=0
@@ -146,16 +156,20 @@ for dir in "${REPO_ORDER[@]}"; do
     branch_col="${RED}DETACHED${RESET}"
   else
     branch_vis="$branch"
-    branch_col="${CYAN}${branch}${RESET}"
+    if [ ${#branch_vis} -gt $((W_BRANCH - 1)) ]; then
+      branch_vis="${branch_vis:0:$((W_BRANCH - 2))}~"
+    fi
+    branch_col="${CYAN}${branch_vis}${RESET}"
   fi
 
   dirty_files=$(git -C "$dir" status --porcelain 2>/dev/null)
   dirty_count=0
   [ -n "$dirty_files" ] && dirty_count=$(echo "$dirty_files" | wc -l)
 
-  upstream=$(git -C "$dir" rev-parse --abbrev-ref '@{upstream}' 2>/dev/null || echo "")
+  upstream=$(git -C "$dir" for-each-ref --format='%(upstream:short)' "refs/heads/$branch" 2>/dev/null || echo "")
+  track=$(git -C "$dir" for-each-ref --format='%(upstream:track)' "refs/heads/$branch" 2>/dev/null || echo "")
   ahead=0; behind=0
-  if [ -n "$upstream" ]; then
+  if [ -n "$upstream" ] && [ "$track" != "[gone]" ]; then
     ahead=$(git -C "$dir" rev-list --count '@{upstream}..HEAD' 2>/dev/null || echo 0)
     behind=$(git -C "$dir" rev-list --count 'HEAD..@{upstream}' 2>/dev/null || echo 0)
   fi
@@ -172,7 +186,10 @@ for dir in "${REPO_ORDER[@]}"; do
     total_clean=$((total_clean + 1))
   fi
 
-  if [ -n "$upstream" ]; then
+  if [ "$track" = "[gone]" ]; then
+    remote_vis="sin remoto"
+    remote_col="${RED}sin remoto${RESET}"
+  elif [ -n "$upstream" ]; then
     if [ "$ahead" -gt 0 ] && [ "$behind" -gt 0 ]; then
       remote_vis="${ahead} push ${behind} pull"
       remote_col="${YELLOW}${ahead} push${RESET} ${MAGENTA}${behind} pull${RESET}"
