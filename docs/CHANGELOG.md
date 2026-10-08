@@ -8,6 +8,12 @@ versionado del repo `gateway-hub` es independiente del de Nginx; aqui registramo
 cambios sobre las rutas, certificados, headers de seguridad, rate limits y la
 configuracion de promtail. Bumps por caracteristica registrada en commit.
 
+## [1.61.1] - 2026-10-08
+
+### Corregido
+
+- `ensure_mantenimiento` avisa cuando `mantenimiento/` existe pero no se puede escribir. En el espejo la había creado docker como root antes de que existiera el guard, y `make mantenimiento` fallaba al encender el aviso sin decir por qué.
+
 ## [1.61.0] - 2026-10-08
 
 ### Agregado
