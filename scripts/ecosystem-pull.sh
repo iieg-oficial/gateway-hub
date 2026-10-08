@@ -27,6 +27,7 @@ REPO_ORDER=(
   "$REPOS_DIR/vine"
   "$REPOS_DIR/frames"
   "$REPOS_DIR/intranet"
+  "$REPOS_DIR/sieej-documentation"
   "$REPOS_DIR/minerva"
 )
 
@@ -44,10 +45,11 @@ declare -A REPO_NAMES=(
   ["$REPOS_DIR/vine"]="vine"
   ["$REPOS_DIR/frames"]="frames"
   ["$REPOS_DIR/intranet"]="intranet"
+  ["$REPOS_DIR/sieej-documentation"]="sieej-documentation"
   ["$REPOS_DIR/minerva"]="minerva"
 )
 
-W_REPO=14
+W_REPO=20
 W_BRANCH=13
 W_STATE=16
 WIDTH=$((W_REPO + W_BRANCH + W_STATE + 26))

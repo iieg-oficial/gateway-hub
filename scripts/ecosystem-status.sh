@@ -29,6 +29,7 @@ declare -A REPO_NAMES=(
   ["$REPOS_DIR/vine"]="vine"
   ["$REPOS_DIR/frames"]="frames"
   ["$REPOS_DIR/intranet"]="intranet"
+  ["$REPOS_DIR/sieej-documentation"]="sieej-documentation"
   ["$REPOS_DIR/minerva"]="minerva"
 )
 
@@ -46,6 +47,7 @@ REPO_ORDER=(
   "$REPOS_DIR/vine"
   "$REPOS_DIR/frames"
   "$REPOS_DIR/intranet"
+  "$REPOS_DIR/sieej-documentation"
   "$REPOS_DIR/minerva"
 )
 
@@ -56,7 +58,7 @@ total_ahead=0
 total_behind=0
 total_not_repo=0
 
-W_REPO=14
+W_REPO=20
 W_BRANCH=14
 W_CHANGES=14
 W_REMOTE=14
