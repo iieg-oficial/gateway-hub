@@ -30,7 +30,7 @@ REPO_ORDER=(
   "intranet:$REPOS_DIR/intranet"
   "sieej-documentation:$REPOS_DIR/sieej-documentation"
   "minerva:$REPOS_DIR/minerva"
-  "context-ame-esta:$REPOS_DIR/context-ame-esta"
+  "ideas-IIEG:$REPOS_DIR/ideas-IIEG"
 )
 
 W_REPO=20
