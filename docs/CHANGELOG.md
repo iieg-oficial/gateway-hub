@@ -8,6 +8,12 @@ versionado del repo `gateway-hub` es independiente del de Nginx; aqui registramo
 cambios sobre las rutas, certificados, headers de seguridad, rate limits y la
 configuracion de promtail. Bumps por caracteristica registrada en commit.
 
+## [1.60.1] - 2026-10-08
+
+### Cambiado
+
+- La página de actualización de mapalab deja de anunciar «MapaLab 2»: sin el «2» junto al logo y con novedades que sí salen a producción (Solo seleccionada, Resaltar capa, Fechas a la mano, Perfil del terreno, Descargar selección y Colibrí) en lugar de 3D, dron, tabla, estadísticas, hexágonos y catálogo, que en producción quedan ocultos.
+
 ## [1.60.0] - 2026-10-08
 
 ### Agregado
