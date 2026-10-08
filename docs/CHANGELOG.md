@@ -8,6 +8,13 @@ versionado del repo `gateway-hub` es independiente del de Nginx; aqui registramo
 cambios sobre las rutas, certificados, headers de seguridad, rate limits y la
 configuracion de promtail. Bumps por caracteristica registrada en commit.
 
+## [1.61.0] - 2026-10-08
+
+### Agregado
+
+- La página de actualización de mapalab enseña cada novedad en video: seis grabaciones reales del visor con la interfaz de producción (WebM VP8 a 640×360, 1.7 MB en total) en `nginx/error-pages/novedades-mapalab/`, servidas por la nueva `location ^~ /mantenimiento-mapalab/` (solo GET, caché de un día), fuera de `/mapalab/` porque ese prefijo responde 503 durante el aviso. La descripción va dentro del video en una franja translúcida; la primera píldora arranca abierta y con `prefers-reduced-motion` el video no se reproduce solo.
+- Logos largos del IIEG y de Jalisco en las esquinas inferiores, en lugar de la leyenda del pie.
+
 ## [1.60.1] - 2026-10-08
 
 ### Cambiado

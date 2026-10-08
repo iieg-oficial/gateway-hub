@@ -153,6 +153,15 @@ server {
         add_header Cache-Control "no-store" always;
     }
 
+    location ^~ /mantenimiento-mapalab/ {
+        alias /etc/nginx/error-pages/novedades-mapalab/;
+        limit_except GET HEAD { deny all; }
+        types { video/webm webm; }
+        default_type application/octet-stream;
+        include /etc/nginx/includes/security-headers.inc;
+        add_header Cache-Control "public, max-age=86400" always;
+    }
+
     location = /error-pages/mantenimiento-mapalab.html {
         alias /etc/nginx/error-pages/mantenimiento-mapalab.html;
         internal;
