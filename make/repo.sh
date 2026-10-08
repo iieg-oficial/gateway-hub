@@ -107,6 +107,10 @@ MANTENIMIENTO_SERVICIOS='mapalab'
 
 ensure_mantenimiento() {
     mkdir -p "$MANTENIMIENTO_DIR"
+    if [ ! -w "$MANTENIMIENTO_DIR" ]; then
+        row 'Mantenimiento' 'sin permiso' "$C_YELLOW" "sudo chown $(id -un): $MANTENIMIENTO_DIR"
+        return
+    fi
     row 'Mantenimiento' 'listo' "$C_GREEN" "$MANTENIMIENTO_DIR"
 }
 

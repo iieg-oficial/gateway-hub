@@ -8,6 +8,31 @@ versionado del repo `gateway-hub` es independiente del de Nginx; aqui registramo
 cambios sobre las rutas, certificados, headers de seguridad, rate limits y la
 configuracion de promtail. Bumps por caracteristica registrada en commit.
 
+## [1.61.1] - 2026-10-08
+
+### Corregido
+
+- `ensure_mantenimiento` avisa cuando `mantenimiento/` existe pero no se puede escribir. En el espejo la había creado docker como root antes de que existiera el guard, y `make mantenimiento` fallaba al encender el aviso sin decir por qué.
+
+## [1.61.0] - 2026-10-08
+
+### Agregado
+
+- La página de actualización de mapalab enseña cada novedad en video: seis grabaciones reales del visor con la interfaz de producción (WebM VP8 a 640×360, 1.7 MB en total) en `nginx/error-pages/novedades-mapalab/`, servidas por la nueva `location ^~ /mantenimiento-mapalab/` (solo GET, caché de un día), fuera de `/mapalab/` porque ese prefijo responde 503 durante el aviso. La descripción va dentro del video en una franja translúcida; la primera píldora arranca abierta y con `prefers-reduced-motion` el video no se reproduce solo.
+- Logos largos del IIEG y de Jalisco en las esquinas inferiores, en lugar de la leyenda del pie.
+
+## [1.60.1] - 2026-10-08
+
+### Cambiado
+
+- La página de actualización de mapalab deja de anunciar «MapaLab 2»: sin el «2» junto al logo y con novedades que sí salen a producción (Solo seleccionada, Resaltar capa, Fechas a la mano, Perfil del terreno, Descargar selección y Colibrí) en lugar de 3D, dron, tabla, estadísticas, hexágonos y catálogo, que en producción quedan ocultos.
+
+## [1.60.0] - 2026-10-08
+
+### Agregado
+
+- sieej-documentation entra al orquestador igual que intranet: `ecosystem-up`, `ecosystem-down` y `ecosystem-deploy` la recorren al final, después de intranet; también `ecosystem-status`, `ecosystem-pull` y el push del ecosistema. En su nodo (VM 106) se elige con `STACKS=sieej-documentation`. No lleva `location`: el borde del hipervisor la reparte por SNI. La columna de repo de las tablas se ensancha a 20 para que quepa el nombre.
+
 ## [1.59.0] - 2026-10-05
 
 ### Agregado
