@@ -22,12 +22,18 @@ REPO_ORDER=(
   "sextante:$REPOS_DIR/sextante"
   "mariachi:$REPOS_DIR/mariachi"
   "mapalab:$REPOS_DIR/mapalab"
+  "mapalab-qgis:$REPOS_DIR/mapalab-qgis"
   "sieej:$REPOS_DIR/sieej"
   "sitio2026:$REPOS_DIR/sitio2026"
+  "vine:$REPOS_DIR/vine"
+  "frames:$REPOS_DIR/frames"
+  "intranet:$REPOS_DIR/intranet"
+  "sieej-documentation:$REPOS_DIR/sieej-documentation"
+  "minerva:$REPOS_DIR/minerva"
   "context-ame-esta:$REPOS_DIR/context-ame-esta"
 )
 
-W_REPO=18
+W_REPO=20
 W_BRANCH=14
 W_RESULT=28
 WIDTH=$((W_REPO + W_BRANCH + W_RESULT + 6))

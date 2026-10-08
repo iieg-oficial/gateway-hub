@@ -43,12 +43,12 @@ location ^~ /sextante/ {
         }
 
         proxy_pass http://sextante;
-        include /etc/nginx/includes/proxy-params.inc;
+        include /etc/nginx/includes/sextante-proxy-params.inc;
         include /etc/nginx/includes/sextante-hide-headers.inc;
         proxy_set_header Accept-Encoding identity;
 
         proxy_cache sextante_cache;
-        proxy_cache_key "$request_uri";
+        proxy_cache_key "$host$request_uri";
         proxy_cache_valid 200 30d;
         proxy_cache_lock on;
         proxy_cache_lock_timeout 30s;
@@ -61,7 +61,7 @@ location ^~ /sextante/ {
         proxy_hide_header Pragma;
         add_header Cache-Control "public, max-age=2592000, immutable" always;
         add_header X-Cache-Status $upstream_cache_status always;
-        add_header X-Content-Type-Options "nosniff" always;
+        include /etc/nginx/includes/security-headers.inc;
     }
 
     location ~ ^/sextante/([^/]+/)?wms {
@@ -70,13 +70,13 @@ location ^~ /sextante/ {
         }
 
         proxy_pass http://sextante;
-        include /etc/nginx/includes/proxy-params.inc;
+        include /etc/nginx/includes/sextante-proxy-params.inc;
         include /etc/nginx/includes/sextante-hide-headers.inc;
         proxy_set_header Accept-Encoding identity;
         proxy_read_timeout 120s;
 
         proxy_cache sextante_cache;
-        proxy_cache_key "$request_uri";
+        proxy_cache_key "$host$request_uri";
         proxy_cache_valid 200 6h;
         proxy_cache_lock on;
         proxy_cache_lock_timeout 30s;
@@ -87,8 +87,7 @@ location ^~ /sextante/ {
         proxy_no_cache $sextante_no_cache;
         proxy_cache_bypass $sextante_no_cache;
         add_header X-Cache-Status $upstream_cache_status always;
-        add_header X-Frame-Options "SAMEORIGIN" always;
-        add_header X-Content-Type-Options "nosniff" always;
+        include /etc/nginx/includes/security-headers.inc;
     }
 
     location ~ ^/sextante/ows {
@@ -106,17 +105,17 @@ location ^~ /sextante/ {
             return 403;
         }
 
-        if ($http_user_agent ~* (curl|wget|python|scrapy|httpclient|bot|spider|java|perl|ruby|php|go-http|node-fetch|axios|postman|insomnia|httpie|headless|phantom|selenium|puppeteer|playwright|ChatGPT|Google-Extended|anthropic|^$)) {
+        if ($ua_bloqueado_sextante) {
             return 403;
         }
 
         proxy_pass http://sextante;
-        include /etc/nginx/includes/proxy-params.inc;
+        include /etc/nginx/includes/sextante-proxy-params.inc;
         include /etc/nginx/includes/sextante-hide-headers.inc;
         proxy_set_header Accept-Encoding identity;
 
         proxy_cache sextante_cache;
-        proxy_cache_key "$request_uri";
+        proxy_cache_key "$host$request_uri";
         proxy_cache_valid 200 6h;
         proxy_cache_lock on;
         proxy_cache_lock_timeout 30s;
@@ -126,8 +125,7 @@ location ^~ /sextante/ {
         proxy_no_cache $sextante_no_cache;
         proxy_cache_bypass $sextante_no_cache;
         add_header X-Cache-Status $upstream_cache_status always;
-        add_header X-Frame-Options "SAMEORIGIN" always;
-        add_header X-Content-Type-Options "nosniff" always;
+        include /etc/nginx/includes/security-headers.inc;
 
         if ($arg_request ~* "Transaction") {
             return 403;
@@ -151,21 +149,21 @@ location ^~ /sextante/ {
             return 403;
         }
 
-        if ($http_user_agent ~* (curl|wget|python|scrapy|httpclient|bot|spider|java|perl|ruby|php|go-http|node-fetch|axios|postman|insomnia|httpie|headless|phantom|selenium|puppeteer|playwright|ChatGPT|Google-Extended|anthropic|^$)) {
+        if ($ua_bloqueado_sextante) {
             return 403;
         }
 
-        limit_req zone=sextante_download burst=10 nodelay;
+        limit_req zone=sextante_download burst=300;
+        limit_req zone=mapalab_plugin burst=10 nodelay;
         proxy_pass http://sextante;
-        include /etc/nginx/includes/proxy-params.inc;
+        include /etc/nginx/includes/sextante-proxy-params.inc;
         include /etc/nginx/includes/sextante-hide-headers.inc;
         proxy_set_header Accept-Encoding identity;
         proxy_read_timeout 600s;
         proxy_send_timeout 600s;
         proxy_buffering off;
 
-        add_header X-Frame-Options "SAMEORIGIN" always;
-        add_header X-Content-Type-Options "nosniff" always;
+        include /etc/nginx/includes/security-headers.inc;
 
         if ($arg_request ~* "Transaction") {
             return 403;
@@ -189,13 +187,14 @@ location ^~ /sextante/ {
             return 403;
         }
 
-        if ($http_user_agent ~* (curl|wget|python|scrapy|httpclient|bot|spider|java|perl|ruby|php|go-http|node-fetch|axios|postman|insomnia|httpie|headless|phantom|selenium|puppeteer|playwright|ChatGPT|Google-Extended|anthropic|^$)) {
+        if ($ua_bloqueado_sextante) {
             return 403;
         }
 
-        limit_req zone=sextante_download burst=10 nodelay;
+        limit_req zone=sextante_download burst=300;
+        limit_req zone=mapalab_plugin burst=10 nodelay;
         proxy_pass http://sextante;
-        include /etc/nginx/includes/proxy-params.inc;
+        include /etc/nginx/includes/sextante-proxy-params.inc;
         include /etc/nginx/includes/sextante-hide-headers.inc;
         proxy_set_header Accept-Encoding identity;
         proxy_read_timeout 600s;
@@ -209,9 +208,17 @@ location ^~ /sextante/ {
         proxy_intercept_errors on;
     }
 
-    proxy_pass http://sextante/sextante/;
-    include /etc/nginx/includes/proxy-params.inc;
-    include /etc/nginx/includes/sextante-hide-headers.inc;
-    proxy_set_header Accept-Encoding identity;
-    proxy_read_timeout 120s;
+    location /sextante/ {
+        limit_except GET HEAD {
+            deny all;
+        }
+
+        limit_req zone=sextante_download burst=300;
+        limit_req zone=mapalab_plugin burst=10 nodelay;
+        proxy_pass http://sextante/sextante/;
+        include /etc/nginx/includes/sextante-proxy-params.inc;
+        include /etc/nginx/includes/sextante-hide-headers.inc;
+        proxy_set_header Accept-Encoding identity;
+        proxy_read_timeout 120s;
+    }
 }

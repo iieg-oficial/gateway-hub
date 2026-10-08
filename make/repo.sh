@@ -30,6 +30,53 @@ selected_steps() {
     done
 }
 
+minerva_env() {
+    sed -n "s/^$2=//p" "$1/.env" 2>/dev/null | tail -n1 | tr -d '"'"'"
+}
+
+minerva_compose() {
+    if [ -n "${MINERVA_COMPOSE:-}" ]; then
+        printf '%s' "$MINERVA_COMPOSE"
+        return 0
+    fi
+    case "$(minerva_env "$1" APP_ENV)" in
+        dev|development|local) printf 'docker-compose.yml' ;;
+        *)                     printf 'docker-compose.deploy.yml' ;;
+    esac
+}
+
+minerva_sin_version() {
+    printf 'minerva: MINERVA_VERSION vacia o latest en %s/.env; fija la version de la imagen de ghcr.io\n' "$1" >&2
+    return 1
+}
+
+step_cmd() {
+    local name=$1 target=$2 dir=$3
+    STEP_CMD=()
+    if [ "$name" != 'minerva' ]; then
+        STEP_CMD=(make -C "$dir" "$target")
+        return 0
+    fi
+    local file version
+    file=$(minerva_compose "$dir")
+    local -a compose=(docker compose --project-directory "$dir" -f "$dir/$file")
+    local -a extra=(--build)
+    if [ "$file" = 'docker-compose.deploy.yml' ]; then
+        version=$(minerva_env "$dir" MINERVA_VERSION)
+        if [ "$target" != 'down' ] && { [ -z "$version" ] || [ "$version" = 'latest' ]; }; then
+            STEP_CMD=(minerva_sin_version "$dir")
+            return 0
+        fi
+        extra=(--pull always)
+    fi
+    case "$target" in
+        deploy)   STEP_CMD=("${compose[@]}" up -d "${extra[@]}") ;;
+        _up-prod) STEP_CMD=("${compose[@]}" up -d) ;;
+        down)     STEP_CMD=("${compose[@]}" down --remove-orphans) ;;
+        *)        return 1 ;;
+    esac
+}
+
 ecosystem_run() {
     local target=$1 order=${2:-forward}
     local -a steps
@@ -43,7 +90,11 @@ ecosystem_run() {
             row "$name" 'skip' "$C_DIM"
             continue
         fi
-        if ! run_step "$name" make -C "$dir" "$target"; then
+        if ! step_cmd "$name" "$target" "$dir"; then
+            row "$name" 'n/a' "$C_DIM" "sin equivalente para $target"
+            continue
+        fi
+        if ! run_step "$name" "${STEP_CMD[@]}"; then
             rc=1
             [ "$order" = 'forward' ] && return 1
         fi
@@ -51,11 +102,15 @@ ecosystem_run() {
     return $rc
 }
 
-MANTENIMIENTO_DIR='data/mantenimiento'
+MANTENIMIENTO_DIR='mantenimiento'
 MANTENIMIENTO_SERVICIOS='mapalab'
 
 ensure_mantenimiento() {
     mkdir -p "$MANTENIMIENTO_DIR"
+    if [ ! -w "$MANTENIMIENTO_DIR" ]; then
+        row 'Mantenimiento' 'sin permiso' "$C_YELLOW" "sudo chown $(id -un): $MANTENIMIENTO_DIR"
+        return
+    fi
     row 'Mantenimiento' 'listo' "$C_GREEN" "$MANTENIMIENTO_DIR"
 }
 
