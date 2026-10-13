@@ -8,6 +8,18 @@ versionado del repo `gateway-hub` es independiente del de Nginx; aqui registramo
 cambios sobre las rutas, certificados, headers de seguridad, rate limits y la
 configuracion de promtail. Bumps por caracteristica registrada en commit.
 
+## [1.61.3] - 2026-10-13
+
+### Corregido
+
+- Las rutas sin barra final (`/sieej`, `/mariachi`, `/mapalab`) redirigían a `:8443` en el espejo. Lo que entra por el listener `8443` con `proxy_protocol` armaba el `Location` absoluto con ese puerto interno. Con `absolute_redirect off` el redirect es relativo y el navegador conserva el host y el puerto con que llegó
+
+## [1.61.2] - 2026-10-08
+
+### Eliminado
+
+- El push del ecosistema deja de recorrer ideas-IIEG: el gateway ya no sabe dónde vive el contexto de los agentes. El repo de contexto se actualiza con su propio `make deploy` y se sube con su `make push`.
+
 ## [1.61.1] - 2026-10-08
 
 ### Corregido
