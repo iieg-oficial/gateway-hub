@@ -98,6 +98,7 @@ server {
     listen 8443 ssl proxy_protocol;
     http2 on;
     server_name ${APP_DOMAIN} _;
+    absolute_redirect off;
 
     ssl_certificate     ${SSL_CERTIFICATE};
     ssl_certificate_key ${SSL_CERTIFICATE_KEY};
