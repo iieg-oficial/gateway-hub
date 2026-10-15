@@ -55,6 +55,7 @@ location ^~ /sextante/ {
         proxy_cache_use_stale error timeout updating;
         proxy_cache_background_update on;
         proxy_ignore_headers "Set-Cookie" "Expires" "Cache-Control";
+        proxy_hide_header Set-Cookie;
 
         proxy_hide_header Cache-Control;
         proxy_hide_header Expires;
@@ -67,6 +68,10 @@ location ^~ /sextante/ {
     location ~ ^/sextante/([^/]+/)?wms {
         limit_except GET HEAD OPTIONS {
             deny all;
+        }
+
+        if ($sextante_wps) {
+            return 403;
         }
 
         proxy_pass http://sextante;
@@ -84,6 +89,7 @@ location ^~ /sextante/ {
         proxy_cache_use_stale error timeout updating;
         proxy_cache_background_update on;
         proxy_ignore_headers "Set-Cookie" "Expires" "Cache-Control";
+        proxy_hide_header Set-Cookie;
         proxy_no_cache $sextante_no_cache;
         proxy_cache_bypass $sextante_no_cache;
         add_header X-Cache-Status $upstream_cache_status always;
@@ -93,6 +99,10 @@ location ^~ /sextante/ {
     location ~ ^/sextante/ows {
         limit_except GET HEAD OPTIONS {
             deny all;
+        }
+
+        if ($sextante_wps) {
+            return 403;
         }
 
         set $referer_host "";
@@ -122,6 +132,7 @@ location ^~ /sextante/ {
         proxy_cache_lock_age 30s;
         proxy_cache_use_stale error timeout updating;
         proxy_ignore_headers "Set-Cookie" "Expires" "Cache-Control";
+        proxy_hide_header Set-Cookie;
         proxy_no_cache $sextante_no_cache;
         proxy_cache_bypass $sextante_no_cache;
         add_header X-Cache-Status $upstream_cache_status always;
@@ -137,6 +148,10 @@ location ^~ /sextante/ {
     location ~ ^/sextante/(wfs|wcs) {
         limit_except GET HEAD OPTIONS {
             deny all;
+        }
+
+        if ($sextante_wps) {
+            return 403;
         }
 
         set $referer_host "";
@@ -177,6 +192,10 @@ location ^~ /sextante/ {
             deny all;
         }
 
+        if ($sextante_wps) {
+            return 403;
+        }
+
         set $referer_host "";
         if ($http_referer ~* "^https?://([^/:]+)") { set $referer_host $1; }
         set $valid_referer 0;
@@ -211,6 +230,10 @@ location ^~ /sextante/ {
     location /sextante/ {
         limit_except GET HEAD {
             deny all;
+        }
+
+        if ($sextante_wps) {
+            return 403;
         }
 
         limit_req zone=sextante_download burst=300;

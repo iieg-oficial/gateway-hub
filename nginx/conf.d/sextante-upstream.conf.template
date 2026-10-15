@@ -5,6 +5,11 @@ upstream sextante {
     keepalive_timeout 60s;
 }
 
+map $arg_service $sextante_wps {
+    default 0;
+    ~*^wps$ 1;
+}
+
 map $arg_request $sextante_no_cache {
     default         0;
     ~*GetFeatureInfo 1;
