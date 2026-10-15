@@ -70,6 +70,10 @@ location ^~ /sextante/ {
             deny all;
         }
 
+        if ($sextante_wps) {
+            return 403;
+        }
+
         proxy_pass http://sextante;
         include /etc/nginx/includes/sextante-proxy-params.inc;
         include /etc/nginx/includes/sextante-hide-headers.inc;
@@ -95,6 +99,10 @@ location ^~ /sextante/ {
     location ~ ^/sextante/ows {
         limit_except GET HEAD OPTIONS {
             deny all;
+        }
+
+        if ($sextante_wps) {
+            return 403;
         }
 
         set $referer_host "";
@@ -142,6 +150,10 @@ location ^~ /sextante/ {
             deny all;
         }
 
+        if ($sextante_wps) {
+            return 403;
+        }
+
         set $referer_host "";
         if ($http_referer ~* "^https?://([^/:]+)") { set $referer_host $1; }
         set $valid_referer 0;
@@ -180,6 +192,10 @@ location ^~ /sextante/ {
             deny all;
         }
 
+        if ($sextante_wps) {
+            return 403;
+        }
+
         set $referer_host "";
         if ($http_referer ~* "^https?://([^/:]+)") { set $referer_host $1; }
         set $valid_referer 0;
@@ -214,6 +230,10 @@ location ^~ /sextante/ {
     location /sextante/ {
         limit_except GET HEAD {
             deny all;
+        }
+
+        if ($sextante_wps) {
+            return 403;
         }
 
         limit_req zone=sextante_download burst=300;
