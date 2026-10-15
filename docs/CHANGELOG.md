@@ -8,6 +8,12 @@ versionado del repo `gateway-hub` es independiente del de Nginx; aqui registramo
 cambios sobre las rutas, certificados, headers de seguridad, rate limits y la
 configuracion de promtail. Bumps por caracteristica registrada en commit.
 
+## [No publicado]
+
+### Corregido
+
+- Las rutas cacheadas de sextante (`/gwc/service/`, `/wms`, `/<ws>/wms` y `/ows`) dejan de mandar `Set-Cookie`. Como el caché ignora esa cabecera para poder guardar, la tesela se guardaba con la cookie `GS_FLOW_CONTROL` de quien la pidió primero y se la repartía a todos los visores. Esa cookie es la que usa el control-flow de GeoServer para identificar al «usuario», así que todos los visores contaban como uno solo frente a `user`, `user.ows.wms.getmap` y `user.ows.wps.execute`, y en los MISS bajo carga podían salir 429 por un límite que en realidad era de una persona. Sin la cookie, cada petición cuenta aparte: los límites por usuario dejan de aplicar a lo que pasa por el gateway y quedan los globales (`ows.*`) y los de IP.
+
 ## [1.61.3] - 2026-10-13
 
 ### Corregido

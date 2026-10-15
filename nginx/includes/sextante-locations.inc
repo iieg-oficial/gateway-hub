@@ -55,6 +55,7 @@ location ^~ /sextante/ {
         proxy_cache_use_stale error timeout updating;
         proxy_cache_background_update on;
         proxy_ignore_headers "Set-Cookie" "Expires" "Cache-Control";
+        proxy_hide_header Set-Cookie;
 
         proxy_hide_header Cache-Control;
         proxy_hide_header Expires;
@@ -84,6 +85,7 @@ location ^~ /sextante/ {
         proxy_cache_use_stale error timeout updating;
         proxy_cache_background_update on;
         proxy_ignore_headers "Set-Cookie" "Expires" "Cache-Control";
+        proxy_hide_header Set-Cookie;
         proxy_no_cache $sextante_no_cache;
         proxy_cache_bypass $sextante_no_cache;
         add_header X-Cache-Status $upstream_cache_status always;
@@ -122,6 +124,7 @@ location ^~ /sextante/ {
         proxy_cache_lock_age 30s;
         proxy_cache_use_stale error timeout updating;
         proxy_ignore_headers "Set-Cookie" "Expires" "Cache-Control";
+        proxy_hide_header Set-Cookie;
         proxy_no_cache $sextante_no_cache;
         proxy_cache_bypass $sextante_no_cache;
         add_header X-Cache-Status $upstream_cache_status always;
