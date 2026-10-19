@@ -655,7 +655,9 @@ server {
         if ($seo_block) {
             return 404;
         }
-        root /usr/share/nginx/html;
+        proxy_pass http://sitio_backend;
+        include /etc/nginx/includes/sitio-hide-headers.inc;
+        include /etc/nginx/includes/proxy-params.inc;
         access_log off;
     }
 
