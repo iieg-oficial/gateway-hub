@@ -12,11 +12,7 @@ configuracion de promtail. Bumps por caracteristica registrada en commit.
 
 ### Cambiado
 
-- `/sitemap.xml` deja de ser un estático del gateway y se pide al portal, que lo genera desde las páginas activas del CMS (sitio2026 #147). Sigue respondiendo 404 con `SEO_ENABLED` apagado. No se despliega antes que ese PR: hasta entonces el portal sirve un sitemap viejo con el dominio `iieg.gob.mx`.
-
-### Eliminado
-
-- `nginx/static/sitemap.xml`, que listaba a mano las rutas del portal.
+- `/sitemap.xml` se pide a la API del portal (`/api/sitio/sitemap.xml`), que lo genera desde las páginas activas del CMS (sitio2026 #147). Mientras esa ruta no exista o el portal falle, el gateway sirve su `sitemap.xml` estático: no depende de cuándo se despliegue el portal. Sigue respondiendo 404 con `SEO_ENABLED` apagado.
 
 ## [1.61.4] - 2026-10-15
 
