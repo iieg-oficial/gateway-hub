@@ -655,7 +655,17 @@ server {
         if ($seo_block) {
             return 404;
         }
+        proxy_pass http://sitio_backend/api/sitio/sitemap.xml;
+        include /etc/nginx/includes/sitio-hide-headers.inc;
+        include /etc/nginx/includes/proxy-params.inc;
+        proxy_intercept_errors on;
+        error_page 404 500 502 503 504 = @sitemap_estatico;
+        access_log off;
+    }
+
+    location @sitemap_estatico {
         root /usr/share/nginx/html;
+        try_files /sitemap.xml =404;
         access_log off;
     }
 

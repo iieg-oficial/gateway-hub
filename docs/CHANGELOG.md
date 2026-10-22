@@ -8,6 +8,12 @@ versionado del repo `gateway-hub` es independiente del de Nginx; aqui registramo
 cambios sobre las rutas, certificados, headers de seguridad, rate limits y la
 configuracion de promtail. Bumps por caracteristica registrada en commit.
 
+## [1.62.0] - 2026-10-19
+
+### Cambiado
+
+- `/sitemap.xml` se pide a la API del portal (`/api/sitio/sitemap.xml`), que lo genera desde las páginas activas del CMS (sitio2026 #147). Mientras esa ruta no exista o el portal falle, el gateway sirve su `sitemap.xml` estático: no depende de cuándo se despliegue el portal. Sigue respondiendo 404 con `SEO_ENABLED` apagado.
+
 ## [1.61.4] - 2026-10-15
 
 ### Corregido
