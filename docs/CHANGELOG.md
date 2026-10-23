@@ -8,6 +8,14 @@ versionado del repo `gateway-hub` es independiente del de Nginx; aqui registramo
 cambios sobre las rutas, certificados, headers de seguridad, rate limits y la
 configuracion de promtail. Bumps por caracteristica registrada en commit.
 
+## [No publicado]
+
+### Cambiado
+
+- La página de mantenimiento de mapalab solo dice «En mantenimiento»: sale el bloque «Lo nuevo» con los videos
+  de la 2.x, y el widget embebido deja el aviso en «MapaLab está en mantenimiento». Los videos de
+  `novedades-mapalab/` se quedan para volver a usarlos
+
 ## [1.62.0] - 2026-10-19
 
 ### Cambiado

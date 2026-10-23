@@ -52,8 +52,7 @@
                     <style>${ESTILOS}</style>
                     <div class="aviso" role="status" aria-live="polite">
                         ${ICONO}
-                        <h3>MapaLab se está actualizando</h3>
-                        <p>El mapa vuelve en unos minutos.</p>
+                        <h3>MapaLab está en mantenimiento</h3>
                     </div>
                 `;
             }
