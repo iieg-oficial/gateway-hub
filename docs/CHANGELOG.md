@@ -8,10 +8,13 @@ versionado del repo `gateway-hub` es independiente del de Nginx; aqui registramo
 cambios sobre las rutas, certificados, headers de seguridad, rate limits y la
 configuracion de promtail. Bumps por caracteristica registrada en commit.
 
-## [No publicado]
+## [1.63.0] - 2026-11-17
 
 ### Cambiado
 
+- La CSP global admite reCAPTCHA de Google (`www.google.com/recaptcha/` y `www.gstatic.com/recaptcha/` en
+  `script-src`, `connect-src` y `frame-src`, más `recaptcha.google.com`): la cabecera del gateway lo bloqueaba
+  aunque el `<meta>` del sitio lo permitiera, y el navegador aplica las dos.
 - La página de mantenimiento de mapalab solo dice «En mantenimiento»: sale el bloque «Lo nuevo» con los videos
   de la 2.x, y el widget embebido deja el aviso en «MapaLab está en mantenimiento». Los videos de
   `novedades-mapalab/` se quedan para volver a usarlos
