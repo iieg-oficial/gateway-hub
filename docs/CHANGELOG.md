@@ -8,6 +8,12 @@ versionado del repo `gateway-hub` es independiente del de Nginx; aqui registramo
 cambios sobre las rutas, certificados, headers de seguridad, rate limits y la
 configuracion de promtail. Bumps por caracteristica registrada en commit.
 
+## [1.63.1] - 2026-11-17
+
+### Corregido
+
+- **Imagen de nginx con los parches de Alpine.** `apk upgrade` sobre `nginx:1.30.6-alpine` quita los tres HIGH de `libxslt` que la imagen oficial todavía trae; Trivy queda en 0.
+
 ## [1.63.0] - 2026-11-17
 
 ### Cambiado
